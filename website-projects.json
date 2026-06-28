@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-28T20:36:41.626Z",
+  "updated": "2026-06-28T22:16:31.181Z",
   "projects": [
     {
       "id": "p001",
@@ -51,18 +51,6 @@
       "published": true
     },
     {
-      "id": "p005",
-      "slug": "farbfilm-homeware-|-ff-monogram-incenceburner",
-      "client": "Farbfilm Homeware",
-      "title": "FF-Monogram-Incenseburner",
-      "year": "2024",
-      "type": "Commercial",
-      "location": "Zurich, Switzerland",
-      "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/ff-incenseburner.mp4",
-      "film": "https://vimeo.com/1027041899/08056e35a0",
-      "published": true
-    },
-    {
       "id": "p006",
       "slug": "blkshft-|-oaf25",
       "client": "BLKSHFT",
@@ -72,6 +60,18 @@
       "location": "Frauenfeld, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/oaf25.mp4",
       "film": "1116606970",
+      "published": true
+    },
+    {
+      "id": "p005",
+      "slug": "farbfilm-homeware-|-ff-monogram-incenceburner",
+      "client": "Farbfilm Homeware",
+      "title": "FF-Monogram-Incenseburner",
+      "year": "2024",
+      "type": "Commercial",
+      "location": "Zurich, Switzerland",
+      "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/ff-incenseburner.mp4",
+      "film": "https://vimeo.com/1027041899/08056e35a0",
       "published": true
     },
     {
