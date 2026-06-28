@@ -49,8 +49,8 @@
     // player
     '#me-player{position:fixed;inset:0;background:#000;z-index:2147483600;display:none;}'+
     '#me-player.show{display:block;}'+
-    '#me-embed{position:absolute;inset:0;}'+
-    '#me-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}'+
+    '#me-embed{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:100%;max-height:100%;aspect-ratio:16/9;}'+
+    '#me-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;}'+
     '#me-bar{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);display:flex;align-items:center;'+
       'gap:24px;padding:0 clamp(20px,4vw,64px);color:#fff;z-index:3;opacity:1;transition:opacity .4s ease;'+
       'font:400 clamp(15px,1.4vw,18px)/1 '+FONT+';}'+
@@ -146,6 +146,10 @@
     var opt={controls:false,title:false,byline:false,portrait:false,responsive:true};
     if(/^\d+$/.test(String(p.film))) opt.id=Number(p.film); else opt.url=p.film;
     player=new Vimeo.Player('me-embed',opt);
+    var emb=document.getElementById('me-embed');
+    Promise.all([player.getVideoWidth(),player.getVideoHeight()]).then(function(wh){
+      if(wh[0]&&wh[1]) emb.style.aspectRatio=wh[0]+' / '+wh[1];
+    }).catch(function(){});
     bPlay.textContent='pause'; bMute.textContent='mute';
     player.on('play', function(){bPlay.textContent='pause';});
     player.on('pause',function(){bPlay.textContent='play';});
