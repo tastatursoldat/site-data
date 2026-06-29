@@ -115,10 +115,15 @@
     function p(n,len){return String(n).padStart(len||2,'0');}
     return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+'.'+p(d.getMilliseconds(),3);
   }
-  function sizeClock(){ clockEl.style.fontSize=(landingBox.clientWidth*0.16)+'px'; }
+  function sizeClock(){
+    clockEl.style.fontSize='100px';
+    var measured=clockEl.getBoundingClientRect().width;
+    var target=landingBox.clientWidth*0.94;
+    if(measured>0) clockEl.style.fontSize=(100*(target/measured))+'px';
+  }
   var clockPaused=false;
-  sizeClock();
   clockEl.textContent=fmtClock();
+  sizeClock();
   setInterval(function(){ if(!clockPaused) clockEl.textContent=fmtClock(); },30);
   window.addEventListener('resize', sizeClock);
 
