@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-29T15:46:32.249Z",
+  "updated": "2026-06-29T18:13:34.845Z",
   "projects": [
     {
       "id": "p001",
@@ -103,7 +103,7 @@
       "location": "Zurich, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/amazing.mp4",
       "film": "1017241829",
-      "published": true,
+      "published": false,
       "num": "007"
     },
     {
