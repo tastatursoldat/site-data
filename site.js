@@ -93,8 +93,8 @@
       'flex-direction:column;padding:max(28px,env(safe-area-inset-top)) clamp(20px,5vw,80px) 40px;box-sizing:border-box;'+
       'font-family:'+FONT+';color:#111;overflow-y:auto;}'+
     '#me-cap.show{display:flex;}'+
-    '#me-cap h2{font:600 22px/1.2 '+FONT+';margin:48px 0 4px;}'+
-    '#me-cap .sub{font:400 14px/1.5 '+FONT+';color:#888;margin-bottom:24px;}'+
+    '#me-cap h2{font:700 26px/1.2 '+FONT+';margin:48px 0 4px;letter-spacing:-.01em;}'+
+    '#me-cap .sub{font:400 15px/1.5 '+FONT+';color:#888;margin-bottom:24px;}'+
     '#me-cap-close{position:absolute;top:max(20px,env(safe-area-inset-top));right:clamp(20px,5vw,80px);'+
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
     '#me-drop{border:1px dashed #bbb;border-radius:2px;padding:40px 20px;text-align:center;'+
@@ -151,7 +151,28 @@
   stage.appendChild(stageClock);
   var capArmed=false;        // true only at rest in browse view
   var capHovering=false;     // mouse currently over the resting clock
-  var CAP_LABEL='deploy a time capsule';
+  var CAP_QUESTIONS=[
+    'Do you remember what today felt like?',
+    'What would you send to yourself?',
+    'What do you want to remember?',
+    'Will you remember this moment?',
+    'What are you leaving for later?',
+    'Something you don\u2019t want to forget?',
+    'What should the future hold onto?',
+    'What\u2019s worth keeping?',
+    'Leave something for later?',
+    'What will you want back someday?',
+    'What\u2019s worth saving from now?',
+    'Who were you today?',
+    'What slips away if you don\u2019t keep it?',
+    'What does this version of you sound like?',
+    'What would you tell yourself later?',
+    'Is there something you\u2019ll miss?',
+    'What\u2019s here that won\u2019t last?',
+    'What do you want to find again?',
+    'What feels worth keeping?'
+  ];
+  var CAP_LABEL=CAP_QUESTIONS[Math.floor(Math.random()*CAP_QUESTIONS.length)];
 
   function fmtClock(){
     var d=new Date();
@@ -283,7 +304,8 @@
     if(row.dataset.about){
       if(isMobile()){ openAboutScreen(); return; }
       if(e.target.closest('[data-contact]')){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
-      pinned='about'; showAbout();
+      if(pinned==='about'){ pinned=null; clearStage(); }
+      else { pinned='about'; showAbout(); }
       return;
     }
     pinned=null;
@@ -356,7 +378,7 @@
   cap.innerHTML=
     '<button id="me-cap-close">close</button>'+
     '<h2>Time Capsule</h2>'+
-    '<div class="sub">Drop images, videos or write a note. It gets sent straight to Michel.</div>'+
+    '<div class="sub">Drop images, videos or write a note. Contact Michel to revisit your time capsule.</div>'+
     '<div id="me-drop">Drop files here, or tap to choose'+
       '<input id="me-file-input" type="file" multiple accept="image/*,video/*" style="display:none">'+
     '</div>'+
