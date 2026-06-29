@@ -125,11 +125,15 @@
       '.me-row span{font-size:14px;}'+
       '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
       '#me-cap-mobile{display:block;margin-top:18px;padding:7px 0;font:inherit;font-size:14px;color:#111;cursor:pointer;}'+
-      '#me-clock-mobile{display:block;margin:64px -18px 0;width:100vw;position:relative;left:50%;transform:translateX(-50%);font:700 13vw/1 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;}'+
+      '#me-clock-mobile{display:block;margin-top:64px;width:100%;font:700 13vw/1 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;box-sizing:border-box;}'+
       '#me-landing{display:none !important;}'+
       '#me-landing-box{display:none !important;}'+
       '#me-stage{display:none !important;}'+
       '#me-bar [data-a="full"]{display:none;}'+
+    '}'+
+    '@media (max-height:500px) and (orientation:landscape){'+
+      '#me-clock-mobile{display:none !important;}'+
+      '#me-cap-mobile{display:none !important;}'+
     '}';
   document.head.appendChild(st);
 
