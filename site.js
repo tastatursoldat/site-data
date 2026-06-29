@@ -23,8 +23,7 @@
     "room shared with my brother, where tight space and visual noise shaped my eye for order. "+
     "Self-taught, I developed a monochrome, minimal discipline \u2013 structure, muted palettes, and open space.\n\n"+
     "I started in fashion, writing and directing campaigns before moving into film. I work across "+
-    "commercials, music videos, and films.\nUncluttered frames. Documentary or scripted.\n\n"+
-    ABOUT_INSTAGRAM+"\n"+ABOUT_EMAIL;
+    "commercials, music videos, and films.\nUncluttered frames. Documentary or scripted.";
   var FONT='"Helvetica Neue",Helvetica,Arial,sans-serif';
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -60,7 +59,8 @@
     '#me-stage-content{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}'+
     '#me-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;}'+
     '#me-stage .about{max-width:520px;white-space:pre-line;font:400 16px/1.5 '+FONT+';color:#111;}'+
-    '#me-stage .about a{color:#111;text-decoration:none;}'+
+    '#me-stage .about a{color:#111;text-decoration:none;pointer-events:auto;cursor:pointer;}'+
+    '#me-stage .about{pointer-events:auto;}'+
     // player
     '#me-player{position:fixed;inset:0;background:#000;z-index:2147483600;display:none;}'+
     '#me-player.show{display:block;}'+
@@ -253,16 +253,10 @@
   function clearStage(){ setStage(null); stageClock.classList.add('rest'); stageClock.style.display=''; capArmed=true; stage.classList.add('cap-armed'); stage.style.pointerEvents='auto'; stage.classList.add('show'); stage.style.opacity='1'; }
   function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stageClock.classList.remove('rest'); stageClock.style.display=''; capArmed=false; capHovering=false; stage.classList.remove('cap-armed'); stage.style.pointerEvents='none'; stage.classList.add('show'); }
   function buildAboutHTML(){
-    var igParts=ABOUT_TEXT.split(ABOUT_INSTAGRAM);
-    var before=igParts[0], after=igParts[1]||'';
-    var emailParts=after.split(ABOUT_EMAIL);
-    var middle=emailParts[0], tail=emailParts[1]||'';
     var igUrl='https://instagram.com/'+ABOUT_INSTAGRAM.replace('@','');
-    return esc(before).replace(/\n/g,'<br>')+
-      '<a href="'+igUrl+'" target="_blank" rel="noopener">'+ABOUT_INSTAGRAM+'</a>'+
-      esc(middle).replace(/\n/g,'<br>')+
-      '<a href="mailto:'+ABOUT_EMAIL+'">'+ABOUT_EMAIL+'</a>'+
-      esc(tail).replace(/\n/g,'<br>');
+    return esc(ABOUT_TEXT).replace(/\n/g,'<br>')+'<br><br>'+
+      '<a href="'+igUrl+'" target="_blank" rel="noopener">'+esc(ABOUT_INSTAGRAM)+'</a><br>'+
+      '<a href="mailto:'+ABOUT_EMAIL+'">'+esc(ABOUT_EMAIL)+'</a>';
   }
   function showAbout(){ var a=document.createElement('div'); a.className='about'; a.innerHTML=buildAboutHTML(); setStage(a); stageClock.style.display='none'; capArmed=false; capHovering=false; stage.classList.remove('cap-armed'); stage.classList.add('show'); }
 
