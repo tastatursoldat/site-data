@@ -91,16 +91,18 @@
     // time-capsule (label replaces the clock text on hover)
     '#me-stage.cap-armed{cursor:pointer;}'+
     '#me-cap-mobile{display:none;}'+
-    '#me-cap{position:fixed;inset:0;background:rgba(255,255,255,.97);z-index:2147483750;display:none;'+
-      'flex-direction:column;padding:max(28px,env(safe-area-inset-top)) clamp(20px,5vw,80px) 40px;box-sizing:border-box;'+
-      'font-family:'+FONT+';color:#111;overflow-y:auto;}'+
+    '#me-cap{position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:2147483750;display:none;'+
+      'align-items:center;justify-content:center;padding:20px;box-sizing:border-box;font-family:'+FONT+';}'+
     '#me-cap.show{display:flex;}'+
-    '#me-cap h2{font:700 28px/1.25 '+FONT+';margin:64px 0 28px;letter-spacing:-.01em;max-width:760px;}'+
-    '#me-cap-close{position:absolute;top:max(20px,env(safe-area-inset-top));right:clamp(20px,5vw,80px);'+
-      'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
-    '#me-cap textarea{width:100%;box-sizing:border-box;margin-top:20px;min-height:120px;resize:vertical;'+
+    '#me-cap-card{position:relative;width:100%;max-width:440px;background:#fff;border-radius:16px;'+
+      'padding:28px 28px 24px;box-sizing:border-box;color:#111;}'+
+    '#me-cap h2{font:700 22px/1.3 '+FONT+';margin:4px 0 20px;letter-spacing:-.01em;}'+
+    '#me-cap-close{position:absolute;top:16px;right:16px;background:none;border:0;font:400 16px/1 '+FONT+';'+
+      'cursor:pointer;color:#111;padding:4px;}'+
+    '#me-cap textarea{width:100%;box-sizing:border-box;min-height:110px;resize:none;'+
       'border:1px solid #ddd;border-radius:2px;padding:12px;font:400 15px/1.5 '+FONT+';color:#111;}'+
-    '#me-cap .row{display:flex;gap:12px;align-items:center;margin-top:20px;}'+
+    '#me-cap textarea:focus{outline:none;border-color:#111;}'+
+    '#me-cap .row{display:flex;gap:12px;align-items:center;margin-top:16px;}'+
     '#me-send{background:#111;color:#fff;border:0;border-radius:2px;padding:12px 22px;'+
       'font:500 15px/1 '+FONT+';cursor:pointer;}'+
     '#me-send:disabled{opacity:.4;cursor:default;}'+
@@ -372,10 +374,12 @@
   // ── time capsule ────────────────────────────────────────────────
   var cap=document.createElement('div'); cap.id='me-cap';
   cap.innerHTML=
-    '<button id="me-cap-close">close</button>'+
-    '<h2>'+esc(CAP_LABEL)+'</h2>'+
-    '<textarea id="me-msg" placeholder="Write something\u2026"></textarea>'+
-    '<div class="row"><button id="me-send">Send</button><span class="status"></span></div>';
+    '<div id="me-cap-card">'+
+      '<button id="me-cap-close">close</button>'+
+      '<h2>'+esc(CAP_LABEL)+'</h2>'+
+      '<textarea id="me-msg" placeholder="Write something\u2026"></textarea>'+
+      '<div class="row"><button id="me-send">Send</button><span class="status"></span></div>'+
+    '</div>';
   document.body.appendChild(cap);
 
   var capClose=cap.querySelector('#me-cap-close');
@@ -391,6 +395,7 @@
   function openCapsule(){ cap.classList.add('show'); }
   function closeCapsule(){ cap.classList.remove('show'); }
   capClose.addEventListener('click', closeCapsule);
+  cap.addEventListener('click', function(e){ if(e.target===cap) closeCapsule(); });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape' && cap.classList.contains('show')) closeCapsule(); });
 
   sendBtn.addEventListener('click', function(){
