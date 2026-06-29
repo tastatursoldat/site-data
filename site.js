@@ -98,12 +98,6 @@
     '#me-cap h2{font:700 28px/1.25 '+FONT+';margin:64px 0 28px;letter-spacing:-.01em;max-width:760px;}'+
     '#me-cap-close{position:absolute;top:max(20px,env(safe-area-inset-top));right:clamp(20px,5vw,80px);'+
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
-    '#me-drop{border:1px dashed #bbb;border-radius:2px;padding:40px 20px;text-align:center;'+
-      'font:400 15px/1.5 '+FONT+';color:#888;cursor:pointer;transition:border-color .15s,background .15s;}'+
-    '#me-drop.over{border-color:#111;background:#f4f4f2;color:#111;}'+
-    '#me-files{list-style:none;margin:14px 0 0;padding:0;font:400 13px/1.7 '+FONT+';color:#444;}'+
-    '#me-files li{display:flex;justify-content:space-between;gap:12px;}'+
-    '#me-files button{background:none;border:0;color:#999;cursor:pointer;font:inherit;}'+
     '#me-cap textarea{width:100%;box-sizing:border-box;margin-top:20px;min-height:120px;resize:vertical;'+
       'border:1px solid #ddd;border-radius:2px;padding:12px;font:400 15px/1.5 '+FONT+';color:#111;}'+
     '#me-cap .row{display:flex;gap:12px;align-items:center;margin-top:20px;}'+
@@ -380,22 +374,14 @@
   cap.innerHTML=
     '<button id="me-cap-close">close</button>'+
     '<h2>'+esc(CAP_LABEL)+'</h2>'+
-    '<div id="me-drop">Drop files here, or tap to choose'+
-      '<input id="me-file-input" type="file" multiple accept="image/*,video/*" style="display:none">'+
-    '</div>'+
-    '<ul id="me-files"></ul>'+
     '<textarea id="me-msg" placeholder="Write something\u2026"></textarea>'+
     '<div class="row"><button id="me-send">Send</button><span class="status"></span></div>';
   document.body.appendChild(cap);
 
   var capClose=cap.querySelector('#me-cap-close');
-  var drop=cap.querySelector('#me-drop');
-  var fileInput=cap.querySelector('#me-file-input');
-  var fileList=cap.querySelector('#me-files');
   var msg=cap.querySelector('#me-msg');
   var sendBtn=cap.querySelector('#me-send');
   var statusEl=cap.querySelector('.status');
-  var files=[];
 
   // open only when armed (resting stage) and clicking the clock
   stage.addEventListener('mouseenter', function(){ if(capArmed){ capHovering=true; stageClock.textContent=CAP_LABEL; sizeClock(); } });
@@ -407,37 +393,17 @@
   capClose.addEventListener('click', closeCapsule);
   document.addEventListener('keydown', function(e){ if(e.key==='Escape' && cap.classList.contains('show')) closeCapsule(); });
 
-  function renderFiles(){
-    fileList.innerHTML='';
-    files.forEach(function(f,i){
-      var li=document.createElement('li');
-      var kb=(f.size/1024); var size= kb>1024 ? (kb/1024).toFixed(1)+' MB' : Math.round(kb)+' KB';
-      li.innerHTML='<span>'+esc(f.name)+' &middot; '+size+'</span>';
-      var x=document.createElement('button'); x.textContent='remove';
-      x.addEventListener('click', function(){ files.splice(i,1); renderFiles(); });
-      li.appendChild(x); fileList.appendChild(li);
-    });
-  }
-  function addFiles(list){ for(var i=0;i<list.length;i++) files.push(list[i]); renderFiles(); }
-
-  drop.addEventListener('click', function(){ fileInput.click(); });
-  fileInput.addEventListener('change', function(){ addFiles(fileInput.files); fileInput.value=''; });
-  ['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.add('over'); }); });
-  ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
-  drop.addEventListener('drop', function(e){ if(e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
-
   sendBtn.addEventListener('click', function(){
-    if(!files.length && !msg.value.trim()){ statusEl.textContent='Add a file or a note first.'; return; }
+    if(!msg.value.trim()){ statusEl.textContent='Write something first.'; return; }
     if(FORMSPREE_ID==='YOUR_FORM_ID'){ statusEl.textContent='Not configured yet.'; return; }
     sendBtn.disabled=true; statusEl.textContent='Sending\u2026';
     var fd=new FormData();
     fd.append('message', msg.value);
     fd.append('_subject', CAP_LABEL);
-    files.forEach(function(f){ fd.append('attachment', f, f.name); });
     fetch('https://formspree.io/f/'+FORMSPREE_ID, { method:'POST', body:fd, headers:{'Accept':'application/json'} })
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
       .then(function(res){
-        if(res.ok){ statusEl.textContent='Sent. Thank you.'; files=[]; renderFiles(); msg.value='';
+        if(res.ok){ statusEl.textContent='Sent. Thank you.'; msg.value='';
           setTimeout(closeCapsule,1200); }
         else { statusEl.textContent=(res.j && res.j.error) ? res.j.error : 'Something went wrong.'; }
         sendBtn.disabled=false;
