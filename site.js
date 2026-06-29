@@ -34,12 +34,12 @@
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
     '#me-list{position:absolute;left:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);font-size:15px;line-height:1.5;}'+
-    '.me-row{display:grid;grid-template-columns:3.2em 4em 13em 1fr;gap:1em;cursor:pointer;}'+
+    '.me-row{display:grid;grid-template-columns:4em 3.2em 11em 1fr 9em;gap:1em;cursor:pointer;}'+
     '.me-row.head{cursor:default;margin-bottom:.2em;}'+
     '.me-row.about span{color:#b3b3b3;}'+
     '.me-row span{transition:opacity .15s ease;white-space:nowrap;}'+
-    '#me-list:hover .me-row:not(.head) span{opacity:.35;}'+
-    '#me-list .me-row:hover span{opacity:1;}'+
+    '.me-row span{opacity:1;}'+
+    '.me-row[data-dim] span{opacity:.35;}'+
     '#me-stage{position:absolute;right:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);'+
       'width:min(46vw,720px);height:80vh;display:flex;align-items:center;justify-content:center;'+
       'opacity:0;transition:opacity .18s ease;pointer-events:none;}'+
@@ -96,16 +96,23 @@
 
   // ── landing → browse ────────────────────────────────────────────
   landing.addEventListener('click', function(){ combined.pause(); app.classList.add('browse'); });
+  landing.addEventListener('mouseenter', function(){ combined.pause(); });
+  landing.addEventListener('mouseleave', function(){ if(!app.classList.contains('browse')) combined.play().catch(function(){}); });
 
   // ── data + render list ──────────────────────────────────────────
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
     PROJECTS=(d.projects||[]).filter(function(p){return p.published!==false;});
-    var html='<div class="me-row head"><span>\u2116</span><span>Year</span><span>Client</span><span>Title</span></div>'+
-      '<div class="me-row about" data-about="1"><span>000</span><span>1997</span><span>Michel Elsasser</span><span>About</span></div>';
+    var html='<div class="me-row head"><span>Year</span><span>\u2116</span><span>Client</span><span>Title</span><span>Category</span></div>'+
+      '<div class="me-row about" data-about="1"><span>1997</span><span>000</span><span>Michel Elsasser</span><span>About</span><span></span></div>';
     PROJECTS.forEach(function(p,i){
       var no=String(i+1).padStart(3,'0');
-      html+='<div class="me-row" data-i="'+i+'"><span>'+no+'</span><span>'+esc(p.year)+'</span>'+
-        '<span>'+esc(p.client)+'</span><span>'+esc(p.title)+'</span></div>';
+      html+='<div class="me-row" data-i="'+i+'">'+
+        '<span data-field="year" data-value="'+esc(p.year)+'">'+esc(p.year)+'</span>'+
+        '<span>'+no+'</span>'+
+        '<span data-field="client" data-value="'+esc(p.client)+'">'+esc(p.client)+'</span>'+
+        '<span>'+esc(p.title)+'</span>'+
+        '<span data-field="type" data-value="'+esc(p.type||'')+'">'+esc(p.type||'')+'</span>'+
+      '</div>';
       if(p.preview){
         var v=document.createElement('video');
         v.src=p.preview; v.muted=true; v.loop=true; v.preload='auto';
@@ -123,13 +130,44 @@
   function showAbout(){ var a=document.createElement('div'); a.className='about'; a.textContent=ABOUT_TEXT; setStage(a); stage.classList.add('show'); }
 
   // ── list interactions ───────────────────────────────────────────
+  var activeFilter=null; // {field,value}
+  function rows(){ return listEl.querySelectorAll('.me-row:not(.head)'); }
+  function rowMatchesFilter(row){
+    if(!activeFilter) return true;
+    if(row.dataset.about) return false;
+    var cell=row.querySelector('[data-field="'+activeFilter.field+'"]');
+    return !!cell && cell.dataset.value===activeFilter.value;
+  }
+  function applyDim(hoveredRow){
+    rows().forEach(function(r){
+      var dim = activeFilter ? !rowMatchesFilter(r) : (hoveredRow ? r!==hoveredRow : false);
+      if(dim) r.setAttribute('data-dim',''); else r.removeAttribute('data-dim');
+    });
+  }
+  applyDim(null);
+
   listEl.addEventListener('mouseover', function(e){
-    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ clearStage(); return; }
+    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ clearStage(); applyDim(null); return; }
+    applyDim(row);
     if(row.dataset.about){ showAbout(); }
     else { showProject(PROJECTS[+row.dataset.i]); }
   });
-  listEl.addEventListener('mouseleave', clearStage);
+  listEl.addEventListener('mouseleave', function(){ clearStage(); applyDim(null); });
+
   listEl.addEventListener('click', function(e){
+    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
+    var cell=e.target.closest('[data-field]');
+    if(cell){
+      // toggle filter on this field/value
+      var f=cell.dataset.field, v=cell.dataset.value;
+      if(activeFilter && activeFilter.field===f && activeFilter.value===v){ activeFilter=null; }
+      else { activeFilter={field:f,value:v}; }
+      applyDim(row);
+      return;
+    }
+    if(row.dataset.about){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
+  });
+  listEl.addEventListener('dblclick', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
     if(row.dataset.about){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
     var p=PROJECTS[+row.dataset.i];
@@ -154,6 +192,7 @@
     wake();
   }
   function closePlayer(){
+    activeFilter=null; applyDim(null);
     if(document.fullscreenElement) document.exitFullscreen();          // leave fullscreen on close
     else if(document.webkitFullscreenElement) document.webkitExitFullscreen();
     pl.classList.remove('show'); if(player){player.destroy();player=null;}
