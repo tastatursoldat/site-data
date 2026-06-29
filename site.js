@@ -94,7 +94,6 @@
       'font-family:'+FONT+';color:#111;overflow-y:auto;}'+
     '#me-cap.show{display:flex;}'+
     '#me-cap h2{font:700 28px/1.25 '+FONT+';margin:64px 0 28px;letter-spacing:-.01em;max-width:760px;}'+
-    '#me-cap h2 .sm{font-size:.6em;font-weight:700;}'+
     '#me-cap-close{position:absolute;top:max(20px,env(safe-area-inset-top));right:clamp(20px,5vw,80px);'+
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
     '#me-drop{border:1px dashed #bbb;border-radius:2px;padding:40px 20px;text-align:center;'+
@@ -377,7 +376,7 @@
   var cap=document.createElement('div'); cap.id='me-cap';
   cap.innerHTML=
     '<button id="me-cap-close">close</button>'+
-    '<h2>Drop images, videos or write a note. Contact <span class="sm">Michel</span> to revisit your time capsule.</h2>'+
+    '<h2>Drop images, videos or write a note. Contact michel to revisit your time capsule.</h2>'+
     '<div id="me-drop">Drop files here, or tap to choose'+
       '<input id="me-file-input" type="file" multiple accept="image/*,video/*" style="display:none">'+
     '</div>'+
