@@ -16,6 +16,7 @@
   var DATA_URL     = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/website-projects.json";
   var COMBINED_URL = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/_all.mp4";
   var ABOUT_EMAIL  = "m@michelelsasser.com";
+  var FORMSPREE_ID = "xkolzzba"; // Formspree form id
   var ABOUT_INSTAGRAM = "@michelelsasser";
   var ABOUT_TEXT =
     "Hi, I\u2019m Michel. I\u2019m a Swiss director based in Zurich. Born near Baden, I grew up in a small "+
@@ -86,6 +87,32 @@
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
     '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
+    // time-capsule
+    '#me-cap-label{position:absolute;left:50%;top:calc(50% + 6vh);transform:translateX(-50%);'+
+      'font:500 15px/1.3 '+FONT+';color:#111;white-space:nowrap;opacity:0;transition:opacity .15s ease;'+
+      'pointer-events:none;text-align:center;}'+
+    '#me-stage:hover #me-cap-label.armed{opacity:1;}'+
+    '#me-cap{position:fixed;inset:0;background:rgba(255,255,255,.97);z-index:2147483750;display:none;'+
+      'flex-direction:column;padding:max(28px,env(safe-area-inset-top)) clamp(20px,5vw,80px) 40px;box-sizing:border-box;'+
+      'font-family:'+FONT+';color:#111;overflow-y:auto;}'+
+    '#me-cap.show{display:flex;}'+
+    '#me-cap h2{font:600 22px/1.2 '+FONT+';margin:48px 0 4px;}'+
+    '#me-cap .sub{font:400 14px/1.5 '+FONT+';color:#888;margin-bottom:24px;}'+
+    '#me-cap-close{position:absolute;top:max(20px,env(safe-area-inset-top));right:clamp(20px,5vw,80px);'+
+      'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
+    '#me-drop{border:1px dashed #bbb;border-radius:2px;padding:40px 20px;text-align:center;'+
+      'font:400 15px/1.5 '+FONT+';color:#888;cursor:pointer;transition:border-color .15s,background .15s;}'+
+    '#me-drop.over{border-color:#111;background:#f4f4f2;color:#111;}'+
+    '#me-files{list-style:none;margin:14px 0 0;padding:0;font:400 13px/1.7 '+FONT+';color:#444;}'+
+    '#me-files li{display:flex;justify-content:space-between;gap:12px;}'+
+    '#me-files button{background:none;border:0;color:#999;cursor:pointer;font:inherit;}'+
+    '#me-cap textarea{width:100%;box-sizing:border-box;margin-top:20px;min-height:120px;resize:vertical;'+
+      'border:1px solid #ddd;border-radius:2px;padding:12px;font:400 15px/1.5 '+FONT+';color:#111;}'+
+    '#me-cap .row{display:flex;gap:12px;align-items:center;margin-top:20px;}'+
+    '#me-send{background:#111;color:#fff;border:0;border-radius:2px;padding:12px 22px;'+
+      'font:500 15px/1 '+FONT+';cursor:pointer;}'+
+    '#me-send:disabled{opacity:.4;cursor:default;}'+
+    '#me-cap .status{font:400 14px/1.5 '+FONT+';color:#888;}'+
     '@media (max-width:700px){'+
       '#me-landing-box{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;max-width:none;max-height:none;}'+
       '@supports (height:100dvh){#me-landing-box{height:100dvh;}}'+
@@ -125,6 +152,8 @@
   landingBox.appendChild(clockEl);
   var stageClock=document.createElement('div'); stageClock.id='me-clock'; stageClock.className='rest';
   stage.appendChild(stageClock);
+  var capLabel=document.createElement('div'); capLabel.id='me-cap-label'; capLabel.textContent='deploy a time capsule';
+  stage.appendChild(capLabel);
 
   function fmtClock(){
     var d=new Date();
@@ -202,8 +231,8 @@
     stageContent.innerHTML='';
     if(node) stageContent.appendChild(node);
   }
-  function clearStage(){ setStage(null); stageClock.classList.add('rest'); stageClock.style.display=''; stage.classList.add('show'); stage.style.opacity='1'; }
-  function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stageClock.classList.remove('rest'); stageClock.style.display=''; stage.classList.add('show'); }
+  function clearStage(){ setStage(null); stageClock.classList.add('rest'); stageClock.style.display=''; capLabel.classList.add('armed'); stageClock.style.cursor='pointer'; stage.style.pointerEvents='auto'; stage.classList.add('show'); stage.style.opacity='1'; }
+  function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stageClock.classList.remove('rest'); stageClock.style.display=''; capLabel.classList.remove('armed'); stageClock.style.cursor=''; stage.style.pointerEvents='none'; stage.classList.add('show'); }
   function buildAboutHTML(){
     var igParts=ABOUT_TEXT.split(ABOUT_INSTAGRAM);
     var before=igParts[0], after=igParts[1]||'';
@@ -216,7 +245,7 @@
       '<a href="mailto:'+ABOUT_EMAIL+'">'+ABOUT_EMAIL+'</a>'+
       esc(tail).replace(/\n/g,'<br>');
   }
-  function showAbout(){ var a=document.createElement('div'); a.className='about'; a.innerHTML=buildAboutHTML(); setStage(a); stageClock.style.display='none'; stage.classList.add('show'); }
+  function showAbout(){ var a=document.createElement('div'); a.className='about'; a.innerHTML=buildAboutHTML(); setStage(a); stageClock.style.display='none'; capLabel.classList.remove('armed'); stageClock.style.cursor=''; stage.classList.add('show'); }
 
   // ── list interactions ───────────────────────────────────────────
   function isMobile(){ return window.matchMedia('(max-width:700px)').matches; }
@@ -322,6 +351,76 @@
   var t; function wake(){ bar.classList.remove('idle'); clearTimeout(t);
     t=setTimeout(function(){ if(player) player.getPaused().then(function(x){ if(!x) bar.classList.add('idle'); }); },2500); }
   pl.addEventListener('mousemove',wake);
+
+  // ── time capsule ────────────────────────────────────────────────
+  var cap=document.createElement('div'); cap.id='me-cap';
+  cap.innerHTML=
+    '<button id="me-cap-close">close</button>'+
+    '<h2>Time Capsule</h2>'+
+    '<div class="sub">Drop images, videos or write a note. It gets sent straight to Michel.</div>'+
+    '<div id="me-drop">Drop files here, or tap to choose'+
+      '<input id="me-file-input" type="file" multiple accept="image/*,video/*" style="display:none">'+
+    '</div>'+
+    '<ul id="me-files"></ul>'+
+    '<textarea id="me-msg" placeholder="Write something\u2026"></textarea>'+
+    '<div class="row"><button id="me-send">Send</button><span class="status"></span></div>';
+  document.body.appendChild(cap);
+
+  var capClose=cap.querySelector('#me-cap-close');
+  var drop=cap.querySelector('#me-drop');
+  var fileInput=cap.querySelector('#me-file-input');
+  var fileList=cap.querySelector('#me-files');
+  var msg=cap.querySelector('#me-msg');
+  var sendBtn=cap.querySelector('#me-send');
+  var statusEl=cap.querySelector('.status');
+  var files=[];
+
+  // open only when armed (resting stage) and clicking the clock
+  stageClock.addEventListener('click', function(){ if(capLabel.classList.contains('armed')) openCapsule(); });
+  capLabel.addEventListener('click', function(){ if(capLabel.classList.contains('armed')) openCapsule(); });
+
+  function openCapsule(){ cap.classList.add('show'); }
+  function closeCapsule(){ cap.classList.remove('show'); }
+  capClose.addEventListener('click', closeCapsule);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && cap.classList.contains('show')) closeCapsule(); });
+
+  function renderFiles(){
+    fileList.innerHTML='';
+    files.forEach(function(f,i){
+      var li=document.createElement('li');
+      var kb=(f.size/1024); var size= kb>1024 ? (kb/1024).toFixed(1)+' MB' : Math.round(kb)+' KB';
+      li.innerHTML='<span>'+esc(f.name)+' &middot; '+size+'</span>';
+      var x=document.createElement('button'); x.textContent='remove';
+      x.addEventListener('click', function(){ files.splice(i,1); renderFiles(); });
+      li.appendChild(x); fileList.appendChild(li);
+    });
+  }
+  function addFiles(list){ for(var i=0;i<list.length;i++) files.push(list[i]); renderFiles(); }
+
+  drop.addEventListener('click', function(){ fileInput.click(); });
+  fileInput.addEventListener('change', function(){ addFiles(fileInput.files); fileInput.value=''; });
+  ['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function(e){ if(e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+
+  sendBtn.addEventListener('click', function(){
+    if(!files.length && !msg.value.trim()){ statusEl.textContent='Add a file or a note first.'; return; }
+    if(FORMSPREE_ID==='YOUR_FORM_ID'){ statusEl.textContent='Not configured yet.'; return; }
+    sendBtn.disabled=true; statusEl.textContent='Sending\u2026';
+    var fd=new FormData();
+    fd.append('message', msg.value);
+    fd.append('_subject', 'New time capsule \u2014 michelelsasser.com');
+    files.forEach(function(f){ fd.append('attachment', f, f.name); });
+    fetch('https://formspree.io/f/'+FORMSPREE_ID, { method:'POST', body:fd, headers:{'Accept':'application/json'} })
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
+      .then(function(res){
+        if(res.ok){ statusEl.textContent='Sent. Thank you.'; files=[]; renderFiles(); msg.value='';
+          setTimeout(closeCapsule,1200); }
+        else { statusEl.textContent=(res.j && res.j.error) ? res.j.error : 'Something went wrong.'; }
+        sendBtn.disabled=false;
+      })
+      .catch(function(){ statusEl.textContent='Network error. Try again.'; sendBtn.disabled=false; });
+  });
 })();
   }
 })();
