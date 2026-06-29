@@ -379,7 +379,7 @@
   var cap=document.createElement('div'); cap.id='me-cap';
   cap.innerHTML=
     '<button id="me-cap-close">close</button>'+
-    '<h2>Drop images, videos or write a note. Contact michel to revisit your time capsule.</h2>'+
+    '<h2>'+esc(CAP_LABEL)+'</h2>'+
     '<div id="me-drop">Drop files here, or tap to choose'+
       '<input id="me-file-input" type="file" multiple accept="image/*,video/*" style="display:none">'+
     '</div>'+
@@ -432,7 +432,7 @@
     sendBtn.disabled=true; statusEl.textContent='Sending\u2026';
     var fd=new FormData();
     fd.append('message', msg.value);
-    fd.append('_subject', 'New time capsule \u2014 michelelsasser.com');
+    fd.append('_subject', CAP_LABEL);
     files.forEach(function(f){ fd.append('attachment', f, f.name); });
     fetch('https://formspree.io/f/'+FORMSPREE_ID, { method:'POST', body:fd, headers:{'Accept':'application/json'} })
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
