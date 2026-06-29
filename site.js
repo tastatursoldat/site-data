@@ -41,6 +41,7 @@
     '#me-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);'+
       'font:700 1px/1 '+FONT+';color:#fff;mix-blend-mode:difference;pointer-events:none;'+
       'letter-spacing:.02em;text-align:center;white-space:nowrap;}'+
+    '#me-clock.rest{color:#111;mix-blend-mode:normal;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
@@ -118,7 +119,7 @@
 
   var clockEl=document.createElement('div'); clockEl.id='me-clock';
   landingBox.appendChild(clockEl);
-  var stageClock=document.createElement('div'); stageClock.id='me-clock';
+  var stageClock=document.createElement('div'); stageClock.id='me-clock'; stageClock.className='rest';
 
   function fmtClock(){
     var d=new Date();
@@ -213,16 +214,17 @@
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
   // hover anywhere else on a row -> just preview that one row (dim the rest).
   var pinned=null;
+  function revertStage(){ if(pinned==='about') showAbout(); else clearStage(); }
   listEl.addEventListener('mouseover', function(e){
     if(isMobile()) return;
-    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ if(!pinned){ clearStage(); applyDim(null); } return; }
+    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ revertStage(); applyDim(null); return; }
     var cell=e.target.closest('[data-field]');
     if(cell){ applyDim(null,cell.dataset.field,cell.dataset.value); }
     else { applyDim(row); }
     if(row.dataset.about){ showAbout(); }
-    else { pinned=null; showProject(PROJECTS[+row.dataset.i]); }
+    else { showProject(PROJECTS[+row.dataset.i]); }
   });
-  listEl.addEventListener('mouseleave', function(){ if(!pinned){ clearStage(); } applyDim(null); });
+  listEl.addEventListener('mouseleave', function(){ revertStage(); applyDim(null); });
 
   // click -> always opens the film (or, for About: Contact opens mail, anything else pins the panel open)
   listEl.addEventListener('click', function(e){
