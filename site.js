@@ -87,11 +87,8 @@
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
     '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
-    // time-capsule
-    '#me-cap-label{position:absolute;left:50%;top:calc(50% + 6vh);transform:translateX(-50%);'+
-      'font:500 15px/1.3 '+FONT+';color:#111;white-space:nowrap;opacity:0;transition:opacity .15s ease;'+
-      'pointer-events:none;text-align:center;}'+
-    '#me-stage:hover #me-cap-label.armed{opacity:1;}'+
+    // time-capsule (label replaces the clock text on hover)
+    '#me-stage.cap-armed{cursor:pointer;}'+
     '#me-cap{position:fixed;inset:0;background:rgba(255,255,255,.97);z-index:2147483750;display:none;'+
       'flex-direction:column;padding:max(28px,env(safe-area-inset-top)) clamp(20px,5vw,80px) 40px;box-sizing:border-box;'+
       'font-family:'+FONT+';color:#111;overflow-y:auto;}'+
@@ -152,8 +149,9 @@
   landingBox.appendChild(clockEl);
   var stageClock=document.createElement('div'); stageClock.id='me-clock'; stageClock.className='rest';
   stage.appendChild(stageClock);
-  var capLabel=document.createElement('div'); capLabel.id='me-cap-label'; capLabel.textContent='deploy a time capsule';
-  stage.appendChild(capLabel);
+  var capArmed=false;        // true only at rest in browse view
+  var capHovering=false;     // mouse currently over the resting clock
+  var CAP_LABEL='deploy a time capsule';
 
   function fmtClock(){
     var d=new Date();
@@ -176,7 +174,8 @@
   setInterval(function(){
     var t=fmtClock();
     if(!clockPaused) clockEl.textContent=t;
-    stageClock.textContent=t;
+    if(capArmed && capHovering) stageClock.textContent=CAP_LABEL;
+    else stageClock.textContent=t;
   },30);
   window.addEventListener('resize', sizeClock);
 
@@ -231,8 +230,8 @@
     stageContent.innerHTML='';
     if(node) stageContent.appendChild(node);
   }
-  function clearStage(){ setStage(null); stageClock.classList.add('rest'); stageClock.style.display=''; capLabel.classList.add('armed'); stageClock.style.cursor='pointer'; stage.style.pointerEvents='auto'; stage.classList.add('show'); stage.style.opacity='1'; }
-  function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stageClock.classList.remove('rest'); stageClock.style.display=''; capLabel.classList.remove('armed'); stageClock.style.cursor=''; stage.style.pointerEvents='none'; stage.classList.add('show'); }
+  function clearStage(){ setStage(null); stageClock.classList.add('rest'); stageClock.style.display=''; capArmed=true; stage.classList.add('cap-armed'); stage.style.pointerEvents='auto'; stage.classList.add('show'); stage.style.opacity='1'; }
+  function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stageClock.classList.remove('rest'); stageClock.style.display=''; capArmed=false; capHovering=false; stage.classList.remove('cap-armed'); stage.style.pointerEvents='none'; stage.classList.add('show'); }
   function buildAboutHTML(){
     var igParts=ABOUT_TEXT.split(ABOUT_INSTAGRAM);
     var before=igParts[0], after=igParts[1]||'';
@@ -245,7 +244,7 @@
       '<a href="mailto:'+ABOUT_EMAIL+'">'+ABOUT_EMAIL+'</a>'+
       esc(tail).replace(/\n/g,'<br>');
   }
-  function showAbout(){ var a=document.createElement('div'); a.className='about'; a.innerHTML=buildAboutHTML(); setStage(a); stageClock.style.display='none'; capLabel.classList.remove('armed'); stageClock.style.cursor=''; stage.classList.add('show'); }
+  function showAbout(){ var a=document.createElement('div'); a.className='about'; a.innerHTML=buildAboutHTML(); setStage(a); stageClock.style.display='none'; capArmed=false; capHovering=false; stage.classList.remove('cap-armed'); stage.classList.add('show'); }
 
   // ── list interactions ───────────────────────────────────────────
   function isMobile(){ return window.matchMedia('(max-width:700px)').matches; }
@@ -376,8 +375,9 @@
   var files=[];
 
   // open only when armed (resting stage) and clicking the clock
-  stageClock.addEventListener('click', function(){ if(capLabel.classList.contains('armed')) openCapsule(); });
-  capLabel.addEventListener('click', function(){ if(capLabel.classList.contains('armed')) openCapsule(); });
+  stage.addEventListener('mouseenter', function(){ if(capArmed){ capHovering=true; stageClock.textContent=CAP_LABEL; sizeClock(); } });
+  stage.addEventListener('mouseleave', function(){ if(capHovering){ capHovering=false; stageClock.textContent=fmtClock(); sizeClock(); } });
+  stage.addEventListener('click', function(){ if(capArmed) openCapsule(); });
 
   function openCapsule(){ cap.classList.add('show'); }
   function closeCapsule(){ cap.classList.remove('show'); }
