@@ -124,8 +124,8 @@
       '.me-row{grid-template-columns:3em 2.4em 1fr;gap:.6em;padding:7px 0;}'+
       '.me-row span{font-size:14px;}'+
       '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
-      '#me-cap-mobile{display:block;margin-top:18px;padding:7px 0;font:inherit;font-size:14px;color:#111;cursor:pointer;}'+
-      '#me-clock-mobile{display:block;margin-top:64px;width:100%;font:700 13vw/1 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;box-sizing:border-box;}'+
+      '#me-cap-mobile{display:block;margin-top:64px;width:100%;font:700 28px/1.05 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;cursor:pointer;box-sizing:border-box;}'+
+      '#me-clock-mobile{display:block;margin-top:10px;width:100%;font:700 13vw/1 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;box-sizing:border-box;}'+
       '#me-landing{display:none !important;}'+
       '#me-landing-box{display:none !important;}'+
       '#me-stage{display:none !important;}'+
@@ -264,17 +264,29 @@
       }
     });
     listEl.innerHTML=html;
+    var clockMobile=document.createElement('div');
+    clockMobile.id='me-clock-mobile';
+    clockMobile.textContent=fmtClock();
     var capRow=document.createElement('div');
     capRow.id='me-cap-mobile';
     capRow.textContent=CAP_LABEL;
     capRow.addEventListener('click', function(){ openCapsule(); });
     listEl.appendChild(capRow);
-    var clockMobile=document.createElement('div');
-    clockMobile.id='me-clock-mobile';
-    clockMobile.textContent=fmtClock();
     listEl.appendChild(clockMobile);
     setInterval(function(){ clockMobile.textContent=fmtClock(); },30);
+    function fitCapToClock(){
+      if(!isMobile()) return;
+      if(!clockMobile.isConnected||!capRow.isConnected) return;
+      capRow.style.fontSize='100px';
+      var capW=capRow.scrollWidth;
+      var clockW=clockMobile.getBoundingClientRect().width;
+      if(capW>0 && clockW>0) capRow.style.fontSize=(100*(clockW/capW))+'px';
+    }
     if(isMobile()){ try{combined.pause();}catch(e){} clockPaused=true; app.classList.add('browse'); clearStage(); }
+    fitCapToClock();
+    setTimeout(fitCapToClock,60);
+    setTimeout(fitCapToClock,300);
+    window.addEventListener('resize', fitCapToClock);
   }).catch(function(e){ console.error('[site-data]',e); listEl.textContent='Could not load projects.'; });
 
   // ── stage helpers ───────────────────────────────────────────────
