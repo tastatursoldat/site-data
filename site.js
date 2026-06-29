@@ -41,6 +41,7 @@
     '#me-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);'+
       'font:700 1px/1 '+FONT+';color:#fff;mix-blend-mode:difference;pointer-events:none;'+
       'letter-spacing:.02em;text-align:center;white-space:nowrap;}'+
+    '#me-clock.rest{color:#111;mix-blend-mode:normal;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
@@ -122,7 +123,7 @@
 
   var clockEl=document.createElement('div'); clockEl.id='me-clock';
   landingBox.appendChild(clockEl);
-  var stageClock=document.createElement('div'); stageClock.id='me-clock';
+  var stageClock=document.createElement('div'); stageClock.id='me-clock'; stageClock.className='rest';
   stage.appendChild(stageClock);
 
   function fmtClock(){
@@ -201,8 +202,8 @@
     stageContent.innerHTML='';
     if(node) stageContent.appendChild(node);
   }
-  function clearStage(){ setStage(null); stage.classList.add('show'); stage.style.opacity='1'; }
-  function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stage.classList.add('show'); }
+  function clearStage(){ setStage(null); stageClock.classList.add('rest'); stageClock.style.display=''; stage.classList.add('show'); stage.style.opacity='1'; }
+  function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stageClock.classList.remove('rest'); stageClock.style.display=''; stage.classList.add('show'); }
   function buildAboutHTML(){
     var igParts=ABOUT_TEXT.split(ABOUT_INSTAGRAM);
     var before=igParts[0], after=igParts[1]||'';
@@ -215,7 +216,7 @@
       '<a href="mailto:'+ABOUT_EMAIL+'">'+ABOUT_EMAIL+'</a>'+
       esc(tail).replace(/\n/g,'<br>');
   }
-  function showAbout(){ var a=document.createElement('div'); a.className='about'; a.innerHTML=buildAboutHTML(); setStage(a); stage.classList.add('show'); }
+  function showAbout(){ var a=document.createElement('div'); a.className='about'; a.innerHTML=buildAboutHTML(); setStage(a); stageClock.style.display='none'; stage.classList.add('show'); }
 
   // ── list interactions ───────────────────────────────────────────
   function isMobile(){ return window.matchMedia('(max-width:700px)').matches; }
