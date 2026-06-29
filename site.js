@@ -29,7 +29,7 @@
     // landing
     '#me-landing{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;}'+
     '#me-app.browse #me-landing{display:none;}'+
-    '#me-landing video{max-width:min(36vw,560px);max-height:55vh;object-fit:contain;display:block;}'+
+    '#me-landing video{max-width:min(26vw,420px);max-height:42vh;object-fit:contain;display:block;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
@@ -110,7 +110,7 @@
   landing.addEventListener('click', function(){ combined.pause(); app.classList.add('browse'); });
   document.addEventListener('mousemove', function(e){
     if(app.classList.contains('browse')) return;
-    var r=landing.getBoundingClientRect();
+    var r=combined.getBoundingClientRect();
     var inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
     if(inside) combined.pause(); else combined.play().catch(function(){});
   });
