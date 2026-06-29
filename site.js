@@ -91,6 +91,7 @@
     // time-capsule (label replaces the clock text on hover)
     '#me-stage.cap-armed{cursor:pointer;}'+
     '#me-cap-mobile{display:none;}'+
+    '#me-clock-mobile{display:none;}'+
     '#me-cap{position:fixed;inset:0;background:rgba(0,0,0,.32);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);'+
       'z-index:2147483750;display:none;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:'+FONT+';}'+
     '#me-cap.show{display:flex;}'+
@@ -124,6 +125,9 @@
       '.me-row span{font-size:14px;}'+
       '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
       '#me-cap-mobile{display:block;margin-top:18px;padding:7px 0;font:inherit;font-size:14px;color:#111;cursor:pointer;}'+
+      '#me-clock-mobile{display:block;margin-top:14px;font:700 28px/1 '+FONT+';color:#111;letter-spacing:.02em;white-space:nowrap;}'+
+      '#me-landing{display:none !important;}'+
+      '#me-landing-box{display:none !important;}'+
       '#me-stage{display:none !important;}'+
       '#me-bar [data-a="full"]{display:none;}'+
     '}';
@@ -261,6 +265,12 @@
     capRow.textContent=CAP_LABEL;
     capRow.addEventListener('click', function(){ openCapsule(); });
     listEl.appendChild(capRow);
+    var clockMobile=document.createElement('div');
+    clockMobile.id='me-clock-mobile';
+    clockMobile.textContent=fmtClock();
+    listEl.appendChild(clockMobile);
+    setInterval(function(){ clockMobile.textContent=fmtClock(); },30);
+    if(isMobile()){ try{combined.pause();}catch(e){} clockPaused=true; app.classList.add('browse'); clearStage(); }
   }).catch(function(e){ console.error('[site-data]',e); listEl.textContent='Could not load projects.'; });
 
   // ── stage helpers ───────────────────────────────────────────────
