@@ -35,7 +35,8 @@
       '-webkit-font-smoothing:antialiased;}'+
     // landing
     '#me-landing{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;}'+
-    '#me-app.browse #me-landing{display:none;}'+
+    '#me-app.browse #me-landing{display:none !important;}'+
+    '#me-app.browse #me-landing-box{display:none !important;}'+
     '#me-landing-box{position:relative;max-width:min(34vw,540px);max-height:50vh;}'+
     '#me-landing-box video{width:100%;height:100%;object-fit:contain;display:block;}'+
     '#me-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);'+
@@ -214,7 +215,7 @@
   var player=null, dragging=false, PROJECTS=[];
 
   // ── landing → browse ────────────────────────────────────────────
-  landing.addEventListener('click', function(){ combined.pause(); app.classList.add('browse'); clearStage(); });
+  landing.addEventListener('click', function(){ combined.pause(); clockPaused=true; landingBox.style.display='none'; app.classList.add('browse'); clearStage(); });
   document.addEventListener('mousemove', function(e){
     if(app.classList.contains('browse')) return;
     var r=landingBox.getBoundingClientRect();
