@@ -152,7 +152,7 @@
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
     PROJECTS=(d.projects||[]).filter(function(p){return p.published!==false;});
     var html='<div class="me-row head"><span>Year</span><span>\u2116</span><span>Client</span><span>Title</span><span>Category</span></div>'+
-      '<div class="me-row about" data-about="1"><span>1997</span><span>000</span><span>Michel Elsasser</span><span>About</span><span></span></div>';
+      '<div class="me-row about" data-about="1"><span>1997</span><span>000</span><span>Michel Elsasser</span><span>About</span><span>Contact</span></div>';
     PROJECTS.forEach(function(p,i){
       var no=String(i+1).padStart(3,'0');
       html+='<div class="me-row" data-i="'+i+'">'+
