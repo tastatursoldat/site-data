@@ -29,7 +29,9 @@
     // landing
     '#me-landing{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;}'+
     '#me-app.browse #me-landing{display:none;}'+
-    '#me-landing video{max-width:min(34vw,540px);max-height:50vh;object-fit:contain;display:block;}'+
+    '#me-landing-box{position:relative;max-width:min(34vw,540px);max-height:50vh;}'+
+    '#me-landing-box video{width:100%;height:100%;object-fit:contain;display:block;}'+
+    '#me-clock{position:absolute;left:14px;bottom:12px;font:700 16px/1 "SF Mono",Menlo,monospace;color:#fff;mix-blend-mode:difference;pointer-events:none;letter-spacing:.02em;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
@@ -65,16 +67,22 @@
     '#me-info{position:absolute;top:clamp(16px,3vw,40px);left:clamp(20px,4vw,64px);z-index:4;color:#fff;'+
       'font:400 15px/1.5 '+FONT+';max-width:60vw;opacity:0;pointer-events:none;transition:opacity .2s;}'+
     '#me-info.show{opacity:1;}#me-info .t{font-size:20px;margin-bottom:.4em;}#me-info .d{opacity:.7;}'+
-    // mobile: simple full-width tappable list, no hover stage, no filter columns
-    '#me-about-mobile{grid-column:1/-1;font:400 14px/1.5 '+FONT+';color:#444;padding:.6em 0 1em;white-space:pre-line;}'+
-    '#me-about-mobile a{color:#111;}'+
+    // mobile: full-bleed landing gif, compact desktop-style list, full-screen About
+    '#me-about-screen{position:fixed;inset:0;background:#fff;z-index:2147483700;'+
+      'padding:max(24px,env(safe-area-inset-top)) 24px 40px;box-sizing:border-box;overflow-y:auto;}'+
+    '#me-about-close{position:absolute;top:max(16px,env(safe-area-inset-top));right:20px;'+
+      'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
+    '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
+    '#me-about-screen .txt a{color:#111;}'+
     '@media (max-width:700px){'+
-      '#me-list{position:relative;left:auto;top:auto;transform:none;width:100%;padding:max(24px,env(safe-area-inset-top)) 20px 40px;box-sizing:border-box;}'+
+      '#me-landing-box{position:fixed;inset:0;max-width:none;max-height:none;}'+
+      '#me-landing-box video{object-fit:cover;}'+
+      '#me-clock{left:16px;bottom:max(16px,env(safe-area-inset-bottom));font-size:14px;}'+
+      '#me-list{position:relative;left:auto;top:auto;transform:none;width:100%;'+
+        'padding:max(24px,env(safe-area-inset-top)) 16px 40px;box-sizing:border-box;font-size:12px;}'+
       '#me-browse{overflow-y:auto;-webkit-overflow-scrolling:touch;}'+
-      '.me-row{grid-template-columns:1fr;gap:0;padding:14px 0;border-bottom:1px solid #eee;}'+
-      '.me-row.head{display:none;}'+
-      '.me-row span:not(:nth-child(4)){display:none;}'+
-      '.me-row span:nth-child(4){font-size:17px;}'+
+      '.me-row{grid-template-columns:2.6em 2.2em 5.5em 1fr 5.5em;gap:.5em;padding:7px 0;}'+
+      '.me-row span{font-size:12px;}'+
       '#me-stage{display:none !important;}'+
     '}';
   document.head.appendChild(st);
@@ -89,11 +97,25 @@
   var listEl=app.querySelector('#me-list');
   var stage=app.querySelector('#me-stage');
 
+  var landingBox=document.createElement('div'); landingBox.id='me-landing-box';
+  landing.appendChild(landingBox);
+
   var combined=document.createElement('video');
   combined.src=COMBINED_URL; combined.muted=true; combined.loop=true; combined.preload='auto';
   combined.setAttribute('playsinline',''); combined.setAttribute('muted','');
-  landing.appendChild(combined);
+  landingBox.appendChild(combined);
   combined.play().catch(function(){});
+
+  var clockEl=document.createElement('div'); clockEl.id='me-clock';
+  landingBox.appendChild(clockEl);
+  function fmtClock(){
+    var d=new Date();
+    function p(n){return String(n).padStart(2,'0');}
+    return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+  }
+  var clockPaused=false;
+  clockEl.textContent=fmtClock();
+  setInterval(function(){ if(!clockPaused) clockEl.textContent=fmtClock(); },1000);
 
   var pl=document.createElement('div'); pl.id='me-player';
   pl.innerHTML='<div id="me-embed"></div><button id="me-close">close</button><div id="me-info"></div>'+
@@ -110,9 +132,10 @@
   landing.addEventListener('click', function(){ combined.pause(); app.classList.add('browse'); });
   document.addEventListener('mousemove', function(e){
     if(app.classList.contains('browse')) return;
-    var r=combined.getBoundingClientRect();
+    var r=landingBox.getBoundingClientRect();
     var inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
-    if(inside) combined.pause(); else combined.play().catch(function(){});
+    clockPaused = inside;
+    if(inside) combined.pause(); else { combined.play().catch(function(){}); clockEl.textContent=fmtClock(); }
   });
 
   // ── data + render list ──────────────────────────────────────────
@@ -174,26 +197,28 @@
   });
   listEl.addEventListener('mouseleave', function(){ clearStage(); applyDim(null); });
 
-  // click -> always opens the film (or, for About, opens mail on desktop / expands inline on mobile)
+  // click -> always opens the film (or, for About, opens mail on desktop / a full-screen panel on mobile)
   listEl.addEventListener('click', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
     if(row.dataset.about){
-      if(isMobile()) toggleMobileAbout(row); else window.location.href='mailto:'+ABOUT_EMAIL;
+      if(isMobile()) openAboutScreen(); else window.location.href='mailto:'+ABOUT_EMAIL;
       return;
     }
     var p=PROJECTS[+row.dataset.i];
     if(p && p.film) openPlayer(p);
   });
 
-  function toggleMobileAbout(aboutRow){
-    var existing=document.getElementById('me-about-mobile');
-    if(existing){ existing.remove(); return; }
-    var box=document.createElement('div'); box.id='me-about-mobile';
+  function openAboutScreen(){
+    if(document.getElementById('me-about-screen')) return;
+    var ov=document.createElement('div'); ov.id='me-about-screen';
     var lines=ABOUT_TEXT.split(ABOUT_EMAIL);
-    box.innerHTML=esc(lines[0]).replace(/\n/g,'<br>')+
+    ov.innerHTML='<button id="me-about-close">close</button><div class="txt">'+
+      esc(lines[0]).replace(/\n/g,'<br>')+
       '<a href="mailto:'+ABOUT_EMAIL+'">'+ABOUT_EMAIL+'</a>'+
-      (lines[1]?esc(lines[1]).replace(/\n/g,'<br>'):'');
-    aboutRow.insertAdjacentElement('afterend', box);
+      (lines[1]?esc(lines[1]).replace(/\n/g,'<br>'):'')+
+      '</div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#me-about-close').addEventListener('click', function(){ ov.remove(); });
   }
 
   // ── player ──────────────────────────────────────────────────────
