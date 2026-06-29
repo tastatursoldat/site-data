@@ -29,7 +29,7 @@
     // landing
     '#me-landing{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;}'+
     '#me-app.browse #me-landing{display:none;}'+
-    '#me-landing video{max-width:min(26vw,420px);max-height:42vh;object-fit:contain;display:block;}'+
+    '#me-landing video{max-width:min(34vw,540px);max-height:50vh;object-fit:contain;display:block;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
