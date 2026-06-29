@@ -152,10 +152,9 @@
   landing.appendChild(landingBox);
 
   var combined=document.createElement('video');
-  combined.src=COMBINED_URL; combined.muted=true; combined.loop=true; combined.preload='auto';
+  combined.muted=true; combined.loop=true; combined.preload='auto';
   combined.setAttribute('playsinline',''); combined.setAttribute('muted','');
   landingBox.appendChild(combined);
-  combined.play().catch(function(){});
 
   var clockEl=document.createElement('div'); clockEl.id='me-clock';
   landingBox.appendChild(clockEl);
@@ -245,6 +244,12 @@
   // ── data + render list ──────────────────────────────────────────
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
     PROJECTS=(d.projects||[]).filter(function(p){return p.published!==false;});
+    var previews=PROJECTS.filter(function(p){return p.preview;});
+    if(!isMobile()){
+      var pickSrc = previews.length ? previews[Math.floor(Math.random()*previews.length)].preview : COMBINED_URL;
+      combined.src=pickSrc;
+      combined.play().catch(function(){});
+    }
     var html='<div class="me-row head"><span>Year</span><span>\u2116</span><span>Client</span><span>Title</span><span>Category</span></div>'+
       '<div class="me-row about" data-about="1"><span>1997</span><span>000</span><span>Michel Elsasser</span><span>About</span><span data-contact="1">Contact</span></div>';
     PROJECTS.forEach(function(p,i){
