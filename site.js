@@ -13,7 +13,7 @@
   var vp=document.createElement('meta'); vp.name='viewport';
   vp.content='width=device-width, initial-scale=1, viewport-fit=cover';
   document.head.appendChild(vp);
-  var DATA_URL     = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/website-projects.json";
+  var DATA_URL     = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@69dc9ccfd97d1591c78e43025c9017287eb838ba/website-projects.json";
   var COMBINED_URL = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/_all.mp4";
   var ABOUT_EMAIL  = "m@michelelsasser.com";
   var FORMSPREE_ID = "xkolzzba"; // Formspree form id
