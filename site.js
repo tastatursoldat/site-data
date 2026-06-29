@@ -64,7 +64,19 @@
       'color:#fff;font:400 16px/1 '+FONT+';cursor:pointer;}#me-close:hover{opacity:.55;}'+
     '#me-info{position:absolute;top:clamp(16px,3vw,40px);left:clamp(20px,4vw,64px);z-index:4;color:#fff;'+
       'font:400 15px/1.5 '+FONT+';max-width:60vw;opacity:0;pointer-events:none;transition:opacity .2s;}'+
-    '#me-info.show{opacity:1;}#me-info .t{font-size:20px;margin-bottom:.4em;}#me-info .d{opacity:.7;}';
+    '#me-info.show{opacity:1;}#me-info .t{font-size:20px;margin-bottom:.4em;}#me-info .d{opacity:.7;}'+
+    // mobile: simple full-width tappable list, no hover stage, no filter columns
+    '#me-about-mobile{grid-column:1/-1;font:400 14px/1.5 '+FONT+';color:#444;padding:.6em 0 1em;white-space:pre-line;}'+
+    '#me-about-mobile a{color:#111;}'+
+    '@media (max-width:700px){'+
+      '#me-list{position:relative;left:auto;top:auto;transform:none;width:100%;padding:max(24px,env(safe-area-inset-top)) 20px 40px;box-sizing:border-box;}'+
+      '#me-browse{overflow-y:auto;-webkit-overflow-scrolling:touch;}'+
+      '.me-row{grid-template-columns:1fr;gap:0;padding:14px 0;border-bottom:1px solid #eee;}'+
+      '.me-row.head{display:none;}'+
+      '.me-row span:not(:nth-child(4)){display:none;}'+
+      '.me-row span:nth-child(4){font-size:17px;}'+
+      '#me-stage{display:none !important;}'+
+    '}';
   document.head.appendChild(st);
 
   // ── build shell ─────────────────────────────────────────────────
@@ -134,53 +146,55 @@
   function showAbout(){ var a=document.createElement('div'); a.className='about'; a.textContent=ABOUT_TEXT; setStage(a); stage.classList.add('show'); }
 
   // ── list interactions ───────────────────────────────────────────
-  var activeFilter=null; // {field,value}
+  function isMobile(){ return window.matchMedia('(max-width:700px)').matches; }
   function rows(){ return listEl.querySelectorAll('.me-row:not(.head)'); }
-  function rowMatchesFilter(row){
-    if(!activeFilter) return true;
+  function rowMatchesField(row,field,value){
     if(row.dataset.about) return false;
-    var cell=row.querySelector('[data-field="'+activeFilter.field+'"]');
-    return !!cell && cell.dataset.value===activeFilter.value;
+    var cell=row.querySelector('[data-field="'+field+'"]');
+    return !!cell && cell.dataset.value===value;
   }
-  function applyDim(hoveredRow){
+  function applyDim(hoveredRow,field,value){
     rows().forEach(function(r){
-      var dim = activeFilter ? !rowMatchesFilter(r) : (hoveredRow ? r!==hoveredRow : false);
+      var dim = field ? !rowMatchesField(r,field,value) : (hoveredRow ? r!==hoveredRow : false);
       if(dim) r.setAttribute('data-dim',''); else r.removeAttribute('data-dim');
     });
   }
   applyDim(null);
 
+  // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
+  // hover anywhere else on a row -> just preview that one row (dim the rest).
   listEl.addEventListener('mouseover', function(e){
+    if(isMobile()) return;
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ clearStage(); applyDim(null); return; }
-    applyDim(row);
+    var cell=e.target.closest('[data-field]');
+    if(cell){ applyDim(null,cell.dataset.field,cell.dataset.value); }
+    else { applyDim(row); }
     if(row.dataset.about){ showAbout(); }
     else { showProject(PROJECTS[+row.dataset.i]); }
   });
   listEl.addEventListener('mouseleave', function(){ clearStage(); applyDim(null); });
 
-  var armedRow=null;
-  function disarm(){ armedRow=null; }
+  // click -> always opens the film (or, for About, opens mail on desktop / expands inline on mobile)
   listEl.addEventListener('click', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
-    if(row.dataset.about){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
-    if(armedRow===row){
-      var p=PROJECTS[+row.dataset.i];
-      if(p && p.film){ disarm(); openPlayer(p); }
+    if(row.dataset.about){
+      if(isMobile()) toggleMobileAbout(row); else window.location.href='mailto:'+ABOUT_EMAIL;
       return;
     }
-    var cell=e.target.closest('[data-field]');
-    if(cell){
-      var f=cell.dataset.field, v=cell.dataset.value;
-      if(activeFilter && activeFilter.field===f && activeFilter.value===v){ activeFilter=null; }
-      else { activeFilter={field:f,value:v}; }
-    }
-    armedRow=row;
-    applyDim(row);
+    var p=PROJECTS[+row.dataset.i];
+    if(p && p.film) openPlayer(p);
   });
-  listEl.addEventListener('mouseover', function(e){
-    var row=e.target.closest('.me-row');
-    if(row!==armedRow) disarm();
-  });
+
+  function toggleMobileAbout(aboutRow){
+    var existing=document.getElementById('me-about-mobile');
+    if(existing){ existing.remove(); return; }
+    var box=document.createElement('div'); box.id='me-about-mobile';
+    var lines=ABOUT_TEXT.split(ABOUT_EMAIL);
+    box.innerHTML=esc(lines[0]).replace(/\n/g,'<br>')+
+      '<a href="mailto:'+ABOUT_EMAIL+'">'+ABOUT_EMAIL+'</a>'+
+      (lines[1]?esc(lines[1]).replace(/\n/g,'<br>'):'');
+    aboutRow.insertAdjacentElement('afterend', box);
+  }
 
   // ── player ──────────────────────────────────────────────────────
   function openPlayer(p){
@@ -200,7 +214,7 @@
     wake();
   }
   function closePlayer(){
-    activeFilter=null; applyDim(null);
+    applyDim(null);
     if(document.fullscreenElement) document.exitFullscreen();          // leave fullscreen on close
     else if(document.webkitFullscreenElement) document.webkitExitFullscreen();
     pl.classList.remove('show'); if(player){player.destroy();player=null;}
