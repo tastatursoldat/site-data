@@ -89,6 +89,7 @@
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
     // time-capsule (label replaces the clock text on hover)
     '#me-stage.cap-armed{cursor:pointer;}'+
+    '#me-cap-mobile{display:none;}'+
     '#me-cap{position:fixed;inset:0;background:rgba(255,255,255,.97);z-index:2147483750;display:none;'+
       'flex-direction:column;padding:max(28px,env(safe-area-inset-top)) clamp(20px,5vw,80px) 40px;box-sizing:border-box;'+
       'font-family:'+FONT+';color:#111;overflow-y:auto;}'+
@@ -113,12 +114,14 @@
       '#me-landing-box{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;max-width:none;max-height:none;}'+
       '@supports (height:100dvh){#me-landing-box{height:100dvh;}}'+
       '#me-landing-box video{object-fit:cover;}'+
+      '#me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
+      '@supports (height:100dvh){#me-browse{height:100dvh;}}'+
       '#me-list{position:relative;left:auto;top:auto;transform:none;width:100%;'+
-        'padding:max(24px,env(safe-area-inset-top)) 16px 40px;box-sizing:border-box;font-size:14px;}'+
-      '#me-browse{overflow-y:auto;-webkit-overflow-scrolling:touch;}'+
-      '.me-row{grid-template-columns:3em 2.4em 1fr;gap:.6em;padding:9px 0;}'+
+        'padding:0 18px;box-sizing:border-box;font-size:14px;}'+
+      '.me-row{grid-template-columns:3em 2.4em 1fr;gap:.6em;padding:7px 0;}'+
       '.me-row span{font-size:14px;}'+
       '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
+      '#me-cap-mobile{display:block;margin-top:18px;padding:7px 0;font:inherit;font-size:14px;color:#111;cursor:pointer;}'+
       '#me-stage{display:none !important;}'+
       '#me-bar [data-a="full"]{display:none;}'+
     '}';
@@ -242,6 +245,11 @@
       }
     });
     listEl.innerHTML=html;
+    var capRow=document.createElement('div');
+    capRow.id='me-cap-mobile';
+    capRow.textContent=CAP_LABEL;
+    capRow.addEventListener('click', function(){ openCapsule(); });
+    listEl.appendChild(capRow);
   }).catch(function(e){ console.error('[site-data]',e); listEl.textContent='Could not load projects.'; });
 
   // ── stage helpers ───────────────────────────────────────────────
