@@ -93,8 +93,8 @@
       'flex-direction:column;padding:max(28px,env(safe-area-inset-top)) clamp(20px,5vw,80px) 40px;box-sizing:border-box;'+
       'font-family:'+FONT+';color:#111;overflow-y:auto;}'+
     '#me-cap.show{display:flex;}'+
-    '#me-cap h2{font:700 26px/1.2 '+FONT+';margin:48px 0 4px;letter-spacing:-.01em;}'+
-    '#me-cap .sub{font:400 15px/1.5 '+FONT+';color:#888;margin-bottom:24px;}'+
+    '#me-cap h2{font:700 28px/1.25 '+FONT+';margin:64px 0 6px;letter-spacing:-.01em;max-width:760px;}'+
+    '#me-cap .sub{font:400 14px/1.5 '+FONT+';color:#888;margin-bottom:28px;}'+
     '#me-cap-close{position:absolute;top:max(20px,env(safe-area-inset-top));right:clamp(20px,5vw,80px);'+
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
     '#me-drop{border:1px dashed #bbb;border-radius:2px;padding:40px 20px;text-align:center;'+
@@ -377,8 +377,8 @@
   var cap=document.createElement('div'); cap.id='me-cap';
   cap.innerHTML=
     '<button id="me-cap-close">close</button>'+
-    '<h2>Time Capsule</h2>'+
-    '<div class="sub">Drop images, videos or write a note. Contact Michel to revisit your time capsule.</div>'+
+    '<h2>Drop images, videos or write a note. Contact Michel to revisit your time capsule.</h2>'+
+    '<div class="sub">Michel Elsasser</div>'+
     '<div id="me-drop">Drop files here, or tap to choose'+
       '<input id="me-file-input" type="file" multiple accept="image/*,video/*" style="display:none">'+
     '</div>'+
