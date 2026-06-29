@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-28T22:16:31.181Z",
+  "updated": "2026-06-29T13:46:24.784Z",
   "projects": [
     {
       "id": "p001",
@@ -12,7 +12,8 @@
       "location": "Zurich, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/helios.mp4",
       "film": "1183320251",
-      "published": true
+      "published": true,
+      "num": "003"
     },
     {
       "id": "p002",
@@ -24,7 +25,8 @@
       "location": "Normandy, France",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/loosing-grounds.mp4",
       "film": "1182224811",
-      "published": true
+      "published": true,
+      "num": "002"
     },
     {
       "id": "p003",
@@ -36,7 +38,8 @@
       "location": "Arosa, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/inuikii-keen.mp4",
       "film": "1167705598",
-      "published": true
+      "published": true,
+      "num": "001"
     },
     {
       "id": "p004",
@@ -48,7 +51,8 @@
       "location": "Puerto Escondido, Mexico",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/chicha.mp4",
       "film": "1104287749",
-      "published": true
+      "published": true,
+      "num": "003"
     },
     {
       "id": "p006",
@@ -60,7 +64,8 @@
       "location": "Frauenfeld, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/oaf25.mp4",
       "film": "1116606970",
-      "published": true
+      "published": true,
+      "num": "002"
     },
     {
       "id": "p005",
@@ -72,7 +77,8 @@
       "location": "Zurich, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/ff-incenseburner.mp4",
       "film": "https://vimeo.com/1027041899/08056e35a0",
-      "published": true
+      "published": true,
+      "num": "010"
     },
     {
       "id": "p007",
@@ -84,7 +90,8 @@
       "location": "Zurich, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/hdf.mp4",
       "film": "1017247593",
-      "published": false
+      "published": false,
+      "num": "009"
     },
     {
       "id": "p008",
@@ -96,7 +103,8 @@
       "location": "Zurich, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/amazing.mp4",
       "film": "1017241829",
-      "published": true
+      "published": true,
+      "num": "007"
     },
     {
       "id": "p009",
@@ -108,7 +116,8 @@
       "location": "New York City, USA",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/macaulay.mp4",
       "film": "930430103",
-      "published": true
+      "published": true,
+      "num": "002"
     },
     {
       "id": "p010",
@@ -120,7 +129,8 @@
       "location": "Zurich, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/palindrome.mp4",
       "film": "1120760059",
-      "published": true
+      "published": true,
+      "num": "004"
     },
     {
       "id": "p011",
@@ -132,7 +142,8 @@
       "location": "Luzern, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/awakening.mp4",
       "film": "916850838",
-      "published": true
+      "published": true,
+      "num": "002"
     }
   ]
 }
