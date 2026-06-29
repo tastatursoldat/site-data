@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-29T13:59:35.447Z",
+  "updated": "2026-06-29T14:08:07.037Z",
   "projects": [
     {
       "id": "p001",
@@ -47,7 +47,7 @@
       "client": "Self Initiated",
       "title": "22, Chicha",
       "year": "2025",
-      "type": "Short Film",
+      "type": "Documentary",
       "location": "Puerto Escondido, Mexico",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/chicha.mp4",
       "film": "1104287749",
@@ -60,7 +60,7 @@
       "client": "BLKSHFT",
       "title": "OAF25",
       "year": "2025",
-      "type": "Experimental Documentary",
+      "type": "Documentary",
       "location": "Frauenfeld, Switzerland",
       "preview": "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/oaf25.mp4",
       "film": "1116606970",
