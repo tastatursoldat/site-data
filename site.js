@@ -41,7 +41,6 @@
     '#me-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);'+
       'font:700 1px/1 '+FONT+';color:#fff;mix-blend-mode:difference;pointer-events:none;'+
       'letter-spacing:.02em;text-align:center;white-space:nowrap;}'+
-    '#me-clock.rest{color:#111;mix-blend-mode:normal;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
@@ -53,11 +52,13 @@
     '.me-row span{opacity:1;}'+
     '.me-row[data-dim] span{opacity:.35;}'+
     '#me-stage{position:absolute;right:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);'+
-      'width:min(46vw,720px);height:80vh;display:flex;align-items:center;justify-content:center;'+
+      'width:min(46vw,720px);height:80vh;'+
       'opacity:0;transition:opacity .18s ease;pointer-events:none;}'+
     '#me-stage.show{opacity:1;}'+
+    '#me-stage-content{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}'+
     '#me-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;}'+
     '#me-stage .about{max-width:520px;white-space:pre-line;font:400 16px/1.5 '+FONT+';color:#111;}'+
+    '#me-stage .about a{color:#111;text-decoration:none;}'+
     // player
     '#me-player{position:fixed;inset:0;background:#000;z-index:2147483600;display:none;}'+
     '#me-player.show{display:block;}'+
@@ -83,9 +84,10 @@
     '#me-about-close{position:absolute;top:max(16px,env(safe-area-inset-top));right:20px;'+
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
     '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
-    '#me-about-screen .txt a{color:#111;}'+
+    '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
     '@media (max-width:700px){'+
-      '#me-landing-box{position:fixed;inset:0;max-width:none;max-height:none;}'+
+      '#me-landing-box{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;max-width:none;max-height:none;}'+
+      '@supports (height:100dvh){#me-landing-box{height:100dvh;}}'+
       '#me-landing-box video{object-fit:cover;}'+
       '#me-list{position:relative;left:auto;top:auto;transform:none;width:100%;'+
         'padding:max(24px,env(safe-area-inset-top)) 16px 40px;box-sizing:border-box;font-size:14px;}'+
@@ -101,12 +103,13 @@
   // ── build shell ─────────────────────────────────────────────────
   var app=document.createElement('div'); app.id='me-app';
   app.innerHTML='<div id="me-landing"></div>'+
-    '<div id="me-browse"><div id="me-list"></div><div id="me-stage"></div></div>';
+    '<div id="me-browse"><div id="me-list"></div><div id="me-stage"><div id="me-stage-content"></div></div></div>';
   document.body.appendChild(app);
 
   var landing=app.querySelector('#me-landing');
   var listEl=app.querySelector('#me-list');
   var stage=app.querySelector('#me-stage');
+  var stageContent=app.querySelector('#me-stage-content');
 
   var landingBox=document.createElement('div'); landingBox.id='me-landing-box';
   landing.appendChild(landingBox);
@@ -119,7 +122,8 @@
 
   var clockEl=document.createElement('div'); clockEl.id='me-clock';
   landingBox.appendChild(clockEl);
-  var stageClock=document.createElement('div'); stageClock.id='me-clock'; stageClock.className='rest';
+  var stageClock=document.createElement('div'); stageClock.id='me-clock';
+  stage.appendChild(stageClock);
 
   function fmtClock(){
     var d=new Date();
@@ -129,14 +133,16 @@
   function sizeClockTo(el,box){
     el.style.fontSize='100px';
     var measured=el.getBoundingClientRect().width;
-    var target=box.clientWidth*0.94;
+    var target=box.clientWidth*0.98;
     if(measured>0) el.style.fontSize=(100*(target/measured))+'px';
   }
-  function sizeClock(){ sizeClockTo(clockEl,landingBox); if(stage.contains(stageClock)) sizeClockTo(stageClock,stage); }
+  function sizeClock(){ sizeClockTo(clockEl,landingBox); sizeClockTo(stageClock,stage); }
   var clockPaused=false;
   clockEl.textContent=fmtClock();
   stageClock.textContent=fmtClock();
   sizeClock();
+  setTimeout(sizeClock,50);
+  setTimeout(sizeClock,300);
   setInterval(function(){
     var t=fmtClock();
     if(!clockPaused) clockEl.textContent=t;
@@ -190,10 +196,26 @@
   }).catch(function(e){ console.error('[site-data]',e); listEl.textContent='Could not load projects.'; });
 
   // ── stage helpers ───────────────────────────────────────────────
-  function setStage(node){ if(stage.firstChild!==node){ stage.innerHTML=''; stage.appendChild(node); } }
-  function clearStage(){ setStage(stageClock); sizeClockTo(stageClock,stage); stage.classList.add('show'); stage.style.opacity='1'; }
+  function setStage(node){
+    if(stageContent.firstChild===node) return;
+    stageContent.innerHTML='';
+    if(node) stageContent.appendChild(node);
+  }
+  function clearStage(){ setStage(null); stage.classList.add('show'); stage.style.opacity='1'; }
   function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stage.classList.add('show'); }
-  function showAbout(){ var a=document.createElement('div'); a.className='about'; a.textContent=ABOUT_TEXT; setStage(a); stage.classList.add('show'); }
+  function buildAboutHTML(){
+    var igParts=ABOUT_TEXT.split(ABOUT_INSTAGRAM);
+    var before=igParts[0], after=igParts[1]||'';
+    var emailParts=after.split(ABOUT_EMAIL);
+    var middle=emailParts[0], tail=emailParts[1]||'';
+    var igUrl='https://instagram.com/'+ABOUT_INSTAGRAM.replace('@','');
+    return esc(before).replace(/\n/g,'<br>')+
+      '<a href="'+igUrl+'" target="_blank" rel="noopener">'+ABOUT_INSTAGRAM+'</a>'+
+      esc(middle).replace(/\n/g,'<br>')+
+      '<a href="mailto:'+ABOUT_EMAIL+'">'+ABOUT_EMAIL+'</a>'+
+      esc(tail).replace(/\n/g,'<br>');
+  }
+  function showAbout(){ var a=document.createElement('div'); a.className='about'; a.innerHTML=buildAboutHTML(); setStage(a); stage.classList.add('show'); }
 
   // ── list interactions ───────────────────────────────────────────
   function isMobile(){ return window.matchMedia('(max-width:700px)').matches; }
@@ -243,12 +265,7 @@
   function openAboutScreen(){
     if(document.getElementById('me-about-screen')) return;
     var ov=document.createElement('div'); ov.id='me-about-screen';
-    var lines=ABOUT_TEXT.split(ABOUT_EMAIL);
-    ov.innerHTML='<button id="me-about-close">close</button><div class="txt">'+
-      esc(lines[0]).replace(/\n/g,'<br>')+
-      '<a href="mailto:'+ABOUT_EMAIL+'">'+ABOUT_EMAIL+'</a>'+
-      (lines[1]?esc(lines[1]).replace(/\n/g,'<br>'):'')+
-      '</div>';
+    ov.innerHTML='<button id="me-about-close">close</button><div class="txt">'+buildAboutHTML()+'</div>';
     document.body.appendChild(ov);
     ov.querySelector('#me-about-close').addEventListener('click', function(){ ov.remove(); });
   }
