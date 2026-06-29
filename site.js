@@ -23,7 +23,7 @@
     "Self-taught, I developed a monochrome, minimal discipline \u2013 structure, muted palettes, and open space.\n\n"+
     "I started in fashion, writing and directing campaigns before moving into film. I work across "+
     "commercials, music videos, and films.\nUncluttered frames. Documentary or scripted.\n\n"+
-    "Michel Elsasser\n"+ABOUT_INSTAGRAM+"\n"+ABOUT_EMAIL;
+    ABOUT_INSTAGRAM+"\n"+ABOUT_EMAIL;
   var FONT='"Helvetica Neue",Helvetica,Arial,sans-serif';
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -190,7 +190,7 @@
 
   // ── stage helpers ───────────────────────────────────────────────
   function setStage(node){ if(stage.firstChild!==node){ stage.innerHTML=''; stage.appendChild(node); } }
-  function clearStage(){ setStage(stageClock); sizeClockTo(stageClock,stage); stage.classList.add('show'); }
+  function clearStage(){ setStage(stageClock); sizeClockTo(stageClock,stage); stage.classList.add('show'); stage.style.opacity='1'; }
   function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stage.classList.add('show'); }
   function showAbout(){ var a=document.createElement('div'); a.className='about'; a.textContent=ABOUT_TEXT; setStage(a); stage.classList.add('show'); }
 
@@ -212,25 +212,28 @@
 
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
   // hover anywhere else on a row -> just preview that one row (dim the rest).
+  var pinned=null;
   listEl.addEventListener('mouseover', function(e){
     if(isMobile()) return;
-    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ clearStage(); applyDim(null); return; }
+    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ if(!pinned){ clearStage(); applyDim(null); } return; }
     var cell=e.target.closest('[data-field]');
     if(cell){ applyDim(null,cell.dataset.field,cell.dataset.value); }
     else { applyDim(row); }
     if(row.dataset.about){ showAbout(); }
-    else { showProject(PROJECTS[+row.dataset.i]); }
+    else { pinned=null; showProject(PROJECTS[+row.dataset.i]); }
   });
-  listEl.addEventListener('mouseleave', function(){ clearStage(); applyDim(null); });
+  listEl.addEventListener('mouseleave', function(){ if(!pinned){ clearStage(); } applyDim(null); });
 
-  // click -> always opens the film (or, for About, opens mail on desktop / a full-screen panel on mobile)
+  // click -> always opens the film (or, for About: Contact opens mail, anything else pins the panel open)
   listEl.addEventListener('click', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
     if(row.dataset.about){
       if(isMobile()){ openAboutScreen(); return; }
-      if(e.target.closest('[data-contact]')) window.location.href='mailto:'+ABOUT_EMAIL;
+      if(e.target.closest('[data-contact]')){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
+      pinned='about'; showAbout();
       return;
     }
+    pinned=null;
     var p=PROJECTS[+row.dataset.i];
     if(p && p.film) openPlayer(p);
   });
@@ -266,6 +269,7 @@
     wake();
   }
   function closePlayer(){
+    pinned=null;
     applyDim(null);
     if(document.fullscreenElement) document.exitFullscreen();          // leave fullscreen on close
     else if(document.webkitFullscreenElement) document.webkitExitFullscreen();
