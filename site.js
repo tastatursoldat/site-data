@@ -29,7 +29,7 @@
     // landing
     '#me-landing{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;}'+
     '#me-app.browse #me-landing{display:none;}'+
-    '#me-landing video{max-width:min(60vw,900px);max-height:80vh;object-fit:contain;display:block;}'+
+    '#me-landing video{max-width:min(36vw,560px);max-height:55vh;object-fit:contain;display:block;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
@@ -96,8 +96,12 @@
 
   // ── landing → browse ────────────────────────────────────────────
   landing.addEventListener('click', function(){ combined.pause(); app.classList.add('browse'); });
-  landing.addEventListener('mouseenter', function(){ combined.pause(); });
-  landing.addEventListener('mouseleave', function(){ if(!app.classList.contains('browse')) combined.play().catch(function(){}); });
+  document.addEventListener('mousemove', function(e){
+    if(app.classList.contains('browse')) return;
+    var r=landing.getBoundingClientRect();
+    var inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
+    if(inside) combined.pause(); else combined.play().catch(function(){});
+  });
 
   // ── data + render list ──────────────────────────────────────────
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
@@ -154,24 +158,28 @@
   });
   listEl.addEventListener('mouseleave', function(){ clearStage(); applyDim(null); });
 
+  var armedRow=null;
+  function disarm(){ armedRow=null; }
   listEl.addEventListener('click', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
+    if(row.dataset.about){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
+    if(armedRow===row){
+      var p=PROJECTS[+row.dataset.i];
+      if(p && p.film){ disarm(); openPlayer(p); }
+      return;
+    }
     var cell=e.target.closest('[data-field]');
     if(cell){
-      // toggle filter on this field/value
       var f=cell.dataset.field, v=cell.dataset.value;
       if(activeFilter && activeFilter.field===f && activeFilter.value===v){ activeFilter=null; }
       else { activeFilter={field:f,value:v}; }
-      applyDim(row);
-      return;
     }
-    if(row.dataset.about){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
+    armedRow=row;
+    applyDim(row);
   });
-  listEl.addEventListener('dblclick', function(e){
-    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
-    if(row.dataset.about){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
-    var p=PROJECTS[+row.dataset.i];
-    if(p && p.film) openPlayer(p);
+  listEl.addEventListener('mouseover', function(e){
+    var row=e.target.closest('.me-row');
+    if(row!==armedRow) disarm();
   });
 
   // ── player ──────────────────────────────────────────────────────
