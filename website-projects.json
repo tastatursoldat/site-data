@@ -1,12 +1,25 @@
 {
   "version": 1,
-  "updated": "2026-06-29T18:13:34.845Z",
+  "updated": "2026-06-29T18:52:11.110Z",
   "projects": [
     {
-      "id": "p001",
-      "slug": "orbit-robotics-|-helios",
+      "id": "mqzkqmcc638f8",
+      "slug": "orbit-robotics-|-helios-reveal",
       "client": "Orbit Robotics",
-      "title": "Helios",
+      "title": "Helios Reveal",
+      "year": "2026",
+      "num": "004",
+      "type": "Commercial",
+      "location": "Zürich, Switzerland",
+      "preview": "",
+      "film": "1205557731",
+      "published": true
+    },
+    {
+      "id": "p001",
+      "slug": "orbit-robotics-|-helios-teaser",
+      "client": "Orbit Robotics",
+      "title": "Helios Teaser",
       "year": "2026",
       "type": "Commercial",
       "location": "Zurich, Switzerland",
