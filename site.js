@@ -277,10 +277,15 @@
     function fitCapToClock(){
       if(!isMobile()) return;
       if(!clockMobile.isConnected||!capRow.isConnected) return;
+      var meas=document.createElement('span');
+      meas.style.cssText='position:absolute;visibility:hidden;white-space:nowrap;font:'+getComputedStyle(clockMobile).font;
+      meas.textContent=clockMobile.textContent;
+      document.body.appendChild(meas);
+      var clockTextW=meas.getBoundingClientRect().width;
+      document.body.removeChild(meas);
       capRow.style.fontSize='100px';
       var capW=capRow.scrollWidth;
-      var clockW=clockMobile.getBoundingClientRect().width;
-      if(capW>0 && clockW>0) capRow.style.fontSize=(100*(clockW/capW))+'px';
+      if(capW>0 && clockTextW>0) capRow.style.fontSize=(100*(clockTextW/capW)*0.99)+'px';
     }
     if(isMobile()){ try{combined.pause();}catch(e){} clockPaused=true; app.classList.add('browse'); clearStage(); }
     fitCapToClock();
