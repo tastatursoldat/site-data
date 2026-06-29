@@ -230,7 +230,7 @@
     var html='<div class="me-row head"><span>Year</span><span>\u2116</span><span>Client</span><span>Title</span><span>Category</span></div>'+
       '<div class="me-row about" data-about="1"><span>1997</span><span>000</span><span>Michel Elsasser</span><span>About</span><span data-contact="1">Contact</span></div>';
     PROJECTS.forEach(function(p,i){
-      var no=String(i+1).padStart(3,'0');
+      var no=p.num||String(i+1).padStart(3,'0');
       html+='<div class="me-row" data-i="'+i+'">'+
         '<span data-field="year" data-value="'+esc(p.year)+'">'+esc(p.year)+'</span>'+
         '<span>'+no+'</span>'+
