@@ -152,25 +152,25 @@
   var capArmed=false;        // true only at rest in browse view
   var capHovering=false;     // mouse currently over the resting clock
   var CAP_QUESTIONS=[
-    'Do you remember what today felt like?',
-    'What would you send to yourself?',
-    'What do you want to remember?',
-    'Will you remember this moment?',
-    'What are you leaving for later?',
-    'Something you don\u2019t want to forget?',
-    'What should the future hold onto?',
-    'What\u2019s worth keeping?',
-    'Leave something for later?',
-    'What will you want back someday?',
-    'What\u2019s worth saving from now?',
-    'Who were you today?',
-    'What slips away if you don\u2019t keep it?',
-    'What does this version of you sound like?',
-    'What would you tell yourself later?',
-    'Is there something you\u2019ll miss?',
-    'What\u2019s here that won\u2019t last?',
-    'What do you want to find again?',
-    'What feels worth keeping?'
+    'What will today mean in ten years?',
+    'Who will you be when you open this?',
+    'What does this moment sound like before it\u2019s gone?',
+    'Will the future you still remember this?',
+    'How much of today will survive the year?',
+    'What would you say to yourself a decade from now?',
+    'What slips away while you\u2019re not looking?',
+    'What do you want to find waiting for you later?',
+    'Will you recognise yourself by then?',
+    'What\u2019s worth sending forward in time?',
+    'What will you have forgotten by next year?',
+    'What does now look like from the future?',
+    'What do you want time to give back?',
+    'How will you remember being here?',
+    'What should outlast today?',
+    'What are you leaving for the person you become?',
+    'Will this still matter when you find it again?',
+    'What of today do you want to keep from fading?',
+    'What would the future you want to see?'
   ];
   var CAP_LABEL=CAP_QUESTIONS[Math.floor(Math.random()*CAP_QUESTIONS.length)];
 
