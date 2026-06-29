@@ -184,6 +184,7 @@
     return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+'.'+p(d.getMilliseconds(),3);
   }
   function sizeClockTo(el,box){
+    if(!el||!box||!el.isConnected||!box.isConnected) return;
     el.style.fontSize='100px';
     var measured=el.getBoundingClientRect().width;
     var target=box.clientWidth*0.98;
@@ -216,7 +217,15 @@
   var player=null, dragging=false, PROJECTS=[];
 
   // ── landing → browse ────────────────────────────────────────────
-  landing.addEventListener('click', function(){ combined.pause(); clockPaused=true; landingBox.style.display='none'; landingBox.style.visibility='hidden'; landingBox.style.opacity='0'; try{combined.removeAttribute('autoplay');}catch(e){} app.classList.add('browse'); clearStage(); });
+  landing.addEventListener('click', function(){
+    try{ combined.pause(); combined.removeAttribute('src'); combined.load(); }catch(e){}
+    clockPaused=true;
+    landingBox.style.display='none';
+    app.classList.add('browse');
+    clearStage();
+    if(landingBox && landingBox.parentNode){ landingBox.parentNode.removeChild(landingBox); }
+    if(landing && landing.parentNode){ landing.parentNode.removeChild(landing); }
+  });
   document.addEventListener('mousemove', function(e){
     if(app.classList.contains('browse')) return;
     var r=landingBox.getBoundingClientRect();
