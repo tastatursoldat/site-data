@@ -91,20 +91,25 @@
     // time-capsule (label replaces the clock text on hover)
     '#me-stage.cap-armed{cursor:pointer;}'+
     '#me-cap-mobile{display:none;}'+
-    '#me-cap{position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:2147483750;display:none;'+
-      'align-items:center;justify-content:center;padding:20px;box-sizing:border-box;font-family:'+FONT+';}'+
+    '#me-cap{position:fixed;inset:0;background:rgba(0,0,0,.32);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);'+
+      'z-index:2147483750;display:none;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:'+FONT+';}'+
     '#me-cap.show{display:flex;}'+
-    '#me-cap-card{position:relative;width:100%;max-width:440px;background:#fff;border-radius:16px;'+
-      'padding:28px 28px 24px;box-sizing:border-box;color:#111;}'+
-    '#me-cap h2{font:700 22px/1.3 '+FONT+';margin:4px 0 20px;letter-spacing:-.01em;}'+
-    '#me-cap-close{position:absolute;top:16px;right:16px;background:none;border:0;font:400 16px/1 '+FONT+';'+
-      'cursor:pointer;color:#111;padding:4px;}'+
-    '#me-cap textarea{width:100%;box-sizing:border-box;min-height:110px;resize:none;'+
-      'border:1px solid #ddd;border-radius:2px;padding:12px;font:400 15px/1.5 '+FONT+';color:#111;}'+
-    '#me-cap textarea:focus{outline:none;border-color:#111;}'+
-    '#me-cap .row{display:flex;gap:12px;align-items:center;margin-top:16px;}'+
-    '#me-send{background:#111;color:#fff;border:0;border-radius:2px;padding:12px 22px;'+
-      'font:500 15px/1 '+FONT+';cursor:pointer;}'+
+    '#me-cap-card{position:relative;width:100%;max-width:520px;background:#fff;border-radius:22px;'+
+      'padding:44px 44px 36px;box-sizing:border-box;color:#111;box-shadow:0 24px 70px rgba(0,0,0,.28);}'+
+    '#me-cap h2{font:600 24px/1.3 '+FONT+';margin:0 0 24px;padding-right:36px;letter-spacing:-.02em;}'+
+    '#me-cap-close{position:absolute;top:22px;right:22px;width:30px;height:30px;display:flex;align-items:center;'+
+      'justify-content:center;background:#f1f1ef;border:0;border-radius:50%;cursor:pointer;color:#555;'+
+      'font:400 16px/1 '+FONT+';transition:background .15s,color .15s;}'+
+    '#me-cap-close:hover{background:#e5e5e2;color:#111;}'+
+    '#me-cap textarea{width:100%;box-sizing:border-box;min-height:140px;resize:none;'+
+      'border:1px solid #e4e4e1;border-radius:14px;padding:16px 18px;font:400 16px/1.55 '+FONT+';color:#111;'+
+      'background:#fafafa;transition:border-color .15s,background .15s;}'+
+    '#me-cap textarea::placeholder{color:#aaa;}'+
+    '#me-cap textarea:focus{outline:none;border-color:#111;background:#fff;}'+
+    '#me-cap .row{display:flex;gap:14px;align-items:center;margin-top:24px;}'+
+    '#me-send{background:#111;color:#fff;border:0;border-radius:980px;padding:13px 30px;'+
+      'font:500 15px/1 '+FONT+';cursor:pointer;transition:opacity .15s;}'+
+    '#me-send:hover{opacity:.85;}'+
     '#me-send:disabled{opacity:.4;cursor:default;}'+
     '#me-cap .status{font:400 14px/1.5 '+FONT+';color:#888;}'+
     '@media (max-width:700px){'+
@@ -375,7 +380,7 @@
   var cap=document.createElement('div'); cap.id='me-cap';
   cap.innerHTML=
     '<div id="me-cap-card">'+
-      '<button id="me-cap-close">close</button>'+
+      '<button id="me-cap-close" aria-label="close">\u00d7</button>'+
       '<h2>'+esc(CAP_LABEL)+'</h2>'+
       '<textarea id="me-msg" placeholder="Write something\u2026"></textarea>'+
       '<div class="row"><button id="me-send">Send</button><span class="status"></span></div>'+
