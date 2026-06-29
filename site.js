@@ -8,22 +8,29 @@
   } else { boot(); }
   function boot(){
 (function(){
+  var existingVp=document.querySelector('meta[name="viewport"]');
+  if(existingVp) existingVp.remove();
+  var vp=document.createElement('meta'); vp.name='viewport';
+  vp.content='width=device-width, initial-scale=1, viewport-fit=cover';
+  document.head.appendChild(vp);
   var DATA_URL     = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/website-projects.json";
   var COMBINED_URL = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/previews/_all.mp4";
   var ABOUT_EMAIL  = "m@michelelsasser.com";
+  var ABOUT_INSTAGRAM = "@michelelsasser";
   var ABOUT_TEXT =
     "Hi, I\u2019m Michel. I\u2019m a Swiss director based in Zurich. Born near Baden, I grew up in a small "+
     "room shared with my brother, where tight space and visual noise shaped my eye for order. "+
     "Self-taught, I developed a monochrome, minimal discipline \u2013 structure, muted palettes, and open space.\n\n"+
     "I started in fashion, writing and directing campaigns before moving into film. I work across "+
     "commercials, music videos, and films.\nUncluttered frames. Documentary or scripted.\n\n"+
-    "Michel Elsasser\n"+ABOUT_EMAIL;
+    "Michel Elsasser\n"+ABOUT_INSTAGRAM+"\n"+ABOUT_EMAIL;
   var FONT='"Helvetica Neue",Helvetica,Arial,sans-serif';
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
   var st=document.createElement('style');
   st.textContent =
+    'html,body{overflow:hidden !important;height:100% !important;}'+
     '#me-app{position:fixed;inset:0;background:#fff;z-index:2147483000;overflow:hidden;font-family:'+FONT+';color:#111;'+
       '-webkit-font-smoothing:antialiased;}'+
     // landing
@@ -84,8 +91,9 @@
       '#me-browse{overflow-y:auto;-webkit-overflow-scrolling:touch;}'+
       '.me-row{grid-template-columns:3em 2.4em 1fr;gap:.6em;padding:9px 0;}'+
       '.me-row span{font-size:14px;}'+
-      '.me-row span:nth-child(4),.me-row span:nth-child(5){display:none;}'+
+      '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
       '#me-stage{display:none !important;}'+
+      '#me-bar [data-a="full"]{display:none;}'+
     '}';
   document.head.appendChild(st);
 
@@ -110,21 +118,29 @@
 
   var clockEl=document.createElement('div'); clockEl.id='me-clock';
   landingBox.appendChild(clockEl);
+  var stageClock=document.createElement('div'); stageClock.id='me-clock';
+
   function fmtClock(){
     var d=new Date();
     function p(n,len){return String(n).padStart(len||2,'0');}
     return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+'.'+p(d.getMilliseconds(),3);
   }
-  function sizeClock(){
-    clockEl.style.fontSize='100px';
-    var measured=clockEl.getBoundingClientRect().width;
-    var target=landingBox.clientWidth*0.94;
-    if(measured>0) clockEl.style.fontSize=(100*(target/measured))+'px';
+  function sizeClockTo(el,box){
+    el.style.fontSize='100px';
+    var measured=el.getBoundingClientRect().width;
+    var target=box.clientWidth*0.94;
+    if(measured>0) el.style.fontSize=(100*(target/measured))+'px';
   }
+  function sizeClock(){ sizeClockTo(clockEl,landingBox); if(stage.contains(stageClock)) sizeClockTo(stageClock,stage); }
   var clockPaused=false;
   clockEl.textContent=fmtClock();
+  stageClock.textContent=fmtClock();
   sizeClock();
-  setInterval(function(){ if(!clockPaused) clockEl.textContent=fmtClock(); },30);
+  setInterval(function(){
+    var t=fmtClock();
+    if(!clockPaused) clockEl.textContent=t;
+    stageClock.textContent=t;
+  },30);
   window.addEventListener('resize', sizeClock);
 
   var pl=document.createElement('div'); pl.id='me-player';
@@ -139,7 +155,7 @@
   var player=null, dragging=false, PROJECTS=[];
 
   // ── landing → browse ────────────────────────────────────────────
-  landing.addEventListener('click', function(){ combined.pause(); app.classList.add('browse'); });
+  landing.addEventListener('click', function(){ combined.pause(); app.classList.add('browse'); clearStage(); });
   document.addEventListener('mousemove', function(e){
     if(app.classList.contains('browse')) return;
     var r=landingBox.getBoundingClientRect();
@@ -152,7 +168,7 @@
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
     PROJECTS=(d.projects||[]).filter(function(p){return p.published!==false;});
     var html='<div class="me-row head"><span>Year</span><span>\u2116</span><span>Client</span><span>Title</span><span>Category</span></div>'+
-      '<div class="me-row about" data-about="1"><span>1997</span><span>000</span><span>Michel Elsasser</span><span>About</span><span>Contact</span></div>';
+      '<div class="me-row about" data-about="1"><span>1997</span><span>000</span><span>Michel Elsasser</span><span>About</span><span data-contact="1">Contact</span></div>';
     PROJECTS.forEach(function(p,i){
       var no=String(i+1).padStart(3,'0');
       html+='<div class="me-row" data-i="'+i+'">'+
@@ -174,7 +190,7 @@
 
   // ── stage helpers ───────────────────────────────────────────────
   function setStage(node){ if(stage.firstChild!==node){ stage.innerHTML=''; stage.appendChild(node); } }
-  function clearStage(){ stage.classList.remove('show'); }
+  function clearStage(){ setStage(stageClock); sizeClockTo(stageClock,stage); stage.classList.add('show'); }
   function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stage.classList.add('show'); }
   function showAbout(){ var a=document.createElement('div'); a.className='about'; a.textContent=ABOUT_TEXT; setStage(a); stage.classList.add('show'); }
 
@@ -211,7 +227,8 @@
   listEl.addEventListener('click', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
     if(row.dataset.about){
-      if(isMobile()) openAboutScreen(); else window.location.href='mailto:'+ABOUT_EMAIL;
+      if(isMobile()){ openAboutScreen(); return; }
+      if(e.target.closest('[data-contact]')) window.location.href='mailto:'+ABOUT_EMAIL;
       return;
     }
     var p=PROJECTS[+row.dataset.i];
