@@ -202,7 +202,9 @@
   var clockPaused=false;
   clockEl.textContent=fmtClock();
   stageClock.textContent=fmtClock();
-  requestAnimationFrame(function(){ sizeClock(); setTimeout(sizeClock,100); });
+  requestAnimationFrame(sizeClock);
+  setTimeout(sizeClock,100);
+  setTimeout(sizeClock,400);
   setInterval(function(){
     var t=fmtClock();
     if(!clockPaused) clockEl.textContent=t;
