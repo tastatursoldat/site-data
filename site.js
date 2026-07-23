@@ -203,8 +203,12 @@
   clockEl.textContent=fmtClock();
   stageClock.textContent=fmtClock();
   function sizeAndShow(){ sizeClock(); clockEl.style.opacity='1'; }
-  if(document.readyState==='complete'){ sizeAndShow(); }
-  else{ window.addEventListener('load', sizeAndShow, {once:true}); }
+  // the landing box only gets its real width once the video has dimensions,
+  // so size exactly then — timeouts and window.load fire too early
+  if(combined.videoWidth>0){ sizeAndShow(); }
+  else{ combined.addEventListener('loadedmetadata', sizeAndShow); }
+  setTimeout(sizeAndShow,2500); // safety net if the video never loads
+  if(window.ResizeObserver){ new ResizeObserver(sizeClock).observe(landingBox); }
   setInterval(function(){
     var t=fmtClock();
     if(!clockPaused) clockEl.textContent=t;
