@@ -41,7 +41,7 @@
     '#me-landing-box video{width:100%;height:100%;object-fit:contain;display:block;}'+
     '#me-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);'+
       'font:700 1px/1 '+FONT+';color:#fff;mix-blend-mode:difference;pointer-events:none;'+
-      'letter-spacing:.02em;text-align:center;white-space:nowrap;}'+
+      'letter-spacing:.02em;text-align:center;white-space:nowrap;visibility:hidden;}'+
     '#me-clock.rest{color:#111;mix-blend-mode:normal;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
@@ -189,22 +189,20 @@
   function fmtClock(){
     var d=new Date();
     function p(n,len){return String(n).padStart(len||2,'0');}
-    return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+'.'+p(d.getMilliseconds(),3);
+    return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+':'+p(Math.floor(d.getMilliseconds()/10));
   }
   function sizeClockTo(el,box){
     if(!el||!box||!el.isConnected||!box.isConnected) return;
     el.style.fontSize='100px';
     var measured=el.getBoundingClientRect().width;
     var target=box.clientWidth*0.98;
-    if(measured>0) el.style.fontSize=(100*(target/measured))+'px';
+    if(measured>0){ el.style.fontSize=(100*(target/measured))+'px'; el.style.visibility='visible'; }
   }
   function sizeClock(){ sizeClockTo(clockEl,landingBox); sizeClockTo(stageClock,stage); }
   var clockPaused=false;
   clockEl.textContent=fmtClock();
   stageClock.textContent=fmtClock();
-  sizeClock();
-  setTimeout(sizeClock,50);
-  setTimeout(sizeClock,300);
+  requestAnimationFrame(function(){ sizeClock(); setTimeout(sizeClock,100); });
   setInterval(function(){
     var t=fmtClock();
     if(!clockPaused) clockEl.textContent=t;
