@@ -159,6 +159,7 @@
   var clockEl=document.createElement('div'); clockEl.id='me-clock';
   landingBox.appendChild(clockEl);
   var stageClock=document.createElement('div'); stageClock.id='me-clock'; stageClock.className='rest';
+  stageClock.style.opacity='1'; // stage handles its own fade; only the landing clock starts hidden
   stage.appendChild(stageClock);
   var capArmed=false;        // true only at rest in browse view
   var capHovering=false;     // mouse currently over the resting clock
