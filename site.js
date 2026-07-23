@@ -202,7 +202,9 @@
   var clockPaused=false;
   clockEl.textContent=fmtClock();
   stageClock.textContent=fmtClock();
-  setTimeout(function(){ sizeClock(); clockEl.style.opacity='1'; },400);
+  function sizeAndShow(){ sizeClock(); clockEl.style.opacity='1'; }
+  if(document.readyState==='complete'){ sizeAndShow(); }
+  else{ window.addEventListener('load', sizeAndShow, {once:true}); }
   setInterval(function(){
     var t=fmtClock();
     if(!clockPaused) clockEl.textContent=t;
