@@ -163,25 +163,26 @@
   var capArmed=false;        // true only at rest in browse view
   var capHovering=false;     // mouse currently over the resting clock
   var CAP_QUESTIONS=[
-    'What will today mean in ten years?',
-    'Who will you be when you open this?',
-    'What does this moment sound like before it\u2019s gone?',
-    'Will the future you still remember this?',
-    'How much of today will survive the year?',
-    'What would you say to yourself a decade from now?',
-    'What slips away while you\u2019re not looking?',
-    'What do you want to find waiting for you later?',
-    'Will you recognise yourself by then?',
-    'What\u2019s worth sending forward in time?',
-    'What will you have forgotten by next year?',
-    'What does now look like from the future?',
-    'What do you want time to give back?',
-    'How will you remember being here?',
-    'What should outlast today?',
-    'What are you leaving for the person you become?',
-    'Will this still matter when you find it again?',
-    'What of today do you want to keep from fading?',
-    'What would the future you want to see?'
+    'Still have a charger for something you sold?',
+    'Is a clock in your flat still wrong?',
+    'Does anything in your kitchen still blink 12:00?',
+    'Which drawer has the phone with old photos?',
+    'Whose alarm is still set in your phone?',
+    'Any calendar in your flat on the wrong month?',
+    'Which expiry date have you decided to ignore?',
+    'Do you own a watch that stopped years ago?',
+    'Any cable for a port that no longer exists?',
+    'Which hard drive haven\u2019t you plugged in lately?',
+    'Do you pay for something you forgot about?',
+    'Any photo on your phone you\u2019d have to date?',
+    'Which note did you not write?',
+    'Any card in your wallet already expired?',
+    'Do you own something with an old area code?',
+    'Which tab has been open since spring?',
+    'Which key in your flat opens nothing?',
+    'Do you still have a login for a dead site?',
+    'Any bottle in your cupboard older than you think?',
+    'What paper are you keeping for a forgotten reason?'
   ];
   var CAP_LABEL=CAP_QUESTIONS[Math.floor(Math.random()*CAP_QUESTIONS.length)];
 
