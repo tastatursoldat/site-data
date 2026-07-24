@@ -167,7 +167,7 @@
     'Which clock in your flat is wrong?',
     'Do you own a watch that stopped and stayed stopped?',
     'Whose alarm is still set in your phone?',
-    'Does anything in your flat still blink 12:00?',
+    'Does anything in your flat still blink at midnight?',
     'Is anything in your flat still celebrating a past holiday?',
     'Which timer are you still hearing in your head?',
     'Does your oven know what year it is?',
