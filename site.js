@@ -38,7 +38,7 @@
     '#me-dial{position:absolute;inset:0;}'+
     '#me-app.browse #me-dial{display:none !important;}'+
     '#me-field{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default;}'+
-    '#me-brand{position:fixed;top:1.15rem;left:1.2rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
+    '#me-brand{position:fixed;top:1.15rem;left:1.2rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     '#me-ctrl{position:fixed;top:1.15rem;right:1.2rem;z-index:10;display:flex;gap:1.1rem;align-items:center;}'+
     '#me-ctrl button{font:inherit;border:0;background:none;cursor:pointer;padding:0;}'+
     '#me-ctrl .icon{color:#0a0a0a;display:flex;align-items:center;}'+
@@ -153,8 +153,13 @@
   var bPlay=bar.querySelector('[data-a=play]'), bMute=bar.querySelector('[data-a=mute]'), bFull=bar.querySelector('[data-a=full]');
   var player=null, dragging=false, PROJECTS=[];
 
-  // ── dial field — every film is a clock ──────────────────────────
-  var DIALS=[];
+  // ── dial field — films and songs as clocks ──────────────────────
+  var ABOUT_ENTRY={year:1997,no:'000',client:'Michel Elsasser',title:'About',cat:'Contact',isAbout:true};
+  var FILM_DIALS=[],SONG_DIALS=[];
+  var fieldMode='dial'; /* 'dial' = About+films+songs mixed | 'radio' = songs only */
+  function fieldEntries(){
+    return fieldMode==='radio'?SONG_DIALS.slice():[ABOUT_ENTRY].concat(FILM_DIALS).concat(SONG_DIALS);
+  }
 
   /* one color theme per load */
   var THEMES=[
@@ -332,11 +337,12 @@
   };
 
   function layoutField(){
-    if(!DIALS.length||!W||!H){nodes=[];return;}
+    var pool=fieldEntries();
+    if(!pool.length||!W||!H){nodes=[];return;}
     var base=Math.min(W,H);
     var names=Object.keys(LAYOUTS);
     var pick=names[Math.floor(Math.random()*names.length)];
-    var fs=shuffled(DIALS);
+    var fs=shuffled(pool);
     nodes=LAYOUTS[pick](fs,base);
 
     /* normalize: scale + center the whole arrangement into the safe area,
@@ -616,6 +622,10 @@
     ctx.setTransform(DPR,0,0,DPR,0,0);
     layoutField();
   }
+  function rearrange(){ /* same as a fresh page load: new theme + new arrangement */
+    theme=THEMES[Math.floor(Math.random()*THEMES.length)];
+    layoutField();
+  }
   addEventListener('resize',sizeField);
   /* preview iframes settle late — re-measure once after load */
   setTimeout(function(){if(innerWidth!==W||innerHeight!==H)sizeField();},400);
@@ -627,7 +637,7 @@
     }
     return -1;
   }
-  function refCode(f){return f.year+'-'+String(parseInt(f.no,10)).padStart(2,'0');}
+  function refCode(f){return f.code||f.year+'-'+String(parseInt(f.no,10)).padStart(2,'0');}
   cvs.addEventListener('pointermove',function(e){
     if(e.pointerType==='touch')return;
     var prev=hover;
@@ -639,9 +649,10 @@
     var i=hitTest(e.clientX,e.clientY);
     if(i<0){if(e.pointerType==='touch')tcEl.textContent='';return;}
     tcEl.textContent=refCode(nodes[i].f);
-    if(nodes[i].f.isAbout){ openAboutScreen(); return; }
-    var p=nodes[i].f.p;
-    if(p && p.film) openPlayer(p);
+    var f=nodes[i].f;
+    if(f.isAbout){ openAboutScreen(); return; }
+    if(f.kind==='song'){ playSong(f.idx); return; }
+    if(f.p && f.p.film) openPlayer(f.p);
   });
 
   // ── view toggle + radio ─────────────────────────────────────────
@@ -711,8 +722,8 @@
         width:200,height:200,
         playerVars:{listType:'playlist',list:MUSIC_PLAYLIST},
         events:{
-          onReady:function(){ytReady=true;if(radioPlaying)startPlayback();},
-          onStateChange:function(){if(!ytJumped&&radioPlaying)startPlayback();updateTitle();}
+          onReady:function(){ytReady=true;buildSongs();if(radioPlaying)startPlayback();},
+          onStateChange:function(){buildSongs();if(!ytJumped&&radioPlaying)startPlayback();updateTitle();}
         }
       });
     };
@@ -720,19 +731,57 @@
     document.head.appendChild(s);
   }
   ensureYT(); /* preload cued player so the radio click starts playback inside the gesture */
-  radioBtn.addEventListener('click', function(){
-    radioPlaying=!radioPlaying;
-    radioBtn.classList.toggle('playing',radioPlaying);
-    radioBtn.setAttribute('aria-pressed',radioPlaying);
+  function buildSongs(){
+    /* one clock per playlist track, once the playlist is known */
+    try{
+      var l=ytPlayer&&ytPlayer.getPlaylist?ytPlayer.getPlaylist():null;
+      if(l&&l.length&&!SONG_DIALS.length){
+        for(var i=0;i<l.length;i++){
+          SONG_DIALS.push({kind:'song',idx:i,code:'R-'+String(i+1).padStart(2,'0'),year:9090,no:String(i+1).padStart(3,'0')});
+        }
+        layoutField();
+      }
+    }catch(e){}
+  }
+  function stopRadio(){
+    if(!radioPlaying) return;
+    radioPlaying=false;
+    radioBtn.classList.remove('playing');
+    radioBtn.setAttribute('aria-pressed','false');
+    if(ytReady){try{ytPlayer.pauseVideo();}catch(e){}}
+    clearInterval(titleTimer);setTitle('');
     updateBrand();
-    if(radioPlaying){
-      if(ytReady)startPlayback();
-      clearInterval(titleTimer);titleTimer=setInterval(updateTitle,800);
+  }
+  function armRadio(){
+    if(radioPlaying) return;
+    radioPlaying=true;
+    radioBtn.classList.add('playing');
+    radioBtn.setAttribute('aria-pressed','true');
+    clearInterval(titleTimer);titleTimer=setInterval(updateTitle,800);
+    updateBrand();
+  }
+  function playSong(i){
+    if(!ytReady) return;
+    ytJumped=true;
+    try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
+    armRadio();
+    try{ytPlayer.playVideoAt(i);}catch(e){}
+  }
+  radioBtn.addEventListener('click', function(){
+    if(fieldMode==='radio'){
+      fieldMode='dial';
+      stopRadio();
+      rearrange();
     }else{
-      if(ytReady){try{ytPlayer.pauseVideo();}catch(e){}}
-      clearInterval(titleTimer);setTitle('');
+      fieldMode='radio';
+      app.classList.remove('browse'); /* the radio view lives on the dial field */
+      rearrange();
+      armRadio();
+      if(ytReady)startPlayback();
     }
+    updateBrand();
   });
+  brandEl.addEventListener('click', function(){ openAboutScreen(); });
 
   // ── data + render list ──────────────────────────────────────────
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
@@ -751,11 +800,10 @@
     });
     listEl.innerHTML=html;
 
-    /* dial field entries — one clock per film, plus the About dial (1997-00) */
-    DIALS=[{year:1997,no:'000',client:'Michel Elsasser',title:'About',cat:'Contact',isAbout:true}]
-      .concat(PROJECTS.map(function(p,i){
-        return {year:+p.year||0,no:p.num||String(i+1).padStart(3,'0'),client:p.client,title:p.title,cat:p.type||'',p:p};
-      }));
+    /* film clocks — About and song clocks join in fieldEntries() */
+    FILM_DIALS=PROJECTS.map(function(p,i){
+      return {kind:'film',year:+p.year||0,no:p.num||String(i+1).padStart(3,'0'),client:p.client,title:p.title,cat:p.type||'',p:p};
+    });
     sizeField();
   }).catch(function(e){ console.error('[site-data]',e); listEl.textContent='Could not load projects.'; });
 
@@ -814,6 +862,7 @@
 
   // ── player ──────────────────────────────────────────────────────
   function openPlayer(p){
+    stopRadio(); /* film audio replaces the radio */
     pl.classList.add('show'); infoEl.classList.remove('show');
     infoEl.innerHTML='<div class="t">'+esc(p.title)+'</div><div>'+esc(p.client)+'</div>'+
       '<div class="d">'+[p.type,p.location,p.year].filter(Boolean).map(esc).join('<br>')+'</div>';
