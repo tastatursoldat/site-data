@@ -45,6 +45,8 @@
     '#me-ctrl .icon svg{width:15px;height:15px;}'+
     '#me-radio .wave{opacity:.25;}'+
     '#me-radio.playing .wave{opacity:1;}'+
+    '#me-ctrl #me-stop{display:none;}'+
+    '#me-app.radio-on #me-stop{display:flex;}'+
     '#me-btnview .ic-dial{display:none;}'+
     '#me-app.browse #me-btnview .ic-list{display:none;}'+
     '#me-app.browse #me-btnview .ic-dial{display:block;}'+
@@ -93,6 +95,7 @@
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
     '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
+    '#me-about-screen .ab-brand{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     '@media (max-width:700px){'+
       '#me-app.browse #me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
@@ -113,7 +116,12 @@
     '<div id="me-browse"><div id="me-list"></div></div>'+
     '<div id="me-brand">DIAL</div>'+
     '<div id="me-ctrl">'+
-      '<button id="me-radio" class="icon" aria-pressed="false" aria-label="Radio — toggle music">'+
+      '<button id="me-stop" class="icon" aria-label="Stop music">'+
+        '<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" stroke="none">'+
+          '<rect x="5.4" y="5.4" width="9.2" height="9.2" rx="1.4"/>'+
+        '</svg>'+
+      '</button>'+
+      '<button id="me-radio" class="icon" aria-pressed="false" aria-label="Radio — toggle radio view">'+
         '<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">'+
           '<rect x="2.5" y="8" width="15" height="8.5" rx="1.5"/>'+
           '<line x1="5.5" y1="8" x2="13.5" y2="2.5"/>'+
@@ -123,10 +131,14 @@
         '</svg>'+
       '</button>'+
       '<button id="me-btnview" class="icon" aria-label="Toggle view">'+
-        '<svg class="ic-list" viewBox="0 0 20 20" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">'+
-          '<line x1="3" y1="5.5" x2="17" y2="5.5"/>'+
-          '<line x1="3" y1="10" x2="17" y2="10"/>'+
-          '<line x1="3" y1="14.5" x2="17" y2="14.5"/>'+
+        '<svg class="ic-list" viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">'+
+          '<rect x="3" y="4.5" width="14" height="11" rx="1.5"/>'+
+          '<line x1="6.4" y1="4.5" x2="6.4" y2="15.5"/>'+
+          '<line x1="13.6" y1="4.5" x2="13.6" y2="15.5"/>'+
+          '<line x1="3" y1="8.2" x2="6.4" y2="8.2"/>'+
+          '<line x1="3" y1="11.8" x2="6.4" y2="11.8"/>'+
+          '<line x1="13.6" y1="8.2" x2="17" y2="8.2"/>'+
+          '<line x1="13.6" y1="11.8" x2="17" y2="11.8"/>'+
         '</svg>'+
         '<svg class="ic-dial" viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">'+
           '<circle cx="10" cy="10" r="7.4"/>'+
@@ -672,7 +684,8 @@
   var musicEl=app.querySelector('#me-music');
   var brandEl=app.querySelector('#me-brand');
   function updateBrand(){
-    brandEl.textContent=radioPlaying?'DIAL RADIO':(app.classList.contains('browse')?'DIAL FILM':'DIAL');
+    /* label follows the view — DIAL FILM on the index, DIAL RADIO on the radio field */
+    brandEl.textContent=app.classList.contains('browse')?'DIAL FILM':(fieldMode==='radio'?'DIAL RADIO':'DIAL');
   }
   var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null,ytJumped=false;
   var musicIn=document.createElement('span');musicIn.className='in';musicEl.appendChild(musicIn);
@@ -747,7 +760,7 @@
     if(!radioPlaying) return;
     radioPlaying=false;
     radioBtn.classList.remove('playing');
-    radioBtn.setAttribute('aria-pressed','false');
+    app.classList.remove('radio-on');
     if(ytReady){try{ytPlayer.pauseVideo();}catch(e){}}
     clearInterval(titleTimer);setTitle('');
     updateBrand();
@@ -756,7 +769,7 @@
     if(radioPlaying) return;
     radioPlaying=true;
     radioBtn.classList.add('playing');
-    radioBtn.setAttribute('aria-pressed','true');
+    app.classList.add('radio-on');
     clearInterval(titleTimer);titleTimer=setInterval(updateTitle,800);
     updateBrand();
   }
@@ -769,8 +782,7 @@
   }
   radioBtn.addEventListener('click', function(){
     if(fieldMode==='radio'){
-      fieldMode='dial';
-      stopRadio();
+      fieldMode='dial';   /* leave the radio view — the song keeps playing */
       rearrange();
     }else{
       fieldMode='radio';
@@ -779,8 +791,10 @@
       armRadio();
       if(ytReady)startPlayback();
     }
+    radioBtn.setAttribute('aria-pressed',fieldMode==='radio');
     updateBrand();
   });
+  app.querySelector('#me-stop').addEventListener('click', stopRadio);
   brandEl.addEventListener('click', function(){ openAboutScreen(); });
 
   // ── data + render list ──────────────────────────────────────────
@@ -855,9 +869,12 @@
   function openAboutScreen(){
     if(document.getElementById('me-about-screen')) return;
     var ov=document.createElement('div'); ov.id='me-about-screen';
-    ov.innerHTML='<button id="me-about-close">close</button><div class="txt">'+buildAboutHTML()+'</div>';
+    ov.innerHTML='<button id="me-about-close">close</button>'+
+      '<div class="ab-brand">'+esc(brandEl.textContent)+'</div>'+
+      '<div class="txt">'+buildAboutHTML()+'</div>';
     document.body.appendChild(ov);
     ov.querySelector('#me-about-close').addEventListener('click', function(){ ov.remove(); });
+    ov.querySelector('.ab-brand').addEventListener('click', function(){ ov.remove(); });
   }
 
   // ── player ──────────────────────────────────────────────────────
