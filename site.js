@@ -16,6 +16,7 @@
   document.head.appendChild(vp);
   document.title='DIAL — Michel Elsasser';
   var DATA_URL     = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/website-projects.json";
+  var MUSIC_PLAYLIST = "UUSJ4gkVC6NrvII8umztf0Ow"; // YouTube playlist id for the radio
   var ABOUT_EMAIL  = "m@michelelsasser.com";
   var FORMSPREE_ID = "xkolzzba"; // Formspree form id
   var ABOUT_INSTAGRAM = "@michelelsasser";
@@ -50,6 +51,8 @@
     '#me-app.browse #me-btnview .ic-dial{display:block;}'+
     '#me-tc{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';'+
       'font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
+    '#me-music{position:fixed;left:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;'+
+      'pointer-events:none;min-height:1em;max-width:44vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'+
     '#me-app.browse #me-tc{display:none;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
@@ -157,7 +160,8 @@
         '</svg>'+
       '</button>'+
     '</div>'+
-    '<div id="me-tc" aria-hidden="true"></div>';
+    '<div id="me-tc" aria-hidden="true"></div>'+
+    '<div id="me-music" aria-hidden="true"></div>';
   document.body.appendChild(app);
 
   var listEl=app.querySelector('#me-list');
@@ -712,26 +716,44 @@
     }
   });
 
-  /* radio — background audio, Radio button toggles */
+  /* radio — plays a YouTube playlist; current track title bottom-left */
   var radioBtn=app.querySelector('#me-radio');
-  var audioCtxA=null,noiseNode=null,radioPlaying=false;
-  function startRadio(){
-    audioCtxA=audioCtxA||new (window.AudioContext||window.webkitAudioContext)();
-    var len=audioCtxA.sampleRate*2,buf=audioCtxA.createBuffer(1,len,audioCtxA.sampleRate);
-    var d=buf.getChannelData(0);
-    for(var i=0;i<len;i++)d[i]=(Math.random()*2-1)*0.4;
-    noiseNode=audioCtxA.createBufferSource();noiseNode.buffer=buf;noiseNode.loop=true;
-    var f=audioCtxA.createBiquadFilter();f.type='bandpass';f.frequency.value=900;f.Q.value=0.7;
-    var g=audioCtxA.createGain();g.gain.value=0.02;
-    noiseNode.connect(f).connect(g).connect(audioCtxA.destination);
-    noiseNode.start();
+  var musicEl=app.querySelector('#me-music');
+  var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null;
+  function updateTitle(){
+    if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){musicEl.textContent='';return;}
+    try{var d=ytPlayer.getVideoData();musicEl.textContent=(d&&d.title)?d.title:'';}catch(e){}
   }
-  function stopRadio(){if(noiseNode){noiseNode.stop();noiseNode=null;}}
+  function ensureYT(){
+    if(document.getElementById('me-yt-api')) return;
+    var holder=document.createElement('div');holder.id='me-yt';
+    holder.style.cssText='position:fixed;left:-9999px;bottom:0;width:200px;height:200px;';
+    document.body.appendChild(holder);
+    window.onYouTubeIframeAPIReady=function(){
+      ytPlayer=new YT.Player('me-yt',{
+        width:200,height:200,
+        playerVars:{listType:'playlist',list:MUSIC_PLAYLIST},
+        events:{
+          onReady:function(){ytReady=true;if(radioPlaying){try{ytPlayer.playVideo();}catch(e){}}},
+          onStateChange:updateTitle
+        }
+      });
+    };
+    var s=document.createElement('script');s.id='me-yt-api';s.src='https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+  }
   radioBtn.addEventListener('click', function(){
     radioPlaying=!radioPlaying;
     radioBtn.classList.toggle('playing',radioPlaying);
     radioBtn.setAttribute('aria-pressed',radioPlaying);
-    if(radioPlaying)startRadio();else stopRadio();
+    if(radioPlaying){
+      ensureYT();
+      if(ytReady){try{ytPlayer.playVideo();}catch(e){}}
+      clearInterval(titleTimer);titleTimer=setInterval(updateTitle,800);
+    }else{
+      if(ytReady){try{ytPlayer.pauseVideo();}catch(e){}}
+      clearInterval(titleTimer);musicEl.textContent='';
+    }
   });
 
   // ── data + render list ──────────────────────────────────────────
