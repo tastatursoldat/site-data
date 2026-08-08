@@ -34,7 +34,6 @@
     'html,body{overflow:hidden !important;height:100% !important;}'+
     '#me-app{position:fixed;inset:0;background:#EFEFEC;z-index:2147483000;overflow:hidden;font-family:'+FONT+';color:#111;'+
       '-webkit-font-smoothing:antialiased;}'+
-    '#me-app.browse{background:#fff;}'+
     // dial landing
     '#me-dial{position:absolute;inset:0;}'+
     '#me-app.browse #me-dial{display:none !important;}'+
@@ -43,16 +42,15 @@
     '#me-app.browse #me-brand{display:none;}'+
     '#me-ctrl{position:fixed;top:1.15rem;right:1.2rem;z-index:10;display:flex;gap:1.1rem;align-items:center;}'+
     '#me-ctrl button{font:inherit;border:0;background:none;cursor:pointer;padding:0;}'+
-    '#me-ctrl .icon{color:rgba(0,0,0,.45);display:flex;align-items:center;}'+
-    '#me-ctrl .icon:hover{color:#0a0a0a;}'+
-    '#me-ctrl .icon.playing{color:#0a0a0a;}'+
+    '#me-ctrl .icon{color:#0a0a0a;display:flex;align-items:center;}'+
+    '#me-ctrl .icon svg{width:15px;height:15px;}'+
     '#me-radio .wave{opacity:.25;}'+
     '#me-radio.playing .wave{opacity:1;}'+
     '#me-btnview .ic-dial{display:none;}'+
     '#me-app.browse #me-btnview .ic-list{display:none;}'+
     '#me-app.browse #me-btnview .ic-dial{display:block;}'+
-    '#me-tc{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;font-weight:700;font-size:clamp(20px,3vw,36px);'+
-      'line-height:1;font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
+    '#me-tc{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';'+
+      'font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
     '#me-app.browse #me-tc{display:none;}'+
     '#me-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);'+
       'font:700 1px/1 '+FONT+';color:#fff;mix-blend-mode:difference;pointer-events:none;'+
@@ -97,7 +95,7 @@
       'font:400 15px/1.5 '+FONT+';max-width:60vw;opacity:0;pointer-events:none;transition:opacity .2s;}'+
     '#me-info.show{opacity:1;}#me-info .t{font-size:20px;margin-bottom:.4em;}#me-info .d{opacity:.7;}'+
     // mobile: compact desktop-style list, full-screen About
-    '#me-about-screen{position:fixed;inset:0;background:#fff;z-index:2147483700;'+
+    '#me-about-screen{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;'+
       'padding:max(24px,env(safe-area-inset-top)) 24px 40px;box-sizing:border-box;overflow-y:auto;}'+
     '#me-about-close{position:absolute;top:max(16px,env(safe-area-inset-top));right:20px;'+
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
@@ -324,6 +322,27 @@
       var arms=[[],[],[],[]];
       rest.forEach(function(r,i){arms[i%4].push(r);});
       var dirs=[[0,-1],[0,1],[-1,0],[1,0]];
+      var fi=1;
+      arms.forEach(function(arm,a){
+        var dx=dirs[a][0],dy=dirs[a][1];
+        var d=cR+gap;
+        arm.forEach(function(r){
+          nodes.push({f:fs[fi++],x:W/2+dx*(d+r),y:H/2+dy*(d+r),R:r});
+          d+=2*r+gap;
+        });
+      });
+      return nodes;
+    },
+    xshape:function(fs,base){ /* like cross, arms on the diagonals */
+      var Rs=makeSizes(base,fs.length);
+      var cR=Math.max.apply(null,Rs);
+      var rest=Rs.slice();rest.splice(rest.indexOf(cR),1);
+      var nodes=[{f:fs[0],x:W/2,y:H/2,R:cR}];
+      var gap=cR*0.08;
+      var arms=[[],[],[],[]];
+      rest.forEach(function(r,i){arms[i%4].push(r);});
+      var q=Math.SQRT1_2;
+      var dirs=[[-q,-q],[q,-q],[-q,q],[q,q]];
       var fi=1;
       arms.forEach(function(arm,a){
         var dx=dirs[a][0],dy=dirs[a][1];
@@ -704,6 +723,7 @@
     var i=hitTest(e.clientX,e.clientY);
     if(i<0){if(e.pointerType==='touch')tcEl.textContent='';return;}
     tcEl.textContent=refCode(nodes[i].f);
+    if(nodes[i].f.isAbout){ openAboutScreen(); return; }
     var p=nodes[i].f.p;
     if(p && p.film) openPlayer(p);
   });
@@ -766,10 +786,11 @@
     });
     listEl.innerHTML=html;
 
-    /* dial field entries — one clock per film */
-    DIALS=PROJECTS.map(function(p,i){
-      return {year:+p.year||0,no:p.num||String(i+1).padStart(3,'0'),client:p.client,title:p.title,cat:p.type||'',p:p};
-    });
+    /* dial field entries — one clock per film, plus the About dial (1997-00) */
+    DIALS=[{year:1997,no:'000',client:'Michel Elsasser',title:'About',cat:'Contact',isAbout:true}]
+      .concat(PROJECTS.map(function(p,i){
+        return {year:+p.year||0,no:p.num||String(i+1).padStart(3,'0'),client:p.client,title:p.title,cat:p.type||'',p:p};
+      }));
     sizeField();
 
     var clockMobile=document.createElement('div');
