@@ -719,10 +719,26 @@
   /* radio — plays a YouTube playlist; current track title bottom-left */
   var radioBtn=app.querySelector('#me-radio');
   var musicEl=app.querySelector('#me-music');
-  var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null;
+  var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null,ytJumped=false;
   function updateTitle(){
     if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){musicEl.textContent='';return;}
     try{var d=ytPlayer.getVideoData();musicEl.textContent=(d&&d.title)?d.title:'';}catch(e){}
+  }
+  function startPlayback(){
+    /* first start per load: jump to a random track, never the same one twice in a row */
+    try{
+      var list=ytPlayer.getPlaylist();
+      if(!ytJumped && list && list.length>1){
+        ytJumped=true;
+        var last=-1;try{last=parseInt(localStorage.getItem('me-radio-last'),10);}catch(e){}
+        var i=Math.floor(Math.random()*list.length);
+        if(i===last)i=(i+1)%list.length;
+        try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
+        ytPlayer.playVideoAt(i);
+      }else{
+        ytPlayer.playVideo();
+      }
+    }catch(e){}
   }
   function ensureYT(){
     if(document.getElementById('me-yt-api')) return;
@@ -734,21 +750,21 @@
         width:200,height:200,
         playerVars:{listType:'playlist',list:MUSIC_PLAYLIST},
         events:{
-          onReady:function(){ytReady=true;if(radioPlaying){try{ytPlayer.playVideo();}catch(e){}}},
-          onStateChange:updateTitle
+          onReady:function(){ytReady=true;if(radioPlaying)startPlayback();},
+          onStateChange:function(){if(!ytJumped&&radioPlaying)startPlayback();updateTitle();}
         }
       });
     };
     var s=document.createElement('script');s.id='me-yt-api';s.src='https://www.youtube.com/iframe_api';
     document.head.appendChild(s);
   }
+  ensureYT(); /* preload cued player so the radio click starts playback inside the gesture */
   radioBtn.addEventListener('click', function(){
     radioPlaying=!radioPlaying;
     radioBtn.classList.toggle('playing',radioPlaying);
     radioBtn.setAttribute('aria-pressed',radioPlaying);
     if(radioPlaying){
-      ensureYT();
-      if(ytReady){try{ytPlayer.playVideo();}catch(e){}}
+      if(ytReady)startPlayback();
       clearInterval(titleTimer);titleTimer=setInterval(updateTitle,800);
     }else{
       if(ytReady){try{ytPlayer.pauseVideo();}catch(e){}}
