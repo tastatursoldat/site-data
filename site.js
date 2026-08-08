@@ -432,6 +432,9 @@
       n.accent=order.indexOf(i)<accentBudget;
       /* grey cones can still wear a small foreign hairline */
       n.foreignHair=!n.accent&&!monoMode&&r()<0.28;
+      /* soundbox leftovers from the reference — corner screws + dust-cap dome — show rarely */
+      n.style.cornerDots=r()<0.1;
+      n.style.dome=r()<0.1;
     });
   }
 
@@ -490,8 +493,8 @@
     ctx.lineWidth=Math.max(.5,R*0.014);
     casePath(1);ctx.stroke();
 
-    /* square plates carry corner dots */
-    if(st.shape==='square'){
+    /* square plates carry corner dots — rare */
+    if(st.shape==='square'&&st.cornerDots){
       ctx.fillStyle='#141618';
       var d0=R*0.9;
       [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(s){
@@ -602,8 +605,8 @@
       /* 7,8,9,12: clean-ish faces, dust-cap dome below carries them */
     }
 
-    /* dust-cap dome — the bright center of the reference cones */
-    if(st.model===7||st.model===8||st.model===9||st.model===12||st.tone==='light'){
+    /* dust-cap dome — the bright center of the reference cones — rare */
+    if((st.model===7||st.model===8||st.model===9||st.model===12||st.tone==='light')&&st.dome){
       var Rc=Rd*0.22;
       var dome=ctx.createRadialGradient(cx-Rc*0.35,cy-Rc*0.4,Rc*0.05,cx,cy,Rc);
       if(light){dome.addColorStop(0,'#ffffff');dome.addColorStop(1,'#8f8f8a');}
