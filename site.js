@@ -54,7 +54,7 @@
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
-    '#me-list{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:84%;'+
+    '#me-list{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(70%,900px);'+
       'font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '.me-row{display:grid;grid-template-columns:1fr 1fr 2fr 3fr 2fr;gap:1em;cursor:pointer;}'+
     '.me-row.head{cursor:default;margin-bottom:.2em;}'+
