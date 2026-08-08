@@ -710,7 +710,8 @@
     try{var d=ytPlayer.getVideoData();setTitle((d&&d.title)?d.title:'');}catch(e){}
   }
   function startPlayback(){
-    /* first start per load: jump to a random track, never the same one twice in a row */
+    /* first start per load: begin at a random track, never the same one twice in a row.
+       loadPlaylist(index) — playVideoAt on a merely cued player falls back to track 0 */
     try{
       var list=ytPlayer.getPlaylist();
       if(!ytJumped && list && list.length>1){
@@ -719,7 +720,7 @@
         var i=Math.floor(Math.random()*list.length);
         if(i===last)i=(i+1)%list.length;
         try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
-        ytPlayer.playVideoAt(i);
+        ytPlayer.loadPlaylist({list:MUSIC_PLAYLIST,listType:'playlist',index:i});
       }else{
         ytPlayer.playVideo();
       }
@@ -775,10 +776,12 @@
   }
   function playSong(i){
     if(!ytReady) return;
-    ytJumped=true;
     try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
     armRadio();
-    try{ytPlayer.playVideoAt(i);}catch(e){}
+    try{
+      if(!ytJumped){ytJumped=true;ytPlayer.loadPlaylist({list:MUSIC_PLAYLIST,listType:'playlist',index:i});}
+      else ytPlayer.playVideoAt(i);
+    }catch(e){}
   }
   radioBtn.addEventListener('click', function(){
     if(fieldMode==='radio'){
