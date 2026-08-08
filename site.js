@@ -413,6 +413,15 @@
       n.R*=sc;
     });
 
+    /* the most top-left dial is always About — the rest stays random */
+    var tlI=0,abI=-1,best=Infinity;
+    nodes.forEach(function(n,i){
+      var s=(n.x-n.R)+(n.y-n.R);
+      if(s<best){best=s;tlI=i;}
+      if(n.f.isAbout)abI=i;
+    });
+    if(abI>=0&&abI!==tlI){var tf=nodes[tlI].f;nodes[tlI].f=nodes[abI].f;nodes[abI].f=tf;}
+
     /* per load: either a keyed composition (theme-heavy) or a rare monochrome one */
     var monoMode=Math.random()<0.18;
     var accentBudget=monoMode?1+Math.floor(Math.random()*2):5+Math.floor(Math.random()*3);
