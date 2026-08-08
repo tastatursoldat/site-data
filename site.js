@@ -39,7 +39,6 @@
     '#me-app.browse #me-dial{display:none !important;}'+
     '#me-field{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default;}'+
     '#me-brand{position:fixed;top:1.15rem;left:1.2rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
-    '#me-app.browse #me-brand{display:none;}'+
     '#me-ctrl{position:fixed;top:1.15rem;right:1.2rem;z-index:10;display:flex;gap:1.1rem;align-items:center;}'+
     '#me-ctrl button{font:inherit;border:0;background:none;cursor:pointer;padding:0;}'+
     '#me-ctrl .icon{color:#0a0a0a;display:flex;align-items:center;}'+
@@ -52,29 +51,17 @@
     '#me-tc{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';'+
       'font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
     '#me-app.browse #me-tc{display:none;}'+
-    '#me-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);'+
-      'font:700 1px/1 '+FONT+';color:#fff;mix-blend-mode:difference;pointer-events:none;'+
-      'letter-spacing:.02em;text-align:center;white-space:nowrap;opacity:0;transition:opacity .15s;}'+
-    '#me-clock.rest{color:#111;mix-blend-mode:normal;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
-    '#me-list{position:absolute;left:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);font-size:15px;line-height:1.5;}'+
-    '.me-row{display:grid;grid-template-columns:4em 3.2em 11em 1fr 9em;gap:1em;cursor:pointer;}'+
+    '#me-list{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:84%;'+
+      'font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
+    '.me-row{display:grid;grid-template-columns:1fr 1fr 2fr 3fr 2fr;gap:1em;cursor:pointer;}'+
     '.me-row.head{cursor:default;margin-bottom:.2em;}'+
     '.me-row.about span{color:#b3b3b3;}'+
     '.me-row span{transition:opacity .15s ease;white-space:nowrap;}'+
     '.me-row span{opacity:1;}'+
     '.me-row[data-dim] span{opacity:.35;}'+
-    '#me-stage{position:absolute;right:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);'+
-      'width:min(46vw,720px);height:80vh;'+
-      'opacity:0;transition:opacity .18s ease;pointer-events:none;}'+
-    '#me-stage.show{opacity:1;}'+
-    '#me-stage-content{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}'+
-    '#me-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;}'+
-    '#me-stage .about{max-width:520px;white-space:pre-line;font:400 16px/1.5 '+FONT+';color:#111;}'+
-    '#me-stage .about a{color:#111;text-decoration:none;pointer-events:auto;cursor:pointer;}'+
-    '#me-stage .about{pointer-events:auto;}'+
     // player
     '#me-player{position:fixed;inset:0;background:#000;z-index:2147483600;display:none;}'+
     '#me-player.show{display:block;}'+
@@ -101,8 +88,7 @@
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
     '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
-    // time-capsule (label replaces the clock text on hover)
-    '#me-stage.cap-armed{cursor:pointer;}'+
+    // time-capsule
     '#me-cap-mobile{display:none;}'+
     '#me-clock-mobile{display:none;}'+
     '#me-cap{position:fixed;inset:0;background:rgba(0,0,0,.32);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);'+
@@ -136,7 +122,6 @@
       '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
       '#me-cap-mobile{display:block;margin-top:64px;width:100%;font:700 28px/1.05 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;cursor:pointer;box-sizing:border-box;}'+
       '#me-clock-mobile{display:block;margin-top:10px;width:100%;font:700 13vw/1 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;box-sizing:border-box;}'+
-      '#me-stage{display:none !important;}'+
       '#me-bar [data-a="full"]{display:none;}'+
     '}'+
     '@media (max-height:500px) and (orientation:landscape){'+
@@ -149,7 +134,7 @@
   var app=document.createElement('div'); app.id='me-app';
   app.innerHTML=
     '<div id="me-dial"><canvas id="me-field" aria-label="Films as dials — click one to open the film"></canvas></div>'+
-    '<div id="me-browse"><div id="me-list"></div><div id="me-stage"><div id="me-stage-content"></div></div></div>'+
+    '<div id="me-browse"><div id="me-list"></div></div>'+
     '<div id="me-brand">DIAL</div>'+
     '<div id="me-ctrl">'+
       '<button id="me-radio" class="icon" aria-pressed="false" aria-label="Radio — toggle sound">'+
@@ -176,15 +161,8 @@
   document.body.appendChild(app);
 
   var listEl=app.querySelector('#me-list');
-  var stage=app.querySelector('#me-stage');
-  var stageContent=app.querySelector('#me-stage-content');
   var tcEl=app.querySelector('#me-tc');
 
-  var stageClock=document.createElement('div'); stageClock.id='me-clock'; stageClock.className='rest';
-  stageClock.style.opacity='1'; // stage handles its own fade
-  stage.appendChild(stageClock);
-  var capArmed=false;        // true only at rest in browse view
-  var capHovering=false;     // mouse currently over the resting clock
   var CAP_QUESTIONS=[
     'Which clock in your flat is wrong?',
     'Do you own a watch that stopped and stayed stopped?',
@@ -218,21 +196,6 @@
     function p(n,len){return String(n).padStart(len||2,'0');}
     return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+':'+p(Math.floor(d.getMilliseconds()/10));
   }
-  function sizeClockTo(el,box){
-    if(!el||!box||!el.isConnected||!box.isConnected) return;
-    el.style.fontSize='100px';
-    var measured=el.getBoundingClientRect().width;
-    var target=box.clientWidth*0.98;
-    if(measured>0) el.style.fontSize=(100*(target/measured))+'px';
-  }
-  function sizeClock(){ sizeClockTo(stageClock,stage); }
-  stageClock.textContent=fmtClock();
-  setInterval(function(){
-    var t=fmtClock();
-    if(capArmed && capHovering) stageClock.textContent=CAP_LABEL;
-    else stageClock.textContent=t;
-  },30);
-  window.addEventListener('resize', sizeClock);
 
   var pl=document.createElement('div'); pl.id='me-player';
   pl.innerHTML='<div id="me-embed"></div><button id="me-close">close</button><div id="me-info"></div>'+
@@ -736,8 +699,7 @@
       app.classList.add('browse');
       tcEl.textContent='';
       hover=-1;
-      clearStage();
-      sizeClock(); refitCap();
+      refitCap();
     }
   });
 
@@ -777,12 +739,6 @@
         '<span>'+esc(p.title)+'</span>'+
         '<span data-field="type" data-value="'+esc(p.type||'')+'">'+esc(p.type||'')+'</span>'+
       '</div>';
-      if(p.preview){
-        var v=document.createElement('video');
-        v.src=p.preview; v.muted=true; v.loop=true; v.preload='auto';
-        v.setAttribute('playsinline',''); v.setAttribute('muted','');
-        p._video=v; v.load();
-      }
     });
     listEl.innerHTML=html;
 
@@ -824,22 +780,13 @@
     window.addEventListener('resize', fitCapToClock);
   }).catch(function(e){ console.error('[site-data]',e); listEl.textContent='Could not load projects.'; });
 
-  // ── stage helpers ───────────────────────────────────────────────
-  function setStage(node){
-    if(stageContent.firstChild===node) return;
-    stageContent.innerHTML='';
-    if(node) stageContent.appendChild(node);
-  }
-  function clearStage(){ setStage(null); stageClock.classList.add('rest'); stageClock.style.display=''; capArmed=true; stage.classList.add('cap-armed'); stage.style.pointerEvents='auto'; stage.classList.add('show'); stage.style.opacity='1'; }
-  function showProject(p){ if(!p||!p._video) return; setStage(p._video); try{p._video.currentTime=0;}catch(e){} p._video.play().catch(function(){}); stageClock.classList.remove('rest'); stageClock.style.display=''; capArmed=false; capHovering=false; stage.classList.remove('cap-armed'); stage.style.pointerEvents='none'; stage.classList.add('show'); }
+  // ── about ───────────────────────────────────────────────────────
   function buildAboutHTML(){
     var igUrl='https://instagram.com/'+ABOUT_INSTAGRAM.replace('@','');
     return esc(ABOUT_TEXT).replace(/\n/g,'<br>')+'<br><br>'+
       '<a href="'+igUrl+'" target="_blank" rel="noopener">'+esc(ABOUT_INSTAGRAM)+'</a><br>'+
       '<a href="mailto:'+ABOUT_EMAIL+'">'+esc(ABOUT_EMAIL)+'</a>';
   }
-  function showAbout(){ var a=document.createElement('div'); a.className='about'; a.innerHTML=buildAboutHTML(); setStage(a); stageClock.style.display='none'; capArmed=false; capHovering=false; stage.classList.remove('cap-armed'); stage.classList.add('show'); }
-
   // ── list interactions ───────────────────────────────────────────
   function isMobile(){ return window.matchMedia('(max-width:700px)').matches; }
   function rows(){ return listEl.querySelectorAll('.me-row:not(.head)'); }
@@ -857,31 +804,23 @@
   applyDim(null);
 
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
-  // hover anywhere else on a row -> just preview that one row (dim the rest).
-  var pinned=null;
-  function revertStage(){ if(pinned==='about') showAbout(); else clearStage(); }
+  // hover anywhere else on a row -> dim the rest.
   listEl.addEventListener('mouseover', function(e){
     if(isMobile()) return;
-    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ revertStage(); applyDim(null); return; }
+    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ applyDim(null); return; }
     var cell=e.target.closest('[data-field]');
     if(cell){ applyDim(null,cell.dataset.field,cell.dataset.value); }
     else { applyDim(row); }
-    if(row.dataset.about){ showAbout(); }
-    else { showProject(PROJECTS[+row.dataset.i]); }
   });
-  listEl.addEventListener('mouseleave', function(){ revertStage(); applyDim(null); });
+  listEl.addEventListener('mouseleave', function(){ applyDim(null); });
 
-  // click -> always opens the film (or, for About: Contact opens mail, anything else pins the panel open)
+  // click -> opens the film; About row opens the about page (Contact cell opens mail)
   listEl.addEventListener('click', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
     if(row.dataset.about){
-      if(isMobile()){ openAboutScreen(); return; }
       if(e.target.closest('[data-contact]')){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
-      if(pinned==='about'){ pinned=null; clearStage(); }
-      else { pinned='about'; showAbout(); }
-      return;
+      openAboutScreen(); return;
     }
-    pinned=null;
     var p=PROJECTS[+row.dataset.i];
     if(p && p.film) openPlayer(p);
   });
@@ -896,7 +835,6 @@
 
   // ── player ──────────────────────────────────────────────────────
   function openPlayer(p){
-    clearStage();
     pl.classList.add('show'); infoEl.classList.remove('show');
     infoEl.innerHTML='<div class="t">'+esc(p.title)+'</div><div>'+esc(p.client)+'</div>'+
       '<div class="d">'+[p.type,p.location,p.year].filter(Boolean).map(esc).join('<br>')+'</div>';
@@ -912,7 +850,6 @@
     wake();
   }
   function closePlayer(){
-    pinned=null;
     applyDim(null);
     if(document.fullscreenElement) document.exitFullscreen();          // leave fullscreen on close
     else if(document.webkitFullscreenElement) document.webkitExitFullscreen();
@@ -961,11 +898,6 @@
   var msg=cap.querySelector('#me-msg');
   var sendBtn=cap.querySelector('#me-send');
   var statusEl=cap.querySelector('.status');
-
-  // open only when armed (resting stage) and clicking the clock
-  stage.addEventListener('mouseenter', function(){ if(capArmed){ capHovering=true; stageClock.textContent=CAP_LABEL; sizeClock(); } });
-  stage.addEventListener('mouseleave', function(){ if(capHovering){ capHovering=false; stageClock.textContent=fmtClock(); sizeClock(); } });
-  stage.addEventListener('click', function(){ if(capArmed) openCapsule(); });
 
   function openCapsule(){ cap.classList.add('show'); }
   function closeCapsule(){ cap.classList.remove('show'); }
