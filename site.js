@@ -138,13 +138,15 @@
   app.innerHTML=
     '<div id="me-dial"><canvas id="me-field" aria-label="Films as dials — click one to open the film"></canvas></div>'+
     '<div id="me-browse"><div id="me-list"></div></div>'+
-    '<div id="me-brand">DIAL</div>'+
+    '<div id="me-brand">DIAL FILM</div>'+
     '<div id="me-ctrl">'+
-      '<button id="me-radio" class="icon" aria-pressed="false" aria-label="Radio — toggle sound">'+
+      '<button id="me-radio" class="icon" aria-pressed="false" aria-label="Radio — toggle music">'+
         '<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">'+
-          '<path d="M3.5 8 H6.5 L10.5 4.5 V15.5 L6.5 12 H3.5 Z" fill="currentColor" stroke="none"/>'+
-          '<path class="wave" d="M13.5 7.5 Q15.5 10 13.5 12.5"/>'+
-          '<path class="wave" d="M15.5 5.5 Q18.8 10 15.5 14.5"/>'+
+          '<rect x="2.5" y="8" width="15" height="8.5" rx="1.5"/>'+
+          '<line x1="5.5" y1="8" x2="13.5" y2="2.5"/>'+
+          '<circle cx="6.6" cy="12.2" r="1.9"/>'+
+          '<line class="wave" x1="11" y1="10.8" x2="15" y2="10.8"/>'+
+          '<line class="wave" x1="11" y1="13.6" x2="15" y2="13.6"/>'+
         '</svg>'+
       '</button>'+
       '<button id="me-btnview" class="icon" aria-label="Toggle view">'+
@@ -719,6 +721,7 @@
   /* radio — plays a YouTube playlist; current track title bottom-left */
   var radioBtn=app.querySelector('#me-radio');
   var musicEl=app.querySelector('#me-music');
+  var brandEl=app.querySelector('#me-brand');
   var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null,ytJumped=false;
   function updateTitle(){
     if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){musicEl.textContent='';return;}
@@ -763,6 +766,7 @@
     radioPlaying=!radioPlaying;
     radioBtn.classList.toggle('playing',radioPlaying);
     radioBtn.setAttribute('aria-pressed',radioPlaying);
+    brandEl.textContent=radioPlaying?'DIAL RADIO':'DIAL FILM';
     if(radioPlaying){
       if(ytReady)startPlayback();
       clearInterval(titleTimer);titleTimer=setInterval(updateTitle,800);
