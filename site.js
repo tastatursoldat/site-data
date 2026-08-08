@@ -17,6 +17,7 @@
   document.title='DIAL — Michel Elsasser';
   var DATA_URL     = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/website-projects.json";
   var MUSIC_PLAYLIST = "PLAMrTQJLnU5E"; // YouTube playlist id for the radio
+  var RADIO_URL    = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/radio.json"; // khz + note per track
   var ABOUT_EMAIL  = "m@michelelsasser.com";
   var ABOUT_INSTAGRAM = "@michelelsasser";
   var ABOUT_TEXT =
@@ -58,6 +59,27 @@
     '#me-music.scroll .in{animation:me-marq 6s ease-in-out infinite alternate;}'+
     '@keyframes me-marq{from{transform:translateX(0);}to{transform:translateX(var(--me-shift,0px));}}'+
     '#me-app.browse #me-tc{display:none;}'+
+    // radio tuning band — bottom edge of the radio view only
+    '#me-band{position:fixed;left:0;right:0;bottom:0;z-index:9;display:none;overflow-x:auto;overflow-y:hidden;'+
+      '-webkit-overflow-scrolling:touch;scrollbar-width:none;font-family:'+FONT+';}'+
+    '#me-band::-webkit-scrollbar{display:none;}'+
+    '#me-app.radio-mode #me-band{display:block;}'+
+    '#me-app.radio-mode #me-music{display:none;}'+
+    '#me-app.radio-mode #me-tc{display:none;}'+
+    '#me-band-in{position:relative;height:128px;}'+
+    '#me-band .rule{position:absolute;top:64px;height:1px;background:#9a9a9a;}'+
+    '#me-band .tick-col{position:absolute;top:0;height:100%;transform:translateX(-50%);cursor:pointer;}'+
+    '#me-band .t-note{position:absolute;top:30px;width:100%;text-align:center;font-size:11px;'+
+      'letter-spacing:1px;text-transform:lowercase;color:#9a9a9a;white-space:nowrap;transition:color .15s;}'+
+    '#me-band .tick-col:hover .t-note{color:#0a0a0a;}'+
+    '#me-band .t-line{position:absolute;top:58px;left:50%;width:1px;height:12px;background:#9a9a9a;}'+
+    '#me-band .t-freq{position:absolute;top:84px;width:100%;text-align:center;font-size:11px;'+
+      'font-variant-numeric:tabular-nums;color:#bdbdbd;white-space:nowrap;}'+
+    '#me-band .needle{position:absolute;top:30px;width:1.5px;height:68px;background:#0a0a0a;'+
+      'pointer-events:none;transition:left .8s cubic-bezier(.3,1.45,.5,1);}'+
+    '#me-band .n-title{position:absolute;top:102px;transform:translateX(-50%);font:700 12px/1.3 '+FONT+';'+
+      'color:#0a0a0a;white-space:nowrap;pointer-events:none;transition:left .8s cubic-bezier(.3,1.45,.5,1);}'+
+    '@media (max-width:480px){#me-band .t-freq{display:none;}}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
@@ -114,7 +136,7 @@
   app.innerHTML=
     '<div id="me-dial"><canvas id="me-field" aria-label="Films as dials — click one to open the film"></canvas></div>'+
     '<div id="me-browse"><div id="me-list"></div></div>'+
-    '<div id="me-brand">DIAL</div>'+
+    '<div id="me-brand">dial</div>'+
     '<div id="me-ctrl">'+
       '<button id="me-stop" class="icon" aria-label="Stop music">'+
         '<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" stroke="none">'+
@@ -365,7 +387,8 @@
       minY=Math.min(minY,n.y-n.R);maxY=Math.max(maxY,n.y+n.R);
     });
     var bw=maxX-minX,bh=maxY-minY;
-    var mX=W*0.08,mTop=H*0.12,mBot=H*0.14;
+    var mX=W*0.08,mTop=H*0.12;
+    var mBot=fieldMode==='radio'?Math.max(H*0.14,150):H*0.14; /* keep the tuning band clear */
     var sc=Math.min((W-2*mX)/bw,(H-mTop-mBot)/bh,1);
     var bcx=(minX+maxX)/2,bcy=(minY+maxY)/2;
     var tx=W/2,ty=mTop+(H-mTop-mBot)/2;
@@ -676,6 +699,7 @@
       tcEl.textContent='';
       hover=-1;
     }
+    updateModeClass();
     updateBrand();
   });
 
@@ -684,12 +708,19 @@
   var musicEl=app.querySelector('#me-music');
   var brandEl=app.querySelector('#me-brand');
   function updateBrand(){
-    /* label follows the view — DIAL FILM on the index, DIAL RADIO on the radio field */
-    brandEl.textContent=app.classList.contains('browse')?'DIAL FILM':(fieldMode==='radio'?'DIAL RADIO':'DIAL');
+    /* label follows the view — dial film on the index, dial radio on the radio field */
+    brandEl.textContent=app.classList.contains('browse')?'dial film':(fieldMode==='radio'?'dial radio':'dial');
   }
   var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null,ytJumped=false;
   var musicIn=document.createElement('span');musicIn.className='in';musicEl.appendChild(musicIn);
   var lastTitle='';
+  function cleanTitle(t){
+    /* song name only — no artist prefix, nothing in brackets */
+    t=String(t||'').replace(/\s*[\(\[][^\)\]]*[\)\]]\s*/g,' ');
+    var ix=t.indexOf(' - ');
+    if(ix>-1)t=t.slice(ix+3);
+    return t.replace(/\s+/g,' ').trim();
+  }
   function setTitle(t){
     /* full title always readable — marquee back and forth when wider than the label */
     if(t===lastTitle) return;
@@ -707,7 +738,9 @@
   }
   function updateTitle(){
     if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){setTitle('');return;}
-    try{var d=ytPlayer.getVideoData();setTitle((d&&d.title)?d.title:'');}catch(e){}
+    try{var d=ytPlayer.getVideoData();setTitle(cleanTitle((d&&d.title)?d.title:''));}catch(e){}
+    /* the band subscribes to track changes here — needle glides on natural advance too */
+    try{var gi=ytPlayer.getPlaylistIndex();if(gi>=0&&gi!==bandIdx&&bandTicks[gi])moveNeedle(gi,true);}catch(e){}
   }
   function startPlayback(){
     /* first start per load: begin at a random track, never the same one twice in a row.
@@ -754,8 +787,121 @@
           SONG_DIALS.push({kind:'song',idx:i,code:'R-'+String(i+1).padStart(2,'0'),year:9090,no:String(i+1).padStart(3,'0')});
         }
         layoutField();
+        buildBand();
       }
     }catch(e){}
+  }
+
+  /* ── radio tuning band — every song a tick on the scale ────────── */
+  var bandEl=document.createElement('div');bandEl.id='me-band';
+  bandEl.innerHTML='<div id="me-band-in"></div>';
+  app.appendChild(bandEl);
+  var bandIn=bandEl.querySelector('#me-band-in');
+  var RADIO_META={},bandTicks=[],bandIdx=-1,needleEl=null,needleTitle=null;
+  fetch(RADIO_URL,{cache:'no-cache'}).then(function(r){return r.json();})
+    .then(function(j){RADIO_META=(j&&j.tracks)||{};buildBand();})
+    .catch(function(){buildBand();});
+  function hzFor(id){
+    /* each track's number is its measured average audio frequency (spectral centroid, Hz) */
+    var m=RADIO_META[id];
+    if(m){
+      if(typeof m.hz==='number')return m.hz;
+      if(typeof m.khz==='number')return Math.round(m.khz*1000); /* legacy data */
+    }
+    var h=0;for(var i=0;i<id.length;i++){h=(h*31+id.charCodeAt(i))>>>0;}
+    return 800+(h%2400);
+  }
+  function noteFor(id){var m=RADIO_META[id];return (m&&m.note)?String(m.note).toLowerCase().slice(0,18):'';}
+  function bandAccent(){return theme.key;}
+  function clampLabel(el,x,iw){
+    /* keep centered labels inside the band near the edges */
+    var half=el.offsetWidth/2,shift=0;
+    if(x-half<6)shift=half-x+6;
+    else if(x+half>iw-6)shift=-(x+half-(iw-6));
+    el.style.marginLeft=shift?shift+'px':'';
+  }
+  function buildBand(){
+    var ids;try{ids=ytPlayer&&ytPlayer.getPlaylist?ytPlayer.getPlaylist():null;}catch(e){return;}
+    if(!ids||!ids.length)return;
+    var iw=Math.max(bandEl.clientWidth||innerWidth,640);
+    bandIn.style.width=iw+'px';
+    var x0=40,x1=iw-100;
+    var t=ids.map(function(id,i){return {i:i,id:id,hz:hzFor(id),note:noteFor(id)};});
+    t.sort(function(a,b){return a.hz-b.hz;});
+    var lo=t[0].hz,hi=t[t.length-1].hz,span=Math.max(hi-lo,1);
+    t.forEach(function(e){e.x=x0+(e.hz-lo)/span*(x1-x0);});
+    for(var k=1;k<t.length;k++){if(t[k].x-t[k-1].x<60)t[k].x=t[k-1].x+60;}      /* min gap, keep order */
+    for(var k2=t.length-1;k2>=0;k2--){
+      if(t[k2].x>x1)t[k2].x=x1;
+      if(k2<t.length-1&&t[k2+1].x-t[k2].x<60)t[k2].x=t[k2+1].x-60;
+    }
+    bandIn.innerHTML='';
+    var rule=document.createElement('div');rule.className='rule';
+    rule.style.left=x0+'px';rule.style.width=(x1-x0)+'px';
+    bandIn.appendChild(rule);
+    bandTicks=[];
+    t.forEach(function(e){
+      var c=document.createElement('div');c.className='tick-col';
+      c.style.left=e.x+'px';
+      c.style.width=Math.max(32,e.note.length*8+12)+'px';
+      c.innerHTML='<div class="t-note">'+esc(e.note)+'</div><div class="t-line"></div>'+
+        '<div class="t-freq">'+e.hz+'</div>';
+      c.addEventListener('click',function(){ if(e.i!==bandIdx){ playSong(e.i); moveNeedle(e.i,true); } });
+      bandIn.appendChild(c);
+      clampLabel(c.querySelector('.t-note'),e.x,iw);
+      bandTicks[e.i]={x:e.x,el:c};
+    });
+    needleEl=document.createElement('div');needleEl.className='needle';
+    needleTitle=document.createElement('div');needleTitle.className='n-title';
+    needleEl.addEventListener('transitionend',applyBandActive);
+    bandIn.appendChild(needleEl);bandIn.appendChild(needleTitle);
+    var idx=0;try{var gi=ytPlayer.getPlaylistIndex();if(gi>=0)idx=gi;}catch(e){}
+    moveNeedle(idx,false);
+  }
+  function applyBandActive(){
+    /* active colors switch when the needle arrives, not when the audio switches */
+    if(!needleEl)return;
+    bandTicks.forEach(function(bt,i){
+      if(!bt)return;
+      var on=i===bandIdx;
+      bt.el.querySelector('.t-note').style.color=on?bandAccent():'';
+      bt.el.querySelector('.t-freq').style.color=on?bandAccent():'';
+    });
+    needleEl.style.background=bandAccent();
+    needleTitle.style.color=bandAccent();
+    var tt='';
+    try{if(ytPlayer.getPlaylistIndex()===bandIdx){var d=ytPlayer.getVideoData();tt=(d&&d.title)||'';}}catch(e){}
+    needleTitle.textContent=cleanTitle(tt);
+    if(bandTicks[bandIdx])clampLabel(needleTitle,bandTicks[bandIdx].x,parseFloat(bandIn.style.width)||innerWidth);
+  }
+  function moveNeedle(idx,animate){
+    if(!needleEl||!bandTicks[idx])return;
+    var x=bandTicks[idx].x;
+    bandIdx=idx;
+    if(!animate){
+      needleEl.style.transition='none';needleTitle.style.transition='none';
+      needleEl.style.left=x+'px';needleTitle.style.left=x+'px';
+      needleEl.getBoundingClientRect();
+      needleEl.style.transition='';needleTitle.style.transition='';
+      applyBandActive();
+    }else{
+      needleEl.style.left=x+'px';needleTitle.style.left=x+'px';
+    }
+    if(bandEl.scrollWidth>bandEl.clientWidth+1){
+      try{bandEl.scrollTo({left:Math.max(0,x-bandEl.clientWidth/2),behavior:animate?'smooth':'auto'});}catch(e){}
+    }
+  }
+  addEventListener('resize',function(){ if(bandTicks.length)buildBand(); });
+  function reclampBand(){
+    /* labels measure 0 while the band is display:none — re-clamp once visible */
+    if(getComputedStyle(bandEl).display==='none')return;
+    var iw=parseFloat(bandIn.style.width)||innerWidth;
+    bandTicks.forEach(function(bt){if(bt)clampLabel(bt.el.querySelector('.t-note'),bt.x,iw);});
+    if(needleTitle&&bandTicks[bandIdx])clampLabel(needleTitle,bandTicks[bandIdx].x,iw);
+  }
+  function updateModeClass(){
+    app.classList.toggle('radio-mode', fieldMode==='radio' && !app.classList.contains('browse'));
+    reclampBand();
   }
   function stopRadio(){
     if(!radioPlaying) return;
@@ -795,6 +941,8 @@
       if(ytReady)startPlayback();
     }
     radioBtn.setAttribute('aria-pressed',fieldMode==='radio');
+    updateModeClass();
+    if(needleEl)applyBandActive(); /* theme re-rolled — refresh the band accent */
     updateBrand();
   });
   app.querySelector('#me-stop').addEventListener('click', stopRadio);
