@@ -48,9 +48,6 @@
     '#me-radio.playing .wave{opacity:1;}'+
     '#me-ctrl #me-stop{display:none;}'+
     '#me-app.radio-on #me-stop{display:flex;}'+
-    '#me-btnview .ic-dial{display:none;}'+
-    '#me-app.browse #me-btnview .ic-list{display:none;}'+
-    '#me-app.browse #me-btnview .ic-dial{display:block;}'+
     '#me-tc{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';'+
       'font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
     '#me-music{position:fixed;left:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;'+
@@ -78,7 +75,7 @@
     '#me-band .needle{position:absolute;top:86px;width:1.5px;height:64px;background:#0a0a0a;'+
       'pointer-events:none;transition:left .8s cubic-bezier(.3,1.45,.5,1);}'+
     '#me-band .b-note{position:absolute;top:22px;left:50%;transform:translateX(-50%);font:700 15px/1.55 '+FONT+';'+
-      'color:#0a0a0a;text-transform:lowercase;letter-spacing:1px;white-space:nowrap;}'+
+      'color:#0a0a0a;text-transform:lowercase;letter-spacing:1px;width:84%;max-width:640px;text-align:center;}'+
     '#me-band .b-title{position:absolute;top:168px;left:50%;transform:translateX(-50%);font:700 15px/1.55 '+FONT+';'+
       'color:#0a0a0a;white-space:nowrap;}'+
     '#me-band .b-freq{position:absolute;top:194px;left:50%;transform:translateX(-50%);font-size:11px;color:#9a9a9a;'+
@@ -96,13 +93,15 @@
     '.me-row span{opacity:1;}'+
     '.me-row[data-dim] span{opacity:.35;}'+
     // player
-    '#me-player{position:fixed;inset:0;background:#000;z-index:2147483600;display:none;}'+
+    '#me-player{position:fixed;inset:0;background:#EFEFEC;z-index:2147483600;display:none;}'+
     '#me-player.show{display:block;}'+
-    '#me-embed{position:absolute;inset:0;}'+
+    '#me-embed{position:absolute;inset:6% 8%;}'+
+    '#me-player:fullscreen #me-embed{inset:0;}'+
+    '#me-player:-webkit-full-screen #me-embed{inset:0;}'+
     '#me-player iframe{position:absolute;inset:0;width:100% !important;height:100% !important;border:0;display:block;}'+
     '#me-bar{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);display:flex;align-items:center;'+
-      'gap:24px;padding:0 clamp(20px,4vw,64px);color:#fff;z-index:3;opacity:1;transition:opacity .4s ease;'+
-      'font:400 clamp(15px,1.4vw,18px)/1 '+FONT+';}'+
+      'gap:24px;padding:0 clamp(20px,4vw,64px);color:#fff;mix-blend-mode:difference;z-index:3;opacity:1;transition:opacity .4s ease;'+
+      'font:700 15px/1 '+FONT+';}'+
     '#me-bar.idle{opacity:0;}'+
     '#me-bar button{background:none;border:0;color:#fff;font:inherit;cursor:pointer;padding:4px 0;white-space:nowrap;}'+
     '#me-bar button:hover{opacity:.55;}'+
@@ -110,10 +109,10 @@
     '#me-track::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.85);transform:translateY(-50%);}'+
     '#me-head{position:absolute;top:50%;left:0;width:1px;height:13px;background:#fff;transform:translate(-50%,-50%);}'+
     '#me-close{position:absolute;top:clamp(16px,3vw,40px);right:clamp(16px,3vw,40px);z-index:4;background:none;border:0;'+
-      'color:#fff;font:400 16px/1 '+FONT+';cursor:pointer;}#me-close:hover{opacity:.55;}'+
-    '#me-info{position:absolute;top:clamp(16px,3vw,40px);left:clamp(20px,4vw,64px);z-index:4;color:#fff;'+
-      'font:400 15px/1.5 '+FONT+';max-width:60vw;opacity:0;pointer-events:none;transition:opacity .2s;}'+
-    '#me-info.show{opacity:1;}#me-info .t{font-size:20px;margin-bottom:.4em;}#me-info .d{opacity:.7;}'+
+      'color:#fff;mix-blend-mode:difference;font:700 15px/1.55 '+FONT+';cursor:pointer;}#me-close:hover{opacity:.55;}'+
+    '#me-info{position:absolute;top:clamp(16px,3vw,40px);left:clamp(20px,4vw,64px);z-index:4;color:#fff;mix-blend-mode:difference;'+
+      'font:700 15px/1.55 '+FONT+';max-width:60vw;opacity:0;pointer-events:none;transition:opacity .2s;}'+
+    '#me-info.show{opacity:1;}#me-info .t{margin-bottom:.4em;}#me-info .d{opacity:.7;}'+
     // mobile: compact desktop-style list, full-screen About
     '#me-about-screen{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;'+
       'padding:max(24px,env(safe-area-inset-top)) 24px 40px;box-sizing:border-box;overflow-y:auto;}'+
@@ -165,11 +164,6 @@
           '<line x1="3" y1="11.8" x2="6.4" y2="11.8"/>'+
           '<line x1="13.6" y1="8.2" x2="17" y2="8.2"/>'+
           '<line x1="13.6" y1="11.8" x2="17" y2="11.8"/>'+
-        '</svg>'+
-        '<svg class="ic-dial" viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">'+
-          '<circle cx="10" cy="10" r="7.4"/>'+
-          '<line x1="10" y1="10" x2="10" y2="5.6"/>'+
-          '<line x1="10" y1="10" x2="13.2" y2="11.6"/>'+
         '</svg>'+
       '</button>'+
     '</div>'+
@@ -650,9 +644,9 @@
   }
 
   function renderField(){
+    /* hover = glow only; the dial keeps its place in the stack */
     ctx.clearRect(0,0,W,H);
-    nodes.forEach(function(n,i){if(i!==hover)drawWatch(n,false);});
-    if(hover>=0)drawWatch(nodes[hover],true);
+    nodes.forEach(function(n,i){drawWatch(n,i===hover);});
   }
   (function loop(){
     if(nodes.length && !app.classList.contains('browse') && !pl.classList.contains('show')) renderField();
@@ -699,17 +693,7 @@
   });
 
   // ── view toggle + radio ─────────────────────────────────────────
-  app.querySelector('#me-btnview').addEventListener('click', function(){
-    if(app.classList.contains('browse')){
-      app.classList.remove('browse');
-    }else{
-      app.classList.add('browse');
-      tcEl.textContent='';
-      hover=-1;
-    }
-    updateModeClass();
-    updateBrand();
-  });
+  /* view navigation lives in the radio section (needs the player helpers) */
 
   /* radio — plays a YouTube playlist; current track title bottom-left */
   var radioBtn=app.querySelector('#me-radio');
@@ -747,8 +731,16 @@
   function updateTitle(){
     if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){setTitle('');return;}
     try{var d=ytPlayer.getVideoData();setTitle(cleanTitle((d&&d.title)?d.title:''));}catch(e){}
-    /* the band subscribes to track changes here — needle glides on natural advance too */
-    try{var gi=ytPlayer.getPlaylistIndex();if(gi>=0&&gi!==bandIdx&&bandTicks[gi])moveNeedle(gi,true);}catch(e){}
+    /* the band subscribes to track changes here — needle glides on natural advance too.
+       tracked by video id (shuffle remaps indices); while a manual tune is pending,
+       the poll must not yank the needle back */
+    try{
+      var d2=ytPlayer.getVideoData();
+      var vid=(d2&&d2.video_id)||'';
+      if(bandPending){
+        if(vid===bandPending){bandPending=null;if(vid!==bandId&&bandTicks[vid])moveNeedle(vid,true);}
+      }else if(vid&&vid!==bandId&&bandTicks[vid])moveNeedle(vid,true);
+    }catch(e){}
   }
   function startPlayback(){
     /* first start per load: begin at a random track, never the same one twice in a row.
@@ -761,6 +753,9 @@
         var i=Math.floor(Math.random()*list.length);
         if(i===last)i=(i+1)%list.length;
         try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
+        SONG_IDS=list.slice();
+        bandPending=SONG_IDS[i]||null;
+        ytShuffled=false;
         ytPlayer.loadPlaylist({list:MUSIC_PLAYLIST,listType:'playlist',index:i});
       }else{
         ytPlayer.playVideo();
@@ -778,7 +773,13 @@
         playerVars:{listType:'playlist',list:MUSIC_PLAYLIST},
         events:{
           onReady:function(){ytReady=true;buildSongs();if(radioPlaying)startPlayback();},
-          onStateChange:function(){buildSongs();if(!ytJumped&&radioPlaying)startPlayback();updateTitle();}
+          onStateChange:function(ev){
+            buildSongs();
+            /* always-shuffled playback: re-apply after every (re)load, plus loop */
+            if(ev&&ev.data===1&&!ytShuffled){try{ytPlayer.setShuffle(true);ytPlayer.setLoop(true);ytShuffled=true;}catch(e){}}
+            if(!ytJumped&&radioPlaying)startPlayback();
+            updateTitle();
+          }
         }
       });
     };
@@ -805,7 +806,7 @@
   bandEl.innerHTML='<div id="me-band-in"></div>';
   app.appendChild(bandEl);
   var bandIn=bandEl.querySelector('#me-band-in');
-  var RADIO_META={},bandTicks=[],bandIdx=-1,needleEl=null,bNote=null,bTitle=null,bFreq=null;
+  var RADIO_META={},bandTicks={},bandId=null,bandPending=null,SONG_IDS=[],ytShuffled=false,needleEl=null,bNote=null,bTitle=null,bFreq=null;
   fetch(RADIO_URL,{cache:'no-cache'}).then(function(r){return r.json();})
     .then(function(j){RADIO_META=(j&&j.tracks)||{};buildBand();})
     .catch(function(){buildBand();});
@@ -819,7 +820,7 @@
     var h=0;for(var i=0;i<id.length;i++){h=(h*31+id.charCodeAt(i))>>>0;}
     return 800+(h%2400);
   }
-  function noteFor(id){var m=RADIO_META[id];return (m&&m.note)?String(m.note).toLowerCase().slice(0,18):'';}
+  function noteFor(id){var m=RADIO_META[id];return (m&&m.note)?String(m.note).toLowerCase():'';}
   function fmtHz(hz){
     return hz>999?(Math.round(hz/100)/10).toFixed(1)+' khz':hz+' hz';
   }
@@ -855,15 +856,17 @@
         bandIn.appendChild(gl);
       }
     }
-    /* stations: one marker per song at its measured frequency */
-    bandTicks=[];
+    /* stations: one marker per song at its measured frequency — keyed by video id
+       so YouTube's shuffle (which remaps indices) can't confuse the needle */
+    SONG_IDS=ids.slice();
+    bandTicks={};
     st.forEach(function(e){
       var s=document.createElement('div');s.className='station';
       s.style.left=X(e.hz)+'px';
       s.innerHTML='<i></i>';
-      s.addEventListener('click',function(){ if(e.i!==bandIdx){ playSong(e.i); moveNeedle(e.i,true); } });
+      s.addEventListener('click',function(){ if(e.id!==bandId){ playSong(e.i); moveNeedle(e.id,true); } });
       bandIn.appendChild(s);
-      bandTicks[e.i]={x:X(e.hz),hz:e.hz,note:e.note,el:s};
+      bandTicks[e.id]={x:X(e.hz),hz:e.hz,note:e.note,el:s};
     });
     needleEl=document.createElement('div');needleEl.className='needle';
     needleEl.addEventListener('transitionend',applyBandActive);
@@ -871,28 +874,29 @@
     bTitle=document.createElement('div');bTitle.className='b-title';
     bFreq=document.createElement('div');bFreq.className='b-freq';
     bandIn.appendChild(needleEl);bandIn.appendChild(bNote);bandIn.appendChild(bTitle);bandIn.appendChild(bFreq);
-    var idx=0;try{var gi=ytPlayer.getPlaylistIndex();if(gi>=0)idx=gi;}catch(e){}
-    moveNeedle(idx,false);
+    var vid='';try{var d0=ytPlayer.getVideoData();vid=(d0&&d0.video_id)||'';}catch(e){}
+    moveNeedle(bandTicks[vid]?vid:ids[0],false);
   }
   function applyBandActive(){
     /* note, title, colors switch when the needle arrives, not when the audio switches */
     if(!needleEl)return;
-    bandTicks.forEach(function(bt,i){
-      if(bt)bt.el.querySelector('i').style.background=i===bandIdx?bandAccent():'';
+    Object.keys(bandTicks).forEach(function(id){
+      bandTicks[id].el.querySelector('i').style.background=id===bandId?bandAccent():'';
     });
     needleEl.style.background=bandAccent();
-    var bt=bandTicks[bandIdx]||{};
+    var bt=bandTicks[bandId]||{};
     bNote.textContent=bt.note||'';
     bNote.style.color=bandAccent();
     var tt='';
-    try{if(ytPlayer.getPlaylistIndex()===bandIdx){var d=ytPlayer.getVideoData();tt=(d&&d.title)||'';}}catch(e){}
+    try{var d=ytPlayer.getVideoData();if(d&&d.video_id===bandId)tt=d.title||'';}catch(e){}
     bTitle.textContent=cleanTitle(tt);
     bFreq.textContent=bt.hz?fmtHz(bt.hz):'';
   }
-  function moveNeedle(idx,animate){
-    if(!needleEl||!bandTicks[idx])return;
-    var x=bandTicks[idx].x;
-    bandIdx=idx;
+  var needleTimer=null;
+  function moveNeedle(id,animate){
+    if(!needleEl||!bandTicks[id])return;
+    var x=bandTicks[id].x;
+    bandId=id;
     if(!animate){
       needleEl.style.transition='none';
       needleEl.style.left=x+'px';
@@ -901,12 +905,15 @@
       applyBandActive();
     }else{
       needleEl.style.left=x+'px';
+      /* transitionend can be lost in hidden tabs — make sure the swap still lands */
+      clearTimeout(needleTimer);
+      needleTimer=setTimeout(applyBandActive,900);
     }
     if(bandEl.scrollWidth>bandEl.clientWidth+1){
       try{bandEl.scrollTo({left:Math.max(0,x-bandEl.clientWidth/2),behavior:animate?'smooth':'auto'});}catch(e){}
     }
   }
-  addEventListener('resize',function(){ if(bandTicks.length)buildBand(); });
+  addEventListener('resize',function(){ if(SONG_IDS.length)buildBand(); });
   function updateModeClass(){
     app.classList.toggle('radio-mode', fieldMode==='radio' && !app.classList.contains('browse'));
   }
@@ -931,26 +938,48 @@
     if(!ytReady) return;
     try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
     armRadio();
-    try{
-      if(!ytJumped){ytJumped=true;ytPlayer.loadPlaylist({list:MUSIC_PLAYLIST,listType:'playlist',index:i});}
-      else ytPlayer.playVideoAt(i);
-    }catch(e){}
+    ytJumped=true;
+    bandPending=SONG_IDS[i]||null;
+    ytShuffled=false;
+    /* loadPlaylist is deterministic even while a previous load is settling */
+    try{ytPlayer.loadPlaylist({list:MUSIC_PLAYLIST,listType:'playlist',index:i});}catch(e){}
   }
-  radioBtn.addEventListener('click', function(){
-    if(fieldMode==='radio'){
-      fieldMode='dial';   /* leave the radio view — the song keeps playing */
-      rearrange();
-    }else{
-      fieldMode='radio';
-      app.classList.remove('browse'); /* the radio view lives on the dial field */
-      rearrange();
-      armRadio();
-      if(ytReady)startPlayback();
-    }
-    radioBtn.setAttribute('aria-pressed',fieldMode==='radio');
+  /* three views, two buttons: film and radio open their view; clicking the
+     view you are already on returns to the main dial page. music is untouched
+     by navigation — only stop or opening a film ends it. */
+  function currentView(){
+    return app.classList.contains('browse')?'film':(fieldMode==='radio'?'radio':'dial');
+  }
+  function goDial(){
+    app.classList.remove('browse');
+    fieldMode='dial';
+    rearrange(); /* returning home always deals a fresh composition */
+    tcEl.textContent='';hover=-1;
+    radioBtn.setAttribute('aria-pressed','false');
+    updateModeClass();updateBrand();
+  }
+  function goFilm(){
+    app.classList.add('browse');
+    tcEl.textContent='';hover=-1;
+    radioBtn.setAttribute('aria-pressed','false');
+    updateModeClass();updateBrand();
+  }
+  function goRadio(){
+    fieldMode='radio';
+    app.classList.remove('browse');
+    rearrange();
+    armRadio();
+    if(ytReady)startPlayback();
+    radioBtn.setAttribute('aria-pressed','true');
     updateModeClass();
     if(needleEl)applyBandActive(); /* theme re-rolled — refresh the band accent */
     updateBrand();
+  }
+  app.querySelector('#me-btnview').addEventListener('click', function(){
+    if(currentView()==='film')goDial();else goFilm();
+  });
+  radioBtn.addEventListener('click', function(){
+    if(currentView()==='radio')goDial();else goRadio();
   });
   app.querySelector('#me-stop').addEventListener('click', stopRadio);
   brandEl.addEventListener('click', function(){ openAboutScreen(); });
@@ -1042,7 +1071,7 @@
     infoEl.innerHTML='<div class="t">'+esc(p.title)+'</div><div>'+esc(p.client)+'</div>'+
       '<div class="d">'+[p.type,p.location,p.year].filter(Boolean).map(esc).join('<br>')+'</div>';
     if(player) player.destroy();
-    var opt={controls:false,title:false,byline:false,portrait:false};
+    var opt={controls:false,title:false,byline:false,portrait:false,transparent:true,quality:'1080p'};
     if(/^\d+$/.test(String(p.film))) opt.id=Number(p.film); else opt.url=p.film;
     player=new Vimeo.Player('me-embed',opt);
     bPlay.textContent='pause'; bMute.textContent='mute';
