@@ -433,7 +433,7 @@
       /* grey cones can still wear a small foreign hairline */
       n.foreignHair=!n.accent&&!monoMode&&r()<0.28;
       /* soundbox leftovers from the reference — corner screws + dust-cap dome — show rarely */
-      n.style.cornerDots=r()<0.1;
+      n.style.cornerDots=r()<0.35; /* squares are ~1 in 5 dials, so ≈ one screwed plate per load */
       n.style.dome=r()<0.1;
     });
   }
