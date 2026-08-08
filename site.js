@@ -18,7 +18,6 @@
   var DATA_URL     = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/website-projects.json";
   var MUSIC_PLAYLIST = "PLAMrTQJLnU5E"; // YouTube playlist id for the radio
   var ABOUT_EMAIL  = "m@michelelsasser.com";
-  var FORMSPREE_ID = "xkolzzba"; // Formspree form id
   var ABOUT_INSTAGRAM = "@michelelsasser";
   var ABOUT_TEXT =
     "Hi, I’m Michel. I’m a Swiss director based in Zurich. Born near Baden, I grew up in a small "+
@@ -52,12 +51,15 @@
     '#me-tc{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';'+
       'font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
     '#me-music{position:fixed;left:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;'+
-      'pointer-events:none;min-height:1em;max-width:44vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'+
+      'pointer-events:none;min-height:1em;max-width:44vw;white-space:nowrap;overflow:hidden;}'+
+    '#me-music .in{display:inline-block;white-space:nowrap;}'+
+    '#me-music.scroll .in{animation:me-marq 6s ease-in-out infinite alternate;}'+
+    '@keyframes me-marq{from{transform:translateX(0);}to{transform:translateX(var(--me-shift,0px));}}'+
     '#me-app.browse #me-tc{display:none;}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
-    '#me-list{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(70%,900px);'+
+    '#me-list{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:84%;'+
       'font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '.me-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(0,3fr) minmax(0,2fr);gap:1em;cursor:pointer;}'+
     '.me-row.head{cursor:default;margin-bottom:.2em;}'+
@@ -91,30 +93,6 @@
       'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
     '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
-    // time-capsule
-    '#me-cap-mobile{display:none;}'+
-    '#me-clock-mobile{display:none;}'+
-    '#me-cap{position:fixed;inset:0;background:rgba(0,0,0,.32);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);'+
-      'z-index:2147483750;display:none;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:'+FONT+';}'+
-    '#me-cap.show{display:flex;}'+
-    '#me-cap-card{position:relative;width:100%;max-width:520px;background:#fff;border-radius:22px;'+
-      'padding:44px 44px 36px;box-sizing:border-box;color:#111;box-shadow:0 24px 70px rgba(0,0,0,.28);}'+
-    '#me-cap h2{font:600 24px/1.3 '+FONT+';margin:0 0 24px;padding-right:36px;letter-spacing:-.02em;}'+
-    '#me-cap-close{position:absolute;top:22px;right:22px;width:30px;height:30px;display:flex;align-items:center;'+
-      'justify-content:center;background:#f1f1ef;border:0;border-radius:50%;cursor:pointer;color:#555;'+
-      'font:400 16px/1 '+FONT+';transition:background .15s,color .15s;}'+
-    '#me-cap-close:hover{background:#e5e5e2;color:#111;}'+
-    '#me-cap textarea{width:100%;box-sizing:border-box;min-height:140px;resize:none;'+
-      'border:1px solid #e4e4e1;border-radius:14px;padding:16px 18px;font:400 16px/1.55 '+FONT+';color:#111;'+
-      'background:#fafafa;transition:border-color .15s,background .15s;}'+
-    '#me-cap textarea::placeholder{color:#aaa;}'+
-    '#me-cap textarea:focus{outline:none;border-color:#111;background:#fff;}'+
-    '#me-cap .row{display:flex;gap:14px;align-items:center;margin-top:24px;}'+
-    '#me-send{background:#111;color:#fff;border:0;border-radius:980px;padding:13px 30px;'+
-      'font:500 15px/1 '+FONT+';cursor:pointer;transition:opacity .15s;}'+
-    '#me-send:hover{opacity:.85;}'+
-    '#me-send:disabled{opacity:.4;cursor:default;}'+
-    '#me-cap .status{font:400 14px/1.5 '+FONT+';color:#888;}'+
     '@media (max-width:700px){'+
       '#me-app.browse #me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
@@ -123,13 +101,8 @@
       '.me-row{grid-template-columns:3em 2.4em minmax(0,1fr);gap:.6em;padding:7px 0;}'+
       '.me-row span{font-size:14px;}'+
       '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
-      '#me-cap-mobile{display:block;margin-top:64px;width:100%;font:700 28px/1.05 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;cursor:pointer;box-sizing:border-box;}'+
-      '#me-clock-mobile{display:block;margin-top:10px;width:100%;font:700 13vw/1 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;box-sizing:border-box;}'+
+      '#me-music{max-width:calc(100vw - 2.4rem);}'+
       '#me-bar [data-a="full"]{display:none;}'+
-    '}'+
-    '@media (max-height:500px) and (orientation:landscape){'+
-      '#me-clock-mobile{display:none !important;}'+
-      '#me-cap-mobile{display:none !important;}'+
     '}';
   document.head.appendChild(st);
 
@@ -169,40 +142,6 @@
   var listEl=app.querySelector('#me-list');
   var tcEl=app.querySelector('#me-tc');
 
-  var CAP_QUESTIONS=[
-    'Which clock in your flat is wrong?',
-    'Do you own a watch that stopped and stayed stopped?',
-    'Whose alarm is still set in your phone?',
-    'Does anything in your flat still blink at midnight?',
-    'Is anything in your flat still celebrating a past holiday?',
-    'Which timer are you still hearing in your head?',
-    'Does your oven know what year it is?',
-    'Is the sun aware of your schedule?',
-    'Is the earth turning at your pace?',
-    'Does the moon expect anything from you?',
-    'Has the ocean been consulted?',
-    'Do the stars run late?',
-    'Is the horizon waiting on you?',
-    'Has the mountain been informed?',
-    'Has the wind confirmed for Thursday?',
-    'Does the tree know it’s Monday?',
-    'Does your fridge hum without you?',
-    'Is your desk indifferent to your work?',
-    'Do the birds know it’s the weekend?',
-    'Does the pavement care who walks on it?',
-    'Is the rain aware it’s inconvenient?',
-    'What should outlast today?',
-    'Who will throw away your cables?',
-    'How much of today will survive the year?'
-  ];
-  var CAP_LABEL=CAP_QUESTIONS[Math.floor(Math.random()*CAP_QUESTIONS.length)];
-
-  function fmtClock(){
-    var d=new Date();
-    function p(n,len){return String(n).padStart(len||2,'0');}
-    return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+':'+p(Math.floor(d.getMilliseconds()/10));
-  }
-
   var pl=document.createElement('div'); pl.id='me-player';
   pl.innerHTML='<div id="me-embed"></div><button id="me-close">close</button><div id="me-info"></div>'+
     '<div id="me-bar"><button data-a="play">play</button><button data-a="mute">mute</button>'+
@@ -213,7 +152,6 @@
   var infoEl=pl.querySelector('#me-info');
   var bPlay=bar.querySelector('[data-a=play]'), bMute=bar.querySelector('[data-a=mute]'), bFull=bar.querySelector('[data-a=full]');
   var player=null, dragging=false, PROJECTS=[];
-  var refitCap=function(){}; // set once the mobile capsule row exists
 
   // ── dial field — every film is a clock ──────────────────────────
   var DIALS=[];
@@ -714,7 +652,6 @@
       app.classList.add('browse');
       tcEl.textContent='';
       hover=-1;
-      refitCap();
     }
     updateBrand();
   });
@@ -727,9 +664,26 @@
     brandEl.textContent=radioPlaying?'DIAL RADIO':(app.classList.contains('browse')?'DIAL FILM':'DIAL');
   }
   var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null,ytJumped=false;
+  var musicIn=document.createElement('span');musicIn.className='in';musicEl.appendChild(musicIn);
+  var lastTitle='';
+  function setTitle(t){
+    /* full title always readable — marquee back and forth when wider than the label */
+    if(t===lastTitle) return;
+    lastTitle=t;
+    musicIn.textContent=t;
+    musicEl.classList.remove('scroll');
+    musicIn.style.removeProperty('--me-shift');
+    if(!t) return;
+    var over=musicIn.scrollWidth-musicEl.clientWidth;
+    if(over>2){
+      musicIn.style.setProperty('--me-shift',(-over)+'px');
+      musicIn.style.animationDuration=Math.max(4,over/25)+'s';
+      musicEl.classList.add('scroll');
+    }
+  }
   function updateTitle(){
-    if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){musicEl.textContent='';return;}
-    try{var d=ytPlayer.getVideoData();musicEl.textContent=(d&&d.title)?d.title:'';}catch(e){}
+    if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){setTitle('');return;}
+    try{var d=ytPlayer.getVideoData();setTitle((d&&d.title)?d.title:'');}catch(e){}
   }
   function startPlayback(){
     /* first start per load: jump to a random track, never the same one twice in a row */
@@ -776,7 +730,7 @@
       clearInterval(titleTimer);titleTimer=setInterval(updateTitle,800);
     }else{
       if(ytReady){try{ytPlayer.pauseVideo();}catch(e){}}
-      clearInterval(titleTimer);musicEl.textContent='';
+      clearInterval(titleTimer);setTitle('');
     }
   });
 
@@ -803,36 +757,6 @@
         return {year:+p.year||0,no:p.num||String(i+1).padStart(3,'0'),client:p.client,title:p.title,cat:p.type||'',p:p};
       }));
     sizeField();
-
-    var clockMobile=document.createElement('div');
-    clockMobile.id='me-clock-mobile';
-    clockMobile.textContent=fmtClock();
-    var capRow=document.createElement('div');
-    capRow.id='me-cap-mobile';
-    capRow.textContent=CAP_LABEL;
-    capRow.addEventListener('click', function(){ openCapsule(); });
-    listEl.appendChild(capRow);
-    listEl.appendChild(clockMobile);
-    setInterval(function(){ clockMobile.textContent=fmtClock(); },30);
-    function fitCapToClock(){
-      if(!isMobile()) return;
-      if(!clockMobile.isConnected||!capRow.isConnected) return;
-      if(!capRow.offsetParent) return; // list hidden (dial view) — measure when shown
-      var meas=document.createElement('span');
-      meas.style.cssText='position:absolute;visibility:hidden;white-space:nowrap;font:'+getComputedStyle(clockMobile).font;
-      meas.textContent=clockMobile.textContent;
-      document.body.appendChild(meas);
-      var clockTextW=meas.getBoundingClientRect().width;
-      document.body.removeChild(meas);
-      capRow.style.fontSize='100px';
-      var capW=capRow.scrollWidth;
-      if(capW>0 && clockTextW>0) capRow.style.fontSize=(100*(clockTextW/capW)*0.99)+'px';
-    }
-    refitCap=fitCapToClock;
-    fitCapToClock();
-    setTimeout(fitCapToClock,60);
-    setTimeout(fitCapToClock,300);
-    window.addEventListener('resize', fitCapToClock);
   }).catch(function(e){ console.error('[site-data]',e); listEl.textContent='Could not load projects.'; });
 
   // ── about ───────────────────────────────────────────────────────
@@ -937,46 +861,6 @@
   var t; function wake(){ bar.classList.remove('idle'); clearTimeout(t);
     t=setTimeout(function(){ if(player) player.getPaused().then(function(x){ if(!x) bar.classList.add('idle'); }); },2500); }
   pl.addEventListener('mousemove',wake);
-
-  // ── time capsule ────────────────────────────────────────────────
-  var cap=document.createElement('div'); cap.id='me-cap';
-  cap.innerHTML=
-    '<div id="me-cap-card">'+
-      '<button id="me-cap-close" aria-label="close">×</button>'+
-      '<h2>'+esc(CAP_LABEL)+'</h2>'+
-      '<textarea id="me-msg" placeholder="Write something…"></textarea>'+
-      '<div class="row"><button id="me-send">Send</button><span class="status"></span></div>'+
-    '</div>';
-  document.body.appendChild(cap);
-
-  var capClose=cap.querySelector('#me-cap-close');
-  var msg=cap.querySelector('#me-msg');
-  var sendBtn=cap.querySelector('#me-send');
-  var statusEl=cap.querySelector('.status');
-
-  function openCapsule(){ cap.classList.add('show'); }
-  function closeCapsule(){ cap.classList.remove('show'); }
-  capClose.addEventListener('click', closeCapsule);
-  cap.addEventListener('click', function(e){ if(e.target===cap) closeCapsule(); });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && cap.classList.contains('show')) closeCapsule(); });
-
-  sendBtn.addEventListener('click', function(){
-    if(!msg.value.trim()){ statusEl.textContent='Write something first.'; return; }
-    if(FORMSPREE_ID==='YOUR_FORM_ID'){ statusEl.textContent='Not configured yet.'; return; }
-    sendBtn.disabled=true; statusEl.textContent='Sending…';
-    var fd=new FormData();
-    fd.append('message', msg.value);
-    fd.append('_subject', CAP_LABEL);
-    fetch('https://formspree.io/f/'+FORMSPREE_ID, { method:'POST', body:fd, headers:{'Accept':'application/json'} })
-      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
-      .then(function(res){
-        if(res.ok){ statusEl.textContent='Sent. Thank you.'; msg.value='';
-          setTimeout(closeCapsule,1200); }
-        else { statusEl.textContent=(res.j && res.j.error) ? res.j.error : 'Something went wrong.'; }
-        sendBtn.disabled=false;
-      })
-      .catch(function(){ statusEl.textContent='Network error. Try again.'; sendBtn.disabled=false; });
-  });
 
   sizeField();
 })();
