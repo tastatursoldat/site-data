@@ -59,10 +59,10 @@
     '#me-app.browse #me-browse{display:block;}'+
     '#me-list{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(70%,900px);'+
       'font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
-    '.me-row{display:grid;grid-template-columns:1fr 1fr 2fr 3fr 2fr;gap:1em;cursor:pointer;}'+
+    '.me-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(0,3fr) minmax(0,2fr);gap:1em;cursor:pointer;}'+
     '.me-row.head{cursor:default;margin-bottom:.2em;}'+
     '.me-row.about span{color:#b3b3b3;}'+
-    '.me-row span{transition:opacity .15s ease;white-space:nowrap;}'+
+    '.me-row span{transition:opacity .15s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'+
     '.me-row span{opacity:1;}'+
     '.me-row[data-dim] span{opacity:.35;}'+
     // player
@@ -120,7 +120,7 @@
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
       '#me-list{position:relative;left:auto;top:auto;transform:none;width:100%;'+
         'padding:0 18px;box-sizing:border-box;font-size:14px;}'+
-      '.me-row{grid-template-columns:3em 2.4em 1fr;gap:.6em;padding:7px 0;}'+
+      '.me-row{grid-template-columns:3em 2.4em minmax(0,1fr);gap:.6em;padding:7px 0;}'+
       '.me-row span{font-size:14px;}'+
       '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
       '#me-cap-mobile{display:block;margin-top:64px;width:100%;font:700 28px/1.05 '+FONT+';color:#111;letter-spacing:.01em;white-space:nowrap;text-align:center;cursor:pointer;box-sizing:border-box;}'+
@@ -138,7 +138,7 @@
   app.innerHTML=
     '<div id="me-dial"><canvas id="me-field" aria-label="Films as dials — click one to open the film"></canvas></div>'+
     '<div id="me-browse"><div id="me-list"></div></div>'+
-    '<div id="me-brand">DIAL FILM</div>'+
+    '<div id="me-brand">DIAL</div>'+
     '<div id="me-ctrl">'+
       '<button id="me-radio" class="icon" aria-pressed="false" aria-label="Radio — toggle music">'+
         '<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">'+
@@ -716,12 +716,16 @@
       hover=-1;
       refitCap();
     }
+    updateBrand();
   });
 
   /* radio — plays a YouTube playlist; current track title bottom-left */
   var radioBtn=app.querySelector('#me-radio');
   var musicEl=app.querySelector('#me-music');
   var brandEl=app.querySelector('#me-brand');
+  function updateBrand(){
+    brandEl.textContent=radioPlaying?'DIAL RADIO':(app.classList.contains('browse')?'DIAL FILM':'DIAL');
+  }
   var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null,ytJumped=false;
   function updateTitle(){
     if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){musicEl.textContent='';return;}
@@ -766,7 +770,7 @@
     radioPlaying=!radioPlaying;
     radioBtn.classList.toggle('playing',radioPlaying);
     radioBtn.setAttribute('aria-pressed',radioPlaying);
-    brandEl.textContent=radioPlaying?'DIAL RADIO':'DIAL FILM';
+    updateBrand();
     if(radioPlaying){
       if(ytReady)startPlayback();
       clearInterval(titleTimer);titleTimer=setInterval(updateTitle,800);
