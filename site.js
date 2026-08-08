@@ -129,11 +129,6 @@
     '#me-send:disabled{opacity:.4;cursor:default;}'+
     '#me-cap .status{font:400 14px/1.5 '+FONT+';color:#888;}'+
     '@media (max-width:700px){'+
-      '#me-dial{display:none !important;}'+
-      '#me-brand{display:none !important;}'+
-      '#me-ctrl{display:none !important;}'+
-      '#me-tc{display:none !important;}'+
-      '#me-app{background:#fff;}'+
       '#me-app.browse #me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
       '#me-list{position:relative;left:auto;top:auto;transform:none;width:100%;'+
@@ -251,6 +246,7 @@
   var infoEl=pl.querySelector('#me-info');
   var bPlay=bar.querySelector('[data-a=play]'), bMute=bar.querySelector('[data-a=mute]'), bFull=bar.querySelector('[data-a=full]');
   var player=null, dragging=false, PROJECTS=[];
+  var refitCap=function(){}; // set once the mobile capsule row exists
 
   // ── dial field — every film is a clock ──────────────────────────
   var DIALS=[];
@@ -269,7 +265,6 @@
 
   var cvs=app.querySelector('#me-field'),ctx=cvs.getContext('2d');
   var W=0,H=0,DPR=Math.min(devicePixelRatio||1,2),nodes=[],hover=-1;
-  var autoBrowse=false; // browse entered by the mobile check, not by the user
 
   function rng(seed){var s=seed>>>0||1;return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
   function shade(hex,amt){var n=parseInt(hex.slice(1),16);
@@ -685,9 +680,6 @@
     cvs.width=W*DPR;cvs.height=H*DPR;
     ctx.setTransform(DPR,0,0,DPR,0,0);
     layoutField();
-    /* the mobile check can fire while a preview iframe is still 0-wide —
-       once the viewport settles to desktop size, undo the automatic browse */
-    if(autoBrowse && !isMobile()){ autoBrowse=false; app.classList.remove('browse'); }
   }
   addEventListener('resize',sizeField);
   /* preview iframes settle late — re-measure once after load */
@@ -718,7 +710,6 @@
 
   // ── view toggle + radio ─────────────────────────────────────────
   app.querySelector('#me-btnview').addEventListener('click', function(){
-    autoBrowse=false;
     if(app.classList.contains('browse')){
       app.classList.remove('browse');
     }else{
@@ -726,7 +717,7 @@
       tcEl.textContent='';
       hover=-1;
       clearStage();
-      requestAnimationFrame(sizeClock);
+      sizeClock(); refitCap();
     }
   });
 
@@ -794,6 +785,7 @@
     function fitCapToClock(){
       if(!isMobile()) return;
       if(!clockMobile.isConnected||!capRow.isConnected) return;
+      if(!capRow.offsetParent) return; // list hidden (dial view) — measure when shown
       var meas=document.createElement('span');
       meas.style.cssText='position:absolute;visibility:hidden;white-space:nowrap;font:'+getComputedStyle(clockMobile).font;
       meas.textContent=clockMobile.textContent;
@@ -804,7 +796,7 @@
       var capW=capRow.scrollWidth;
       if(capW>0 && clockTextW>0) capRow.style.fontSize=(100*(clockTextW/capW)*0.99)+'px';
     }
-    if(isMobile()){ app.classList.add('browse'); clearStage(); autoBrowse=true; }
+    refitCap=fitCapToClock;
     fitCapToClock();
     setTimeout(fitCapToClock,60);
     setTimeout(fitCapToClock,300);
