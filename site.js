@@ -815,6 +815,9 @@
     return 800+(h%2400);
   }
   function noteFor(id){var m=RADIO_META[id];return (m&&m.note)?String(m.note).toLowerCase().slice(0,18):'';}
+  function fmtHz(hz){
+    return hz>999?(Math.round(hz/100)/10).toFixed(1)+' khz':hz+' hz';
+  }
   function bandAccent(){return theme.key;}
   function clampLabel(el,x,iw){
     /* keep centered labels inside the band near the edges */
@@ -848,7 +851,7 @@
       c.style.left=e.x+'px';
       c.style.width=Math.max(32,e.note.length*8+12)+'px';
       c.innerHTML='<div class="t-note">'+esc(e.note)+'</div><div class="t-line"></div>'+
-        '<div class="t-freq">'+e.hz+'</div>';
+        '<div class="t-freq">'+fmtHz(e.hz)+'</div>';
       c.addEventListener('click',function(){ if(e.i!==bandIdx){ playSong(e.i); moveNeedle(e.i,true); } });
       bandIn.appendChild(c);
       clampLabel(c.querySelector('.t-note'),e.x,iw);
