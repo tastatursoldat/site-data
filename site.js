@@ -16,7 +16,7 @@
   document.head.appendChild(vp);
   document.title='DIAL — Michel Elsasser';
   var DATA_URL     = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/website-projects.json";
-  var MUSIC_PLAYLIST = "UUSJ4gkVC6NrvII8umztf0Ow"; // YouTube playlist id for the radio
+  var MUSIC_PLAYLIST = "PLAMrTQJLnU5E"; // YouTube playlist id for the radio
   var ABOUT_EMAIL  = "m@michelelsasser.com";
   var FORMSPREE_ID = "xkolzzba"; // Formspree form id
   var ABOUT_INSTAGRAM = "@michelelsasser";
