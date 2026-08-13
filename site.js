@@ -73,7 +73,8 @@
     '#me-band .g-label{position:absolute;top:70px;transform:translateX(-50%);font-size:12px;color:#bdbdbd;'+
       'font-variant-numeric:tabular-nums;white-space:nowrap;}'+
     '#me-band .g-label.am{top:142px;font-size:10px;}'+
-    '#me-band .g-unit{position:absolute;font-size:9px;color:#bdbdbd;letter-spacing:.5px;}'+
+    /* the band designations are printed on the glass, not the wheel */
+    '#me-band .g-unit{position:absolute;left:1.2rem;font-size:10px;color:#bdbdbd;letter-spacing:1px;}'+
     '#me-band .station{position:absolute;top:88px;height:26px;width:2px;transform:translateX(-50%);}'+
     '#me-band .station i{position:absolute;left:0;top:0;width:2px;height:26px;background:#c2c2be;'+
       'transition:background .25s ease;}'+
@@ -1564,80 +1565,87 @@
     var u=mx>mn?(hzFor(id)-mn)/(mx-mn):0.5;
     return 88.9+u*(107.1-88.9);
   }
-  function fmtMhz(m){return m.toFixed(1)+' mhz';}
+  function fmtMhz(m){return m.toFixed(1);} /* the dial speaks in plain numbers */
   function bandAccent(){return theme.key;}
   function buildBand(){
     var ids=SONG_IDS.length?SONG_IDS.slice():null;
     if(!ids){try{ids=ytPlayer&&ytPlayer.getPlaylist?ytPlayer.getPlaylist():null;}catch(e){return;}}
     if(!ids||!ids.length)return;
     SONG_IDS=ids.slice();
-    /* the scale is much wider than the screen — a wheel with real travel */
-    var SW=Math.max(1500,Math.round((bandEl.clientWidth||innerWidth)*2.2));
-    bandIn.style.width=SW+'px';
-    var x0=60,x1=SW-60;
-    function X(m){return x0+(m-FM_LO)/(FM_HI-FM_LO)*(x1-x0);}
-    bandCal={x0:x0,x1:x1};
+    /* the dial is a wheel: one cycle covers 88..108 plus a half-tick seam
+       back to 88, and the strip carries three joined copies so the viewport
+       is never empty — crossing the seam just re-normalises the position */
+    var CY=FM_HI-FM_LO+0.5;
+    var px=Math.max(72,Math.round((bandEl.clientWidth||innerWidth)*1.4/CY)); /* px per mhz */
+    var P=CY*px,x0=P;                              /* world x of 88.0, middle copy */
+    bandIn.style.width=(3*P)+'px';
+    bandCal={x0:x0,P:P,px:px};
     bandIn.classList.remove('glide');
     bandIn.innerHTML='';
-    /* fm graduation: labelled majors every 2 mhz, fine ticks every 0.5 */
+    /* both rules run the full strip — the scale never visibly ends */
     var rF=document.createElement('div');rF.className='rule';
-    rF.style.left=x0+'px';rF.style.width=(x1-x0)+'px';rF.style.top='100px';
+    rF.style.left='0';rF.style.width=(3*P)+'px';rF.style.top='100px';
     bandIn.appendChild(rF);
-    for(var m=FM_LO;m<=FM_HI+0.001;m+=0.5){
-      var mj=Math.abs(m/2-Math.round(m/2))<0.001;
-      var gt=document.createElement('div');
-      gt.className='g-tick'+(mj?' major':'');
-      gt.style.left=X(m)+'px';
-      gt.style.top=mj?'88px':'94px';
-      gt.style.height=mj?'12px':'6px';
-      bandIn.appendChild(gt);
-      if(mj){
-        var gl=document.createElement('div');gl.className='g-label';
-        gl.style.left=X(m)+'px';gl.textContent=String(Math.round(m));
-        bandIn.appendChild(gl);
-      }
-    }
-    var uF=document.createElement('div');uF.className='g-unit';
-    uF.style.left=(x1+16)+'px';uF.style.top='70px';uF.textContent='mhz';
-    bandIn.appendChild(uF);
-    /* decorative am row, log-spaced like a real dual-scale dial */
     var rA=document.createElement('div');rA.className='rule';
-    rA.style.left=x0+'px';rA.style.width=(x1-x0)+'px';rA.style.top='134px';
+    rA.style.left='0';rA.style.width=(3*P)+'px';rA.style.top='134px';
     bandIn.appendChild(rA);
     var la=Math.log(550),lb=Math.log(1600);
-    [550,600,700,800,1000,1200,1400,1600].forEach(function(f){
-      var ax=x0+(Math.log(f)-la)/(lb-la)*(x1-x0);
-      var at=document.createElement('div');at.className='g-tick major';
-      at.style.left=ax+'px';at.style.top='134px';at.style.height='8px';
-      bandIn.appendChild(at);
-      var al=document.createElement('div');al.className='g-label am';
-      al.style.left=ax+'px';al.textContent=String(f);
-      bandIn.appendChild(al);
-    });
-    var uA=document.createElement('div');uA.className='g-unit';
-    uA.style.left=(x1+16)+'px';uA.style.top='142px';uA.textContent='khz';
-    bandIn.appendChild(uA);
-    /* stations: one marker per song, keyed by video id */
     bandTicks={};
-    ids.forEach(function(id){
-      var s=document.createElement('div');s.className='station';
-      var sm=mhzFor(ids,id),sx=X(sm);
-      s.style.left=sx+'px';
-      s.innerHTML='<i></i>';
-      bandIn.appendChild(s);
-      bandTicks[id]={x:sx,mhz:sm,note:noteFor(id),el:s};
-    });
-    /* the glass chrome — needle and readouts — is fixed on the set, built once */
+    for(var k=-1;k<=1;k++){
+      var off=x0+k*P;
+      /* fm graduation: plain numbers on the majors, like the printed dial */
+      for(var m=FM_LO;m<=FM_HI+0.001;m+=0.5){
+        var mj=Math.abs(m/2-Math.round(m/2))<0.001;
+        var gt=document.createElement('div');
+        gt.className='g-tick'+(mj?' major':'');
+        gt.style.left=(off+(m-FM_LO)*px)+'px';
+        gt.style.top=mj?'88px':'94px';
+        gt.style.height=mj?'12px':'6px';
+        bandIn.appendChild(gt);
+        if(mj){
+          var gl=document.createElement('div');gl.className='g-label';
+          gl.style.left=(off+(m-FM_LO)*px)+'px';gl.textContent=String(Math.round(m));
+          bandIn.appendChild(gl);
+        }
+      }
+      /* decorative am row, log-spaced across the cycle */
+      [550,600,700,800,1000,1200,1400,1600].forEach(function(f){
+        var ax=off+(Math.log(f)-la)/(lb-la)*(P-px*0.5);
+        var at=document.createElement('div');at.className='g-tick major';
+        at.style.left=ax+'px';at.style.top='134px';at.style.height='8px';
+        bandIn.appendChild(at);
+        var al=document.createElement('div');al.className='g-label am';
+        al.style.left=ax+'px';al.textContent=String(f);
+        bandIn.appendChild(al);
+      });
+      /* stations repeat in every copy so the wheel finds them from any side */
+      ids.forEach(function(id){
+        var sm=mhzFor(ids,id),sx=off+(sm-FM_LO)*px;
+        var s=document.createElement('div');s.className='station';
+        s.style.left=sx+'px';
+        s.innerHTML='<i></i>';
+        bandIn.appendChild(s);
+        if(!bandTicks[id])bandTicks[id]={x:x0+(sm-FM_LO)*px,mhz:sm,note:noteFor(id),els:[]};
+        bandTicks[id].els.push(s.querySelector('i'));
+      });
+    }
+    /* the glass chrome — needle, readouts, band designations — built once */
     if(!needleEl){
       needleEl=document.createElement('div');needleEl.className='needle';
       bNote=document.createElement('div');bNote.className='b-note';
       bTitle=document.createElement('div');bTitle.className='b-title';
       bFreq=document.createElement('div');bFreq.className='b-freq';
-      bandEl.appendChild(needleEl);bandEl.appendChild(bNote);bandEl.appendChild(bTitle);bandEl.appendChild(bFreq);
+      var tF=document.createElement('div');tF.className='g-unit';tF.style.top='70px';tF.textContent='fm';
+      var tA=document.createElement('div');tA.className='g-unit';tA.style.top='142px';tA.textContent='am';
+      bandEl.appendChild(needleEl);bandEl.appendChild(bNote);bandEl.appendChild(bTitle);
+      bandEl.appendChild(bFreq);bandEl.appendChild(tF);bandEl.appendChild(tA);
     }
     paintDial();
     if(pendingDial&&bandTicks[pendingDial]){var pd=pendingDial;pendingDial=null;bandId=pd;parkDial(pd);}
-    else setDial(dialU>=0?x0+dialU*(x1-x0):(x0+x1)/2,false);
+    /* a rebuild can remap stations (radio.json landing after the first build):
+       an untouched dial follows its station to the new position */
+    else if(!dialTouched&&bandId&&bandTicks[bandId])parkDial(bandId);
+    else setDial(dialU>=0?x0+dialU*P:x0+P/2,false);
   }
   function paintDial(){
     /* the theme colour lives on the needle and the note */
@@ -1654,19 +1662,22 @@
   var bandCal=null,dialNx=-1,dialU=-1,pendingDial=null,pendingSeek=null;
   var wheelGrab=null,wheelV=0,wheelRAF=null,tuneQueuedId=null,tuneLoadTimer=null,dialTouched=false;
   function nearestStation(x){
+    /* distance on the circle — a station just past the seam is still close */
     var best=null;
     Object.keys(bandTicks).forEach(function(id){
-      var d=Math.abs(bandTicks[id].x-x);
+      var d0=Math.abs(bandTicks[id].x-x)%bandCal.P;
+      var d=Math.min(d0,bandCal.P-d0);
       if(!best||d<best.d)best={id:id,d:d,x:bandTicks[id].x};
     });
     return best;
   }
   function mhzAt(x){
     if(!bandCal)return FM_LO;
-    var u=(x-bandCal.x0)/(bandCal.x1-bandCal.x0);
-    return FM_LO+Math.max(0,Math.min(1,u))*(FM_HI-FM_LO);
+    var m=FM_LO+(x-bandCal.x0)/bandCal.px;
+    if(m>FM_HI+0.25)m-=FM_HI-FM_LO+0.5; /* the seam half-tick reads as low 88s */
+    return m;
   }
-  function tuneZone(){return bandCal?(bandCal.x1-bandCal.x0)*1.1/(FM_HI-FM_LO):40;} /* ≈1.1 mhz of signal */
+  function tuneZone(){return bandCal?bandCal.px*1.1:40;} /* ≈1.1 mhz of signal */
   function currentVid(){
     var v='';try{var d=ytPlayer.getVideoData();v=(d&&d.video_id)||'';}catch(e){}
     return v;
@@ -1679,8 +1690,10 @@
   }
   function setDial(nx,glide){
     if(!bandCal)return;
-    nx=Math.max(bandCal.x0,Math.min(bandCal.x1,nx));
-    dialNx=nx;dialU=(nx-bandCal.x0)/(bandCal.x1-bandCal.x0);
+    /* the wheel has no ends — position wraps around the cycle. the strip
+       repeats with the same period, so the re-normalising jump is invisible */
+    nx=bandCal.x0+(((nx-bandCal.x0)%bandCal.P)+bandCal.P)%bandCal.P;
+    dialNx=nx;dialU=(nx-bandCal.x0)/bandCal.P;
     bandIn.classList.toggle('glide',!!glide);
     bandIn.style.transform='translateX('+((bandEl.clientWidth||innerWidth)/2-nx)+'px)';
   }
@@ -1710,7 +1723,8 @@
     var near=prox>0.55;
     bandEl.classList.toggle('near',near);
     Object.keys(bandTicks).forEach(function(id){
-      bandTicks[id].el.querySelector('i').style.background=(near&&id===st.id)?bandAccent():'';
+      var bg=(near&&id===st.id)?bandAccent():'';
+      bandTicks[id].els.forEach(function(el){el.style.background=bg;});
     });
     if(near){
       bNote.textContent=bandTicks[st.id].note||'';
@@ -1727,7 +1741,7 @@
     dialTouched=true;
     cancelAnimationFrame(wheelRAF);
     bandIn.classList.remove('glide');
-    wheelGrab={px:ev.clientX,nx:dialNx<0?(bandCal.x0+bandCal.x1)/2:dialNx,t:performance.now()};
+    wheelGrab={px:ev.clientX,nx:dialNx<0?bandCal.x0+bandCal.P/2:dialNx,t:performance.now()};
     wheelV=0;
     try{bandEl.setPointerCapture(ev.pointerId);}catch(e){}
     ev.preventDefault();
@@ -1755,9 +1769,8 @@
     wheelRAF=requestAnimationFrame(function coast(now){
       var dt=Math.min(48,now-last);last=now;
       if(Math.abs(wheelV)>0.02){
-        setDial(dialNx+wheelV*dt,false);
+        setDial(dialNx+wheelV*dt,false); /* no end stops — friction alone brakes */
         wheelV*=Math.exp(-dt/200);
-        if(dialNx<=bandCal.x0||dialNx>=bandCal.x1)wheelV=0;
         tuneAudio();
         wheelRAF=requestAnimationFrame(coast);
       }
