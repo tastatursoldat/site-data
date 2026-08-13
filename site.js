@@ -261,6 +261,31 @@
     return out;
   }
 
+  /* distribute clocks evenly along a normalized (0..1) path — one uniform size,
+     so every constellation built on it is symmetric by construction */
+  function polyLayout(fs,base,polys,closed,sizeK){
+    var segs=[],total=0;
+    polys.forEach(function(poly){
+      var p=closed?poly.concat([poly[0]]):poly;
+      for(var i=0;i<p.length-1;i++){
+        var a=p[i],b=p[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+        if(L>1e-6){segs.push({a:a,b:b,L:L,s:total});total+=L;}
+      }
+    });
+    var n=fs.length,S=base*(sizeK||0.8),out=[];
+    var step=total/(closed?n:Math.max(1,n-1));
+    var r=Math.max(base*0.022,Math.min(base*0.07,step*S*0.46));
+    for(var i=0;i<n;i++){
+      var t=Math.min(total,closed?(i+0.5)*step:i*step),seg=segs[0];
+      for(var k=0;k<segs.length;k++){ if(t>=segs[k].s&&t<=segs[k].s+segs[k].L){seg=segs[k];break;} }
+      var u=(t-seg.s)/seg.L;
+      out.push({f:fs[i],
+        x:W/2+(seg.a[0]+(seg.b[0]-seg.a[0])*u-0.5)*S,
+        y:H/2+(seg.a[1]+(seg.b[1]-seg.a[1])*u-0.5)*S,R:r});
+    }
+    return out;
+  }
+
   var LAYOUTS={
     lineH:function(fs,base){
       var R=makeSizes(base,fs.length);
@@ -384,8 +409,11 @@
       var nodes=[],fi=0,i;
       for(i=0;i<legN;i++)nodes.push({f:fs[fi++],x:xL,y:H/2-colH/2+r+i*(2*r+gap),R:r,cas:'a'});
       for(i=0;i<legN;i++)nodes.push({f:fs[fi++],x:xR,y:H/2-colH/2+r+i*(2*r+gap),R:r,cas:'b'});
-      var rb=Math.min(r,((xR-xL)-2*r)/(2*barN)*0.85);
-      for(i=0;i<barN;i++){var t=(i+1)/(barN+1);nodes.push({f:fs[fi++],x:xL+t*(xR-xL),y:H/2,R:rb,cas:'c'});}
+      /* the bar lives strictly between the legs, sized so nothing has to be nudged */
+      var free=(xR-xL)-2*r-2*gap;
+      var rb=Math.min(r,free/(2*barN)*0.94);
+      var bx=xL+r+gap+ (free-2*rb*barN)/2 + rb;
+      for(i=0;i<barN;i++){nodes.push({f:fs[fi++],x:bx+i*2*rb,y:H/2,R:rb,cas:'c'});}
       return nodes;
     },
     ishape:function(fs,base){ /* letter I — top and bottom bars, spine between */
@@ -419,6 +447,51 @@
       });
       return nodes;
     },
+    lshape:function(fs,base){ return polyLayout(fs,base,[[[0.3,0.06],[0.3,0.94],[0.86,0.94]]],false); },
+    ashape:function(fs,base){ return polyLayout(fs,base,[[[0.16,0.94],[0.5,0.06],[0.84,0.94]],[[0.29,0.62],[0.71,0.62]]],false); },
+    mshape:function(fs,base){ return polyLayout(fs,base,[[[0.12,0.94],[0.12,0.06],[0.5,0.6],[0.88,0.06],[0.88,0.94]]],false); },
+    star:function(fs,base){
+      var pts=[];
+      for(var k=0;k<10;k++){
+        var a=k/10*Math.PI*2-Math.PI/2, rr=(k%2?0.21:0.5);
+        pts.push([0.5+Math.cos(a)*rr,0.5+Math.sin(a)*rr]);
+      }
+      return polyLayout(fs,base,[pts],true);
+    },
+    eye:function(fs,base){
+      var pts=[],N=26,i,t,x,y;
+      for(i=0;i<=N;i++){ t=i/N;                       /* upper lid */
+        x=(1-t)*(1-t)*0.02+2*(1-t)*t*0.5+t*t*0.98;
+        y=(1-t)*(1-t)*0.5+2*(1-t)*t*0.06+t*t*0.5;
+        pts.push([x,y]);
+      }
+      for(i=1;i<N;i++){ t=i/N;                        /* lower lid */
+        x=(1-t)*(1-t)*0.98+2*(1-t)*t*0.5+t*t*0.02;
+        y=(1-t)*(1-t)*0.5+2*(1-t)*t*0.94+t*t*0.5;
+        pts.push([x,y]);
+      }
+      var nodes=polyLayout(fs.slice(1),base,[pts],true,0.86);
+      var pr=Math.max.apply(null,nodes.map(function(n){return n.R;}))*1.7;
+      nodes.unshift({f:fs[0],x:W/2,y:H/2,R:pr});      /* pupil */
+      return nodes;
+    },
+    clockface:function(fs,base){
+      var rad=Math.min(W,H)*0.35;
+      var rest=fs.slice(1),outer=Math.min(12,rest.length);
+      var r=2*rad*Math.sin(Math.PI/12)*0.44;
+      var nodes=[{f:fs[0],x:W/2,y:H/2,R:r*1.5}];      /* hub */
+      var i,a;
+      for(i=0;i<outer;i++){
+        a=i/12*Math.PI*2-Math.PI/2;
+        nodes.push({f:rest[i],x:W/2+Math.cos(a)*rad,y:H/2+Math.sin(a)*rad,R:r});
+      }
+      var inner=rest.slice(outer);
+      for(i=0;i<inner.length;i++){
+        a=i/inner.length*Math.PI*2-Math.PI/2;
+        nodes.push({f:inner[i],x:W/2+Math.cos(a)*rad*0.52,y:H/2+Math.sin(a)*rad*0.52,R:r*0.8});
+      }
+      return nodes;
+    },
     columns:function(fs,base){
       var nA=Math.ceil(fs.length/2),counts=[nA,fs.length-nA],xs=[W*0.36,W*0.64],nodes=[];
       var fi=0;
@@ -441,12 +514,26 @@
     var fs=shuffled(pool);
     nodes=LAYOUTS[pick](fs,base);
 
+    /* one case shape for the whole deal — the field is never a mix of forms */
+    var CASE_EXT={circle:[1,1],square:[0.94,0.94],pill:[1.08,0.9],tv:[0.8,1.02]};
+    var shapeRoll=Math.random();
+    var dealShape=shapeRoll<0.5?'circle':(shapeRoll<0.78?'square':(shapeRoll<0.9?'pill':'tv'));
+    var ext=CASE_EXT[dealShape];
+
+    /* a casing only ever holds one and the same watch, all at one size */
+    var tagged=nodes.some(function(n){return !!n.cas;});
+    var cased=tagged&&Math.random()<0.55;
+    if(cased){
+      var med=nodes.map(function(n){return n.R;}).sort(function(a,b){return a-b;})[Math.floor(nodes.length/2)];
+      nodes.forEach(function(n){n.R=med;});
+    }
+
     /* fit: scale + center the whole arrangement into the safe area */
     function fitField(){
       var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
       nodes.forEach(function(n){
-        minX=Math.min(minX,n.x-n.R);maxX=Math.max(maxX,n.x+n.R);
-        minY=Math.min(minY,n.y-n.R);maxY=Math.max(maxY,n.y+n.R);
+        minX=Math.min(minX,n.x-n.R*ext[0]);maxX=Math.max(maxX,n.x+n.R*ext[0]);
+        minY=Math.min(minY,n.y-n.R*ext[1]);maxY=Math.max(maxY,n.y+n.R*ext[1]);
       });
       var bw=maxX-minX,bh=maxY-minY;
       var mX=W*0.08,mTop=H*0.12;
@@ -460,42 +547,63 @@
         n.R*=sc;
       });
     }
-    /* no clock ever overlays another: relax colliding pairs apart, then refit */
+    /* no clock ever overlays another — the case outline decides, not a circle:
+       square/pill/tv reach past R at their corners, so they get a box test */
+    function pairOverlap(A,B){
+      var dx=B.x-A.x,dy=B.y-A.y;
+      if(dealShape==='circle')return (A.R+B.R)-Math.hypot(dx,dy);
+      return Math.min((A.R+B.R)*ext[0]-Math.abs(dx),(A.R+B.R)*ext[1]-Math.abs(dy));
+    }
     function separate(){
-      for(var it=0;it<30;it++){
+      var pad=1.03;
+      for(var it=0;it<200;it++){
         var moved=false;
         for(var a2=0;a2<nodes.length;a2++)for(var b2=a2+1;b2<nodes.length;b2++){
           var A=nodes[a2],B=nodes[b2];
           var dx=B.x-A.x,dy=B.y-A.y;
-          var dist=Math.hypot(dx,dy)||0.001;
-          var minD=(A.R+B.R)*1.04;
-          if(dist<minD){
-            var push=(minD-dist)/2,ux=dx/dist,uy=dy/dist;
-            A.x-=ux*push;A.y-=uy*push;
-            B.x+=ux*push;B.y+=uy*push;
-            moved=true;
+          if(dealShape==='circle'){
+            var dist=Math.hypot(dx,dy)||0.001,minD=(A.R+B.R)*pad;
+            if(dist<minD){
+              var push=(minD-dist)/2,ux=dx/dist,uy=dy/dist;
+              A.x-=ux*push;A.y-=uy*push;B.x+=ux*push;B.y+=uy*push;moved=true;
+            }
+          }else{
+            var ox=(A.R+B.R)*ext[0]*pad-Math.abs(dx);
+            var oy=(A.R+B.R)*ext[1]*pad-Math.abs(dy);
+            if(ox>0&&oy>0){ /* push along the shallower axis */
+              if(ox<oy){var sx=(dx<0?-1:1)*ox/2;A.x-=sx;B.x+=sx;}
+              else{var sy=(dy<0?-1:1)*oy/2;A.y-=sy;B.y+=sy;}
+              moved=true;
+            }
           }
         }
         if(!moved)break;
       }
     }
-    fitField();
-    separate();
-    fitField();
-    var ov=0; /* debug: worst remaining pair overlap in px (≤0 = clean) */
-    for(var oa=0;oa<nodes.length;oa++)for(var ob=oa+1;ob<nodes.length;ob++){
-      ov=Math.max(ov,(nodes[oa].R+nodes[ob].R)-Math.hypot(nodes[ob].x-nodes[oa].x,nodes[ob].y-nodes[oa].y));
+    function worstOverlap(){
+      var w=-1e9;
+      for(var a3=0;a3<nodes.length;a3++)for(var b3=a3+1;b3<nodes.length;b3++){
+        w=Math.max(w,pairOverlap(nodes[a3],nodes[b3]));
+      }
+      return w;
     }
-    cvs.dataset.overlap=String(Math.round(ov*10)/10);
+    fitField();
+    /* fitting can re-tighten what separation just opened — settle, then verify */
+    for(var round=0;round<6;round++){
+      separate();
+      fitField();
+      if(worstOverlap()<=0.01)break;
+    }
+    cvs.dataset.overlap=String(Math.round(worstOverlap()*10)/10);
 
     /* sometimes the formation lives in a casing — slabs derived per tagged group */
     casings=[];
-    if(Math.random()<0.5){
+    if(cased){
       var groups={},cm={};
       nodes.forEach(function(n){ if(n.cas)(groups[n.cas]=groups[n.cas]||[]).push(n); });
       Object.keys(groups).forEach(function(k){
         var g=groups[k];
-        var pad=Math.max.apply(null,g.map(function(n){return n.R;}))*1.3;
+        var pad=Math.max.apply(null,g.map(function(n){return n.R;}))*Math.max(ext[0],ext[1])*1.25;
         var gx0=Math.min.apply(null,g.map(function(n){return n.x;}))-pad;
         var gx1=Math.max.apply(null,g.map(function(n){return n.x;}))+pad;
         var gy0=Math.min.apply(null,g.map(function(n){return n.y;}))-pad;
@@ -528,12 +636,12 @@
     });
     if(abI>=0&&abI!==tlI){var tf=nodes[tlI].f;nodes[tlI].f=nodes[abI].f;nodes[abI].f=tf;}
 
-    /* sometimes the whole field is one and the same simple watch — different times only */
+    /* often the whole field is one and the same simple watch — different times only.
+       inside a casing it always is: one watch, one size, like the reference posters */
     var uni=null;
-    if(Math.random()<0.25){
+    if(cased||Math.random()<0.35){
       uni={
         model:[0,1,2,4,5,6,10,11,13][Math.floor(Math.random()*9)],
-        shape:Math.random()<0.6?'circle':'square',
         tone:['black','dark','mid','light'][Math.floor(Math.random()*4)],
         dialDark:Math.random()<0.5,
         bez:0.08+Math.random()*0.14,
@@ -541,6 +649,7 @@
       };
     }
     cvs.dataset.uniform=uni?'1':'0';
+    cvs.dataset.shape=dealShape;
 
     /* per load: either a keyed composition (theme-heavy) or a rare monochrome one */
     var monoMode=Math.random()<0.18;
@@ -549,13 +658,13 @@
     nodes.forEach(function(n,i){
       var seed=hashSeed((n.f.year*1000+parseInt(n.f.no,10))+(n.f.copy||0)*7919);
       var r=rng(seed);
-      var model=Math.floor(r()*18);
-      var shapeRoll=r();
+      var model=Math.floor(r()*16);
+      r(); /* keep the seed stream stable (shape is deal-level now) */
       var toneRoll=r();
       n.style={
         model:model,
         seed:seed,
-        shape:shapeRoll<0.52?'circle':(shapeRoll<0.74?'square':(shapeRoll<0.87?'pill':'tv')),
+        shape:dealShape,
         tone:toneRoll<0.22?'black':(toneRoll<0.62?'dark':(toneRoll<0.85?'mid':'light')),
         dialDark:toneRoll>=0.85?true:r()<0.15,   /* light rings always get a dark cone — contrast */
         texture:r()<0.18?(r()<0.5?'grille':'ribbed'):null,
@@ -573,7 +682,7 @@
       n.style.cornerDots=r()<0.35; /* squares are ~1 in 5 dials, so ≈ one screwed plate per load */
       n.style.dome=r()<0.1;
       if(uni){ /* uniform deal: identical simple watch, per-clock time offset stays */
-        n.style.model=uni.model;n.style.shape=uni.shape;n.style.tone=uni.tone;
+        n.style.model=uni.model;n.style.tone=uni.tone;
         n.style.dialDark=uni.dialDark;n.style.bez=uni.bez;n.style.slim=uni.slim;
         n.style.texture=null;n.style.tinted=false;n.style.cornerDots=false;n.style.dome=false;
         n.accent=false;n.foreignHair=false;
@@ -794,47 +903,6 @@
         ctx.fillStyle='#15181b';
         ctx.fillRect(cx-Rd*0.15,cy+Rd*0.42,Rd*0.3,Rd*0.17);
         break;}
-      case 16:{ /* flip clock — two cards, hh mm */
-        var dn=new Date(Date.now()+st.off);
-        var fh=String(dn.getHours()).padStart(2,'0'),fm=String(dn.getMinutes()).padStart(2,'0');
-        var cw=Rd*0.66,chh=Rd*0.78,gap2=Rd*0.1;
-        [[-1,fh],[1,fm]].forEach(function(pair){
-          var px=cx+pair[0]*(cw/2+gap2/2)-cw/2,py=cy-chh/2;
-          var rr4=Rd*0.08;
-          ctx.fillStyle='#111315';
-          ctx.beginPath();
-          ctx.moveTo(px+rr4,py);
-          ctx.arcTo(px+cw,py,px+cw,py+chh,rr4);ctx.arcTo(px+cw,py+chh,px,py+chh,rr4);
-          ctx.arcTo(px,py+chh,px,py,rr4);ctx.arcTo(px,py,px+cw,py,rr4);
-          ctx.closePath();ctx.fill();
-          ctx.fillStyle='#f2f2ee';
-          ctx.font='700 '+(chh*0.55)+'px '+FONT;
-          ctx.textAlign='center';ctx.textBaseline='middle';
-          ctx.fillText(pair[1],px+cw/2,py+chh/2+chh*0.02);
-          ctx.strokeStyle='rgba(0,0,0,.85)';ctx.lineWidth=Math.max(.8,Rd*0.022);
-          ctx.beginPath();ctx.moveTo(px,py+chh/2);ctx.lineTo(px+cw,py+chh/2);ctx.stroke();
-        });
-        ctx.textAlign='start';ctx.textBaseline='alphabetic';
-        break;}
-      case 17:{ /* quartz LED — glowing digits on a dark strip */
-        var dn2=new Date(Date.now()+st.off);
-        var lt=String(dn2.getHours()).padStart(2,'0')+' '+String(dn2.getMinutes()).padStart(2,'0');
-        var dw=Rd*1.5,dh=Rd*0.56,rr5=dh*0.5;
-        var lx=cx-dw/2,ly=cy-dh/2;
-        ctx.fillStyle='#0b0c0d';
-        ctx.beginPath();
-        ctx.moveTo(lx+rr5,ly);
-        ctx.arcTo(lx+dw,ly,lx+dw,ly+dh,rr5);ctx.arcTo(lx+dw,ly+dh,lx,ly+dh,rr5);
-        ctx.arcTo(lx,ly+dh,lx,ly,rr5);ctx.arcTo(lx,ly,lx+dw,ly,rr5);
-        ctx.closePath();ctx.fill();
-        ctx.fillStyle='#ff8c1a';
-        ctx.shadowColor='#ff8c1a';ctx.shadowBlur=Rd*0.12;
-        ctx.font='700 '+(dh*0.58)+'px ui-monospace,Menlo,monospace';
-        ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(lt,cx,cy+dh*0.04);
-        ctx.shadowBlur=0;
-        ctx.textAlign='start';ctx.textBaseline='alphabetic';
-        break;}
       /* 7,8,9,12: clean-ish faces, dust-cap dome below carries them */
     }
 
@@ -848,9 +916,8 @@
       ctx.beginPath();ctx.arc(cx,cy,Rc,0,7);ctx.fill();
     }
 
-    /* live time, shifted per film — hands only on analog faces; digital
-       models (flip 16, led 17) tell the time with their digits alone */
-    if(st.model!==16&&st.model!==17){
+    /* live time, shifted per film — every face is analog now */
+    {
       var now=new Date(Date.now()+st.off);
       var ms=now.getMilliseconds();
       var sec=now.getSeconds()+ms/1000;
