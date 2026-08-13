@@ -491,7 +491,7 @@
     /* sometimes the formation lives in a casing — slabs derived per tagged group */
     casings=[];
     if(Math.random()<0.5){
-      var groups={};
+      var groups={},cm={};
       nodes.forEach(function(n){ if(n.cas)(groups[n.cas]=groups[n.cas]||[]).push(n); });
       Object.keys(groups).forEach(function(k){
         var g=groups[k];
@@ -500,8 +500,23 @@
         var gx1=Math.max.apply(null,g.map(function(n){return n.x;}))+pad;
         var gy0=Math.min.apply(null,g.map(function(n){return n.y;}))-pad;
         var gy1=Math.max.apply(null,g.map(function(n){return n.y;}))+pad;
-        casings.push({x:gx0,y:gy0,w:gx1-gx0,h:gy1-gy0,r:0}); /* hard corners */
+        var c={x:gx0,y:gy0,w:gx1-gx0,h:gy1-gy0}; /* hard corners */
+        cm[k]=c;casings.push(c);
       });
+      /* letters are one connected silhouette: connectors reach into their neighbours */
+      if(pick==='hshape'&&cm.a&&cm.b&&cm.c){
+        var hx0=Math.min(cm.a.x+cm.a.w/2,cm.b.x+cm.b.w/2);
+        var hx1=Math.max(cm.a.x+cm.a.w/2,cm.b.x+cm.b.w/2);
+        cm.c.x=hx0;cm.c.w=hx1-hx0;
+      }
+      if(pick==='ishape'&&cm.a&&cm.b&&cm.c){
+        var iy0=cm.a.y+cm.a.h/2,iy1=cm.c.y+cm.c.h/2;
+        cm.b.y=Math.min(iy0,iy1);cm.b.h=Math.abs(iy1-iy0);
+      }
+      if(pick==='tshape'&&cm.a&&cm.b){
+        var tb=cm.b.y+cm.b.h;
+        cm.b.y=cm.a.y+cm.a.h/2;cm.b.h=tb-cm.b.y;
+      }
     }
 
     /* the most top-left dial is always About — the rest stays random */
@@ -512,6 +527,20 @@
       if(n.f.isAbout)abI=i;
     });
     if(abI>=0&&abI!==tlI){var tf=nodes[tlI].f;nodes[tlI].f=nodes[abI].f;nodes[abI].f=tf;}
+
+    /* sometimes the whole field is one and the same simple watch — different times only */
+    var uni=null;
+    if(Math.random()<0.25){
+      uni={
+        model:[0,1,2,4,5,6,10,11,13][Math.floor(Math.random()*9)],
+        shape:Math.random()<0.6?'circle':'square',
+        tone:['black','dark','mid','light'][Math.floor(Math.random()*4)],
+        dialDark:Math.random()<0.5,
+        bez:0.08+Math.random()*0.14,
+        slim:Math.random()<0.5
+      };
+    }
+    cvs.dataset.uniform=uni?'1':'0';
 
     /* per load: either a keyed composition (theme-heavy) or a rare monochrome one */
     var monoMode=Math.random()<0.18;
@@ -543,6 +572,12 @@
       /* soundbox leftovers from the reference — corner screws + dust-cap dome — show rarely */
       n.style.cornerDots=r()<0.35; /* squares are ~1 in 5 dials, so ≈ one screwed plate per load */
       n.style.dome=r()<0.1;
+      if(uni){ /* uniform deal: identical simple watch, per-clock time offset stays */
+        n.style.model=uni.model;n.style.shape=uni.shape;n.style.tone=uni.tone;
+        n.style.dialDark=uni.dialDark;n.style.bez=uni.bez;n.style.slim=uni.slim;
+        n.style.texture=null;n.style.tinted=false;n.style.cornerDots=false;n.style.dome=false;
+        n.accent=false;n.foreignHair=false;
+      }
     });
   }
 
@@ -848,19 +883,16 @@
   function renderField(){
     /* hover = glow only; the dial keeps its place in the stack */
     ctx.clearRect(0,0,W,H);
-    casings.forEach(function(c){
+    if(casings.length){
+      /* one path, one fill, one shadow — overlapping slabs merge seamlessly */
       ctx.save();
       ctx.shadowColor='rgba(0,0,0,.18)';ctx.shadowBlur=14;ctx.shadowOffsetY=4;
       ctx.fillStyle=theme.key;
       ctx.beginPath();
-      ctx.moveTo(c.x+c.r,c.y);
-      ctx.arcTo(c.x+c.w,c.y,c.x+c.w,c.y+c.h,c.r);
-      ctx.arcTo(c.x+c.w,c.y+c.h,c.x,c.y+c.h,c.r);
-      ctx.arcTo(c.x,c.y+c.h,c.x,c.y,c.r);
-      ctx.arcTo(c.x,c.y,c.x+c.w,c.y,c.r);
-      ctx.closePath();ctx.fill();
+      casings.forEach(function(c){ctx.rect(c.x,c.y,c.w,c.h);});
+      ctx.fill();
       ctx.restore();
-    });
+    }
     nodes.forEach(function(n,i){drawWatch(n,i===hover);});
   }
   (function loop(){
