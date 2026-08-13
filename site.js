@@ -232,32 +232,43 @@
     return '#'+((R<<16)|(G<<8)|B).toString(16).padStart(6,'0');}
   function shuffled(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}return b;}
 
+  var uniformSize=false; /* cased deals want one size, so spacing stays even */
   function makeSizes(base,n){
-    /* mixed sizes: a couple big, rest small-medium */
-    var s=[];
-    for(var i=0;i<n;i++){
-      var big=i<2;
+    /* palindromic sizes — the sequence reads the same from either end, so any
+       layout that lays clocks out in order comes out mirror-symmetric */
+    if(uniformSize){var u=[];for(var q=0;q<n;q++)u.push(base*0.045);return u;}
+    var h=Math.ceil(n/2),s=[];
+    for(var i=0;i<h;i++){
+      var big=i<1;
       s.push(base*(big?0.07+Math.random()*0.035:0.03+Math.random()*0.028));
     }
-    return shuffled(s);
+    s=shuffled(s);
+    var out=s.slice();
+    for(var j=n-h-1;j>=0;j--)out.push(s[j]);
+    return out;
   }
+  function evenR(base){ return uniformSize?base*0.045:base*(0.03+Math.random()*0.045); }
 
   function chaoticClump(fs,base,spreadK,sepK){
+    /* organic, but mirrored: scatter one half, reflect it, centre the odd one */
     var cx=W/2,cy=H/2,spread=base*spreadK;
     function gauss(){return (Math.random()+Math.random()+Math.random()-1.5)/1.5;}
-    var nBig=1+(Math.random()<0.4?1:0);            /* only 1-2 big ones — keeps it calm */
-    var out=[];
-    fs.forEach(function(f,i){
-      var big=i<nBig;
-      var R=base*(big?0.055+Math.random()*0.03:0.026+Math.random()*0.026);
+    var n=fs.length,half=Math.floor(n/2),odd=n%2,out=[],left=[];
+    var bigAt=Math.floor(Math.random()*half);
+    for(var i=0;i<half;i++){
+      var R=uniformSize?base*0.045:base*(i===bigAt?0.055+Math.random()*0.03:0.026+Math.random()*0.026);
       var x,y,tries=0;
       do{
-        x=cx+gauss()*spread*1.6;
+        x=cx-Math.abs(gauss())*spread*1.6-R*1.05;
         y=cy+gauss()*spread*1.05;
         tries++;
-      }while(tries<300&&out.some(function(n){return Math.hypot(n.x-x,n.y-y)<(n.R+R)*sepK;}));
-      out.push({f:f,x:x,y:y,R:R});
-    });
+      }while(tries<300&&left.some(function(p){return Math.hypot(p.x-x,p.y-y)<(p.R+R)*sepK;}));
+      left.push({x:x,y:y,R:R});
+    }
+    var fi=0;
+    left.forEach(function(p){ out.push({f:fs[fi++],x:p.x,y:p.y,R:p.R}); });
+    left.forEach(function(p){ out.push({f:fs[fi++],x:2*cx-p.x,y:p.y,R:p.R}); });
+    if(odd)out.push({f:fs[fi++],x:cx,y:cy,R:uniformSize?base*0.045:base*0.05});
     return out;
   }
 
@@ -286,6 +297,24 @@
     return out;
   }
 
+  /* centre hub plus four identical arms — every arm shares one size sequence,
+     so opposite arms mirror each other exactly */
+  function armLayout(fs,base,dirs){
+    var per=Math.floor((fs.length-1)/4);
+    var armR=makeSizes(base,per);
+    var cR=uniformSize?base*0.045:base*0.075;
+    var gap=cR*0.08,nodes=[{f:fs[0],x:W/2,y:H/2,R:cR}],fi=1;
+    dirs.forEach(function(d){
+      var dist=cR+gap;
+      armR.forEach(function(r){
+        nodes.push({f:fs[fi++],x:W/2+d[0]*(dist+r),y:H/2+d[1]*(dist+r),R:r});
+        dist+=2*r+gap;
+      });
+    });
+    while(fi<fs.length)nodes.push({f:fs[fi++],x:W/2,y:H/2,R:cR*0.5}); /* guard */
+    return nodes;
+  }
+
   var LAYOUTS={
     lineH:function(fs,base){
       var R=makeSizes(base,fs.length);
@@ -299,65 +328,29 @@
       var y=(H-total)/2;
       return fs.map(function(f,i){var r=R[i];var n={f:f,x:W/2,y:y+r,R:r,cas:'a'};y+=2*r;return n;});
     },
-    cross:function(fs,base){ /* shared center, rest split over four arms */
-      var Rs=makeSizes(base,fs.length);
-      var cR=Math.max.apply(null,Rs);
-      var rest=Rs.slice();rest.splice(rest.indexOf(cR),1);
-      var nodes=[{f:fs[0],x:W/2,y:H/2,R:cR}];
-      var gap=cR*0.08;
-      var arms=[[],[],[],[]];
-      rest.forEach(function(r,i){arms[i%4].push(r);});
-      var dirs=[[0,-1],[0,1],[-1,0],[1,0]];
-      var fi=1;
-      arms.forEach(function(arm,a){
-        var dx=dirs[a][0],dy=dirs[a][1];
-        var d=cR+gap;
-        arm.forEach(function(r){
-          nodes.push({f:fs[fi++],x:W/2+dx*(d+r),y:H/2+dy*(d+r),R:r});
-          d+=2*r+gap;
-        });
-      });
-      return nodes;
-    },
-    xshape:function(fs,base){ /* like cross, arms on the diagonals */
-      var Rs=makeSizes(base,fs.length);
-      var cR=Math.max.apply(null,Rs);
-      var rest=Rs.slice();rest.splice(rest.indexOf(cR),1);
-      var nodes=[{f:fs[0],x:W/2,y:H/2,R:cR}];
-      var gap=cR*0.08;
-      var arms=[[],[],[],[]];
-      rest.forEach(function(r,i){arms[i%4].push(r);});
+    cross:function(fs,base){ return armLayout(fs,base,[[0,-1],[0,1],[-1,0],[1,0]]); },
+    xshape:function(fs,base){
       var q=Math.SQRT1_2;
-      var dirs=[[-q,-q],[q,-q],[-q,q],[q,q]];
-      var fi=1;
-      arms.forEach(function(arm,a){
-        var dx=dirs[a][0],dy=dirs[a][1];
-        var d=cR+gap;
-        arm.forEach(function(r){
-          nodes.push({f:fs[fi++],x:W/2+dx*(d+r),y:H/2+dy*(d+r),R:r});
-          d+=2*r+gap;
-        });
-      });
-      return nodes;
+      return armLayout(fs,base,[[-q,-q],[q,-q],[-q,q],[q,q]]);
     },
     ring:function(fs,base){
-      var cx=W/2,cy=H/2,rad=Math.min(W,H)*0.33;
+      var cx=W/2,cy=H/2,rad=Math.min(W,H)*0.33,r=evenR(base);
       return fs.map(function(f,i){
         var a=i/fs.length*Math.PI*2-Math.PI/2;
-        return {f:f,x:cx+Math.cos(a)*rad,y:cy+Math.sin(a)*rad,R:base*(0.032+Math.random()*0.05)};
+        return {f:f,x:cx+Math.cos(a)*rad,y:cy+Math.sin(a)*rad,R:r};
       });
     },
     grid:function(fs,base){
       var cols=4,rows=Math.ceil(fs.length/cols);
       var gw=Math.min(W*0.7,base*1.3),gh=base*0.28*(rows-1);
       var oy=(H-gh)/2;
-      var nodes=[];
+      var nodes=[],rr=evenR(base);
       for(var r=0;r<rows;r++){
         var inRow=Math.min(cols,fs.length-r*cols);
         var rowW=gw*(inRow-1)/(cols-1||1);
         var ox=(W-rowW)/2;
         for(var c=0;c<inRow;c++){
-          nodes.push({f:fs[r*cols+c],x:ox+(inRow>1?rowW*(c/(inRow-1)):0),y:oy+(rows>1?gh*(r/(rows-1)):0),R:base*(0.03+Math.random()*0.045)});
+          nodes.push({f:fs[r*cols+c],x:ox+(inRow>1?rowW*(c/(inRow-1)):0),y:oy+(rows>1?gh*(r/(rows-1)):0),R:rr});
         }
       }
       return nodes;
@@ -384,17 +377,17 @@
       var innerN=Math.min(3,Math.max(0,Math.floor((n-1)/3)));
       var outerN=n-1-innerN;
       var rOut=Math.min(W,H)*0.34,rIn=rOut*0.5;
-      var jA=0.12,jR=0.06;                       /* slight jitter keeps it alive */
-      var nodes=[{f:fs[0],x:cx,y:cy,R:base*(0.045+Math.random()*0.04)}];
+      var rHub=uniformSize?base*0.045:base*0.06;
+      var rMid=uniformSize?base*0.045:base*0.034;
+      var rEdge=uniformSize?base*0.045:base*0.042;
+      var nodes=[{f:fs[0],x:cx,y:cy,R:rHub}];      /* no jitter — rings stay true */
       for(var i=0;i<innerN;i++){
-        var a=i/innerN*Math.PI*2-Math.PI/2+(Math.random()-0.5)*jA;
-        var rad=rIn*(1+(Math.random()-0.5)*jR);
-        nodes.push({f:fs[1+i],x:cx+Math.cos(a)*rad,y:cy+Math.sin(a)*rad,R:base*(0.026+Math.random()*0.028)});
+        var a=i/innerN*Math.PI*2-Math.PI/2;
+        nodes.push({f:fs[1+i],x:cx+Math.cos(a)*rIn,y:cy+Math.sin(a)*rIn,R:rMid});
       }
       for(var o=0;o<outerN;o++){
-        var a2=o/outerN*Math.PI*2-Math.PI/2+(Math.random()-0.5)*jA;
-        var rad2=rOut*(1+(Math.random()-0.5)*jR);
-        nodes.push({f:fs[1+innerN+o],x:cx+Math.cos(a2)*rad2,y:cy+Math.sin(a2)*rad2,R:base*(0.03+Math.random()*0.04)});
+        var a2=o/outerN*Math.PI*2-Math.PI/2;
+        nodes.push({f:fs[1+innerN+o],x:cx+Math.cos(a2)*rOut,y:cy+Math.sin(a2)*rOut,R:rEdge});
       }
       return nodes;
     },
@@ -447,9 +440,6 @@
       });
       return nodes;
     },
-    lshape:function(fs,base){ return polyLayout(fs,base,[[[0.3,0.06],[0.3,0.94],[0.86,0.94]]],false); },
-    ashape:function(fs,base){ return polyLayout(fs,base,[[[0.16,0.94],[0.5,0.06],[0.84,0.94]],[[0.29,0.62],[0.71,0.62]]],false); },
-    mshape:function(fs,base){ return polyLayout(fs,base,[[[0.12,0.94],[0.12,0.06],[0.5,0.6],[0.88,0.06],[0.88,0.94]]],false); },
     star:function(fs,base){
       var pts=[];
       for(var k=0;k<10;k++){
@@ -493,12 +483,13 @@
       return nodes;
     },
     columns:function(fs,base){
-      var nA=Math.ceil(fs.length/2),counts=[nA,fs.length-nA],xs=[W*0.36,W*0.64],nodes=[];
-      var fi=0;
+      /* both columns share one size sequence — equal counts, equal heights */
+      var per=Math.floor(fs.length/2);
+      var R=makeSizes(base,per),xs=[W*0.36,W*0.64],nodes=[],fi=0;
+      var tot=R.reduce(function(a,r){return a+2*r;},0);
       for(var c=0;c<2;c++){
-        var R=makeSizes(base,counts[c]);
-        var tot=R.reduce(function(a,r){return a+2*r;},0),y=(H-tot)/2;
-        for(var i=0;i<counts[c];i++){nodes.push({f:fs[fi++],x:xs[c],y:y+R[i],R:R[i],cas:c===0?'a':'b'});y+=2*R[i];}
+        var y=(H-tot)/2;
+        for(var i=0;i<per;i++){nodes.push({f:fs[fi++],x:xs[c],y:y+R[i],R:R[i],cas:c===0?'a':'b'});y+=2*R[i];}
       }
       return nodes;
     }
@@ -511,14 +502,37 @@
     var names=Object.keys(LAYOUTS);
     var pick=names[Math.floor(Math.random()*names.length)];
     cvs.dataset.layout=pick;
-    var fs=shuffled(pool);
-    nodes=LAYOUTS[pick](fs,base);
-
     /* one case shape for the whole deal — the field is never a mix of forms */
     var CASE_EXT={circle:[1,1],square:[0.94,0.94],pill:[1.08,0.9],tv:[0.8,1.02]};
     var shapeRoll=Math.random();
     var dealShape=shapeRoll<0.5?'circle':(shapeRoll<0.78?'square':(shapeRoll<0.9?'pill':'tv'));
     var ext=CASE_EXT[dealShape];
+
+    /* a casing only ever holds one and the same watch, all at one size */
+    var TAGGED={lineH:1,lineV:1,tshape:1,hshape:1,ishape:1,columns:1};
+    var cased=!!TAGGED[pick]&&Math.random()<0.55;
+    uniformSize=cased;
+
+    /* symmetry beats completeness: pad with duplicate films until the count
+       fits the formation, so no arm, column or row is ever left ragged */
+    var NEED={
+      columns:function(n){return n+(n%2);},
+      cross:function(n){return n+((4-((n-1)%4))%4);},
+      xshape:function(n){return n+((4-((n-1)%4))%4);},
+      grid:function(n){return n+((4-(n%4))%4);},
+      eye:function(n){return n+((n-1)%2);},
+      flower:function(n){return n;},
+      clockface:function(n){return n<13?13:n;}
+    };
+    if(NEED[pick]){
+      var target=NEED[pick](pool.length),k=0;
+      while(pool.length<target&&FILM_DIALS.length){
+        pool.push(Object.assign({},FILM_DIALS[k%FILM_DIALS.length],{copy:100+k}));
+        k++;
+      }
+    }
+    var fs=shuffled(pool);
+    nodes=LAYOUTS[pick](fs,base);
 
     /* mirror pairs across the vertical axis — left and right must match */
     function mirrorPairs(){
@@ -539,14 +553,6 @@
     }
     var pairs=mirrorPairs();
     pairs.forEach(function(p){ nodes[p[1]].R=nodes[p[0]].R; }); /* symmetric sizes */
-
-    /* a casing only ever holds one and the same watch, all at one size */
-    var tagged=nodes.some(function(n){return !!n.cas;});
-    var cased=tagged&&Math.random()<0.55;
-    if(cased){
-      var med=nodes.map(function(n){return n.R;}).sort(function(a,b){return a-b;})[Math.floor(nodes.length/2)];
-      nodes.forEach(function(n){n.R=med;});
-    }
 
     /* fit: scale + center the whole arrangement into the safe area */
     function fitField(){
@@ -607,10 +613,19 @@
       }
       return w;
     }
+    /* separation can nudge a clock off its mirror — snap pairs back onto the axis */
+    function snapMirror(){
+      pairs.forEach(function(p){
+        var L=nodes[p[0]],Rn=nodes[p[1]];
+        var lx=(L.x+(W-Rn.x))/2,ly=(L.y+Rn.y)/2;
+        L.x=lx;L.y=ly;Rn.x=W-lx;Rn.y=ly;
+      });
+    }
     fitField();
     /* fitting can re-tighten what separation just opened — settle, then verify */
     for(var round=0;round<6;round++){
       separate();
+      snapMirror();
       fitField();
       if(worstOverlap()<=0.01)break;
     }
