@@ -259,7 +259,11 @@
     function gauss(){return (Math.random()+Math.random()+Math.random()-1.5)/1.5;}
     var n=fs.length,half=Math.floor(n/2),odd=n%2,out=[],left=[];
     var bigAt=Math.floor(Math.random()*half);
-    for(var i=0;i<half;i++){
+    if(!odd&&half){ /* even counts have no centre clock — straddle the axis instead */
+      var R0=bimodal?base*0.075:(uniformSize?base*0.045:base*0.05);
+      left.push({x:cx-R0*1.04,y:cy,R:R0});
+    }
+    for(var i=left.length;i<half;i++){
       var R=bimodal?(i%3===0?base*(0.072+Math.random()*0.022):base*(0.026+Math.random()*0.018))
                    :(uniformSize?base*0.045:base*(i===bigAt?0.055+Math.random()*0.03:0.026+Math.random()*0.026));
       var x,y,tries=0;
@@ -320,6 +324,44 @@
     return nodes;
   }
 
+  /* solid letterforms — a clock in every cell of a mask, the casing filling the
+     silhouette behind them (the packed cabinets on the reference sheet) */
+  var MASKS={
+    /* wide columns hold the big drivers, narrow ones the small clocks between */
+    packT:{cols:[0.5,1,0.5,1,0.5,1,0.5,1,0.5],rows:[1,1,0.45,1,1,1,0.45,1],
+           cells:['111111111','111111111','111111111','111111111',
+                  '000111000','000111000','000111000','000111000']},
+    /* 2 = a square-cased clock: the horn tweeters on top of the H */
+    packH:{cols:[1,0.5,0.9,0.5,1],rows:[0.7,1,0.5,1,1,0.5,1],
+           cells:['20002','10001','10001','11111','10001','10001','10001']},
+    packI:{cols:[1,0.5,1,0.5,1],rows:[1,0.5,1,0.5,1],
+           cells:['11111','00100','00100','00100','11111']}
+  };
+  function cellLayout(fs,base,spec){
+    var cw=spec.cols,rh=spec.rows,cells=spec.cells;
+    var tw=cw.reduce(function(a,b){return a+b;},0);
+    var th=rh.reduce(function(a,b){return a+b;},0);
+    var unit=Math.min(base*0.92/tw,base*0.92/th);
+    var xs=[],ys=[],acc=0,i;
+    for(i=0;i<cw.length;i++){xs.push(acc+cw[i]/2);acc+=cw[i];}
+    acc=0;
+    for(i=0;i<rh.length;i++){ys.push(acc+rh[i]/2);acc+=rh[i];}
+    var nodes=[],fi=0;
+    for(var ri=0;ri<cells.length;ri++)for(var ci=0;ci<cw.length;ci++){
+      var ch=cells[ri].charAt(ci);
+      if((ch!=='1'&&ch!=='2')||fi>=fs.length)continue;
+      var wpx=cw[ci]*unit,hpx=rh[ri]*unit;
+      var r=Math.min(wpx,hpx)*0.42;
+      /* padKX/padKY make each slab exactly its own cell, so the cells tile
+         into one solid letter silhouette behind the clocks */
+      nodes.push({f:fs[fi++],
+        x:W/2+(xs[ci]-tw/2)*unit,y:H/2+(ys[ri]-th/2)*unit,R:r,
+        forceShape:ch==='2'?'square':null,
+        padKX:wpx/2/r,padKY:hpx/2/r,cas:'c'+ri+'_'+ci});
+    }
+    return nodes;
+  }
+
   var LAYOUTS={
     lineH:function(fs,base){
       var R=makeSizes(base,fs.length);
@@ -341,7 +383,9 @@
       return armLayout(fs,base,[[-q,-q],[q,-q],[-q,q],[q,q]]);
     },
     ring:function(fs,base){
-      var cx=W/2,cy=H/2,rad=Math.min(W,H)*0.33,r=evenR(base);
+      var cx=W/2,cy=H/2,rad=Math.min(W,H)*0.33;
+      /* never wider than the gap between neighbours on the circle */
+      var r=Math.min(evenR(base),rad*Math.sin(Math.PI/Math.max(fs.length,3))*0.92);
       return fs.map(function(f,i){
         var a=i/fs.length*Math.PI*2-Math.PI/2;
         return {f:f,x:cx+Math.cos(a)*rad,y:cy+Math.sin(a)*rad,R:r};
@@ -360,16 +404,6 @@
           nodes.push({f:fs[r*cols+c],x:ox+(inRow>1?rowW*(c/(inRow-1)):0),y:oy+(rows>1?gh*(r/(rows-1)):0),R:rr,cas:'g'});
         }
       }
-      return nodes;
-    },
-    tshape:function(fs,base){
-      var nTop=Math.ceil(fs.length/2),nCol=fs.length-nTop;
-      var Rh=makeSizes(base,nTop),Rv=makeSizes(base,nCol),nodes=[];
-      var tot=Rh.reduce(function(a,r){return a+2*r;},0),x=(W-tot)/2;
-      var topY=H*0.28;
-      for(var i=0;i<nTop;i++){nodes.push({f:fs[i],x:x+Rh[i],y:topY,R:Rh[i],cas:'a'});x+=2*Rh[i];}
-      var y=topY+Math.max.apply(null,Rh);
-      for(var k=0;k<nCol;k++){y+=Rv[k];nodes.push({f:fs[nTop+k],x:W/2,y:y,R:Rv[k],cas:'b'});y+=2*Rv[k];}
       return nodes;
     },
     cluster:function(fs,base){ /* loose organic clump, mild overlap */
@@ -398,41 +432,6 @@
       }
       return nodes;
     },
-    hshape:function(fs,base){ /* letter H — uniform drivers, two legs + crossbar */
-      if(fs.length<5)return LAYOUTS.lineH(fs,base); /* too few for a letter */
-      var n=fs.length;
-      var legN=Math.max(2,Math.round(n*0.36));
-      var barN=Math.max(1,n-2*legN);
-      var r=base*0.045,gap=r*0.3;
-      var xL=W/2-base*0.17,xR=W/2+base*0.17;
-      var colH=legN*2*r+(legN-1)*gap;
-      var nodes=[],fi=0,i;
-      for(i=0;i<legN;i++)nodes.push({f:fs[fi++],x:xL,y:H/2-colH/2+r+i*(2*r+gap),R:r,cas:'a'});
-      for(i=0;i<legN;i++)nodes.push({f:fs[fi++],x:xR,y:H/2-colH/2+r+i*(2*r+gap),R:r,cas:'b'});
-      /* the bar lives strictly between the legs, sized so nothing has to be nudged */
-      var free=(xR-xL)-2*r-2*gap;
-      var rb=Math.min(r,free/(2*barN)*0.94);
-      var bx=xL+r+gap+ (free-2*rb*barN)/2 + rb;
-      for(i=0;i<barN;i++){nodes.push({f:fs[fi++],x:bx+i*2*rb,y:H/2,R:rb,cas:'c'});}
-      return nodes;
-    },
-    ishape:function(fs,base){ /* letter I — top and bottom bars, spine between */
-      if(fs.length<5)return LAYOUTS.lineH(fs,base); /* too few for a letter */
-      var n=fs.length;
-      var barN=Math.max(2,Math.round(n*0.36));
-      var colN=Math.max(1,n-2*barN);
-      var r=base*0.042,gap=r*0.3;
-      var topY=H*0.3,botY=H*0.7;
-      var barW=barN*2*r+(barN-1)*gap;
-      var nodes=[],fi=0,i,x;
-      for(i=0;i<barN;i++){x=W/2-barW/2+r+i*(2*r+gap);nodes.push({f:fs[fi++],x:x,y:topY,R:r,cas:'a'});}
-      for(i=0;i<colN;i++){
-        var t=(i+1)/(colN+1);
-        nodes.push({f:fs[fi++],x:W/2,y:topY+t*(botY-topY),R:r*0.9,cas:'b'});
-      }
-      for(i=0;i<barN;i++){x=W/2-barW/2+r+i*(2*r+gap);nodes.push({f:fs[fi++],x:x,y:botY,R:r,cas:'c'});}
-      return nodes;
-    },
     flower:function(fs,base){ /* mirrored rows of 3 and 2 — uniform drivers */
       var n=fs.length;
       var counts=[],left=n,want=3;
@@ -447,14 +446,19 @@
       });
       return nodes;
     },
+    packT:function(fs,base){ return cellLayout(fs,base,MASKS.packT); },
+    packH:function(fs,base){ return cellLayout(fs,base,MASKS.packH); },
+    packI:function(fs,base){ return cellLayout(fs,base,MASKS.packI); },
     quincunx:function(fs,base){ /* five drivers, satellites around the flanks */
-      var n=fs.length,big=base*0.1,small=base*0.03;
-      var dx=big*1.22,dy=big*1.18,nodes=[],fi=0;
+      /* corners sit 1.6r out on each axis, so the diagonal clears the centre
+         clock (needs >1.41r) and separation never has to touch the formation */
+      var n=fs.length,big=base*0.1,small=base*0.031;
+      var d=big*1.6,nodes=[],fi=0;
       nodes.push({f:fs[fi++],x:W/2,y:H/2,R:big});
       [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(s){
-        if(fi<n)nodes.push({f:fs[fi++],x:W/2+s[0]*dx,y:H/2+s[1]*dy,R:big});
+        if(fi<n)nodes.push({f:fs[fi++],x:W/2+s[0]*d,y:H/2+s[1]*d,R:big});
       });
-      var m=n-fi,rx=dx+big*1.2,ry=dy+big*1.15;
+      var m=n-fi,rx=d+big*1.05+small*1.2,ry=rx;
       if(m%2===1){nodes.push({f:fs[fi++],x:W/2,y:H/2-ry*1.08,R:small});m--;}
       var np=m/2;
       for(var k=0;k<np;k++){
@@ -529,10 +533,14 @@
     var base=Math.min(W,H);
     /* half of all posters come in a box, so those deals draw from the
        formations a casing can be built around */
-    var TAGGED={lineH:1,lineV:1,tshape:1,hshape:1,ishape:1,columns:1,cross:1,grid:1};
+    /* a boxed letter is always the solid version — the sparse T/H/I stay unboxed,
+       otherwise the casing is mostly empty */
+    var TAGGED={lineV:1,columns:1,cross:1,packT:1,packH:1,packI:1};
+    var PACKED={packT:1,packH:1,packI:1}; /* solid letterforms only make sense boxed */
     var names=Object.keys(LAYOUTS);
     var cased=Math.random()<0.5;
-    var choices=cased?names.filter(function(k){return TAGGED[k];}):names;
+    var choices=cased?names.filter(function(k){return TAGGED[k];})
+                     :names.filter(function(k){return !PACKED[k];});
     var pick=choices[Math.floor(Math.random()*choices.length)];
     cvs.dataset.layout=pick;
     cvs.dataset.cased=cased?'1':'0';
@@ -540,13 +548,10 @@
     /* one case shape for the whole deal — the field is never a mix of forms */
     var CASE_EXT={circle:[1,1],square:[0.94,0.94],pill:[1.08,0.9],tv:[0.8,1.02]};
     var shapeRoll=Math.random();
-    var dealShape=shapeRoll<0.5?'circle':(shapeRoll<0.78?'square':(shapeRoll<0.9?'pill':'tv'));
+    /* boxed posters always use round drivers, like the reference cabinets */
+    var dealShape=cased?'circle'
+      :(shapeRoll<0.5?'circle':(shapeRoll<0.78?'square':(shapeRoll<0.9?'pill':'tv')));
     var ext=CASE_EXT[dealShape];
-
-    /* a casing only ever holds one and the same watch, all at one size */
-    var TAGGED={lineH:1,lineV:1,tshape:1,hshape:1,ishape:1,columns:1};
-    var cased=!!TAGGED[pick]&&Math.random()<0.55;
-    uniformSize=cased;
 
     /* symmetry beats completeness: pad with duplicate films until the count
        fits the formation, so no arm, column or row is ever left ragged */
@@ -559,7 +564,16 @@
       flower:function(n){return n;},
       clockface:function(n){return n<13?13:n;}
     };
-    if(NEED[pick]){
+    if(PACKED[pick]){
+      /* a solid letterform needs exactly one clock per cell */
+      var cells=0;
+      MASKS[pick].cells.forEach(function(row){for(var c=0;c<row.length;c++)if(row.charAt(c)==='1')cells++;});
+      pool=[ABOUT_ENTRY];
+      for(var pk=0;pool.length<cells&&FILM_DIALS.length;pk++){
+        pool.push(pk<FILM_DIALS.length?FILM_DIALS[pk]
+          :Object.assign({},FILM_DIALS[pk%FILM_DIALS.length],{copy:200+pk}));
+      }
+    }else if(NEED[pick]){
       var target=NEED[pick](pool.length),k=0;
       while(pool.length<target&&FILM_DIALS.length){
         pool.push(Object.assign({},FILM_DIALS[k%FILM_DIALS.length],{copy:100+k}));
@@ -595,7 +609,12 @@
           var d=Math.hypot(nodes[j].x-tx,nodes[j].y-ty);
           if(d<bd){bd=d;best=j;}
         }
-        if(best>=0&&bd<Math.max(A.R,nodes[best].R)*0.9){used[i]=1;used[best]=1;pairs.push([i,best]);}
+        /* a mirror partner must be the same size — pairing across cell sizes
+           would rewrite radii and tear the packed silhouettes apart */
+        if(best>=0&&bd<Math.max(A.R,nodes[best].R)*0.9
+           &&Math.abs(A.R-nodes[best].R)<A.R*0.2){
+          used[i]=1;used[best]=1;pairs.push([i,best]);
+        }
       }
       return pairs;
     }
@@ -678,18 +697,22 @@
       });
     }
     fitField();
-    /* fitting can re-tighten what separation just opened — settle, then verify */
-    for(var round=0;round<6;round++){
-      separate();
-      snapMirror();
-      fitField();
-      if(worstOverlap()<=0.01)break;
-    }
-    /* snapping back onto the axis can undo a push, so the two can oscillate on
-       organic layouts. Shrinking every clock equally always converges and keeps
-       the mirror exact — no arrangement ever leaves this loop overlapping. */
-    for(var shrink=0;shrink<40&&worstOverlap()>0.01;shrink++){
-      nodes.forEach(function(n){n.R*=0.97;});
+    /* a packed mask is collision-free by construction and its casing tiles off
+       the clock radii — separating or shrinking would tear gaps in the letter */
+    if(!PACKED[pick]){
+      /* fitting can re-tighten what separation just opened — settle, then verify */
+      for(var round=0;round<6;round++){
+        separate();
+        snapMirror();
+        fitField();
+        if(worstOverlap()<=0.01)break;
+      }
+      /* snapping back onto the axis can undo a push, so the two can oscillate on
+         organic layouts. Shrinking every clock equally always converges and keeps
+         the mirror exact — no arrangement ever leaves this loop overlapping. */
+      for(var shrink=0;shrink<40&&worstOverlap()>0.01;shrink++){
+        nodes.forEach(function(n){n.R*=0.97;});
+      }
     }
     cvs.dataset.overlap=String(Math.round(worstOverlap()*10)/10);
 
@@ -700,28 +723,16 @@
       nodes.forEach(function(n){ if(n.cas)(groups[n.cas]=groups[n.cas]||[]).push(n); });
       Object.keys(groups).forEach(function(k){
         var g=groups[k];
-        var pad=Math.max.apply(null,g.map(function(n){return n.R;}))*Math.max(ext[0],ext[1])*1.25;
-        var gx0=Math.min.apply(null,g.map(function(n){return n.x;}))-pad;
-        var gx1=Math.max.apply(null,g.map(function(n){return n.x;}))+pad;
-        var gy0=Math.min.apply(null,g.map(function(n){return n.y;}))-pad;
-        var gy1=Math.max.apply(null,g.map(function(n){return n.y;}))+pad;
+        var maxR=Math.max.apply(null,g.map(function(n){return n.R;}));
+        var base2=Math.max(ext[0],ext[1])*1.12;
+        var padX=maxR*(g[0].padKX||base2),padY=maxR*(g[0].padKY||base2);
+        var gx0=Math.min.apply(null,g.map(function(n){return n.x;}))-padX;
+        var gx1=Math.max.apply(null,g.map(function(n){return n.x;}))+padX;
+        var gy0=Math.min.apply(null,g.map(function(n){return n.y;}))-padY;
+        var gy1=Math.max.apply(null,g.map(function(n){return n.y;}))+padY;
         var c={x:gx0,y:gy0,w:gx1-gx0,h:gy1-gy0}; /* hard corners */
         cm[k]=c;casings.push(c);
       });
-      /* letters are one connected silhouette: connectors reach into their neighbours */
-      if(pick==='hshape'&&cm.a&&cm.b&&cm.c){
-        var hx0=Math.min(cm.a.x+cm.a.w/2,cm.b.x+cm.b.w/2);
-        var hx1=Math.max(cm.a.x+cm.a.w/2,cm.b.x+cm.b.w/2);
-        cm.c.x=hx0;cm.c.w=hx1-hx0;
-      }
-      if(pick==='ishape'&&cm.a&&cm.b&&cm.c){
-        var iy0=cm.a.y+cm.a.h/2,iy1=cm.c.y+cm.c.h/2;
-        cm.b.y=Math.min(iy0,iy1);cm.b.h=Math.abs(iy1-iy0);
-      }
-      if(pick==='tshape'&&cm.a&&cm.b){
-        var tb=cm.b.y+cm.b.h;
-        cm.b.y=cm.a.y+cm.a.h/2;cm.b.h=tb-cm.b.y;
-      }
     }
 
     /* the most top-left dial is always About — the rest stays random */
@@ -739,7 +750,9 @@
     if(cased||Math.random()<0.35){
       uni={
         model:[0,1,2,4,5,6,10,11,13][Math.floor(Math.random()*9)],
-        tone:['black','dark','mid','light'][Math.floor(Math.random()*4)],
+        /* clocks sitting on a coloured casing read dark, like the reference */
+        tone:cased?['black','dark'][Math.floor(Math.random()*2)]
+                  :['black','dark','mid','light'][Math.floor(Math.random()*4)],
         dialDark:Math.random()<0.5,
         bez:0.08+Math.random()*0.14,
         slim:Math.random()<0.5
@@ -764,7 +777,7 @@
       n.style={
         model:model,
         seed:seed,
-        shape:dealShape,
+        shape:n.forceShape||dealShape,
         tone:toneRoll<0.22?'black':(toneRoll<0.62?'dark':(toneRoll<0.85?'mid':'light')),
         dialDark:toneRoll>=0.85?true:r()<0.15,   /* light rings always get a dark cone — contrast */
         texture:r()<0.18?(r()<0.5?'grille':'ribbed'):null,
