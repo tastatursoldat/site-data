@@ -1379,8 +1379,8 @@
   var musicEl=app.querySelector('#me-music');
   var brandEl=app.querySelector('#me-brand');
   function updateBrand(){
-    /* label follows the view — dial cinema on the index, dial radio on the radio field */
-    brandEl.textContent=app.classList.contains('browse')?'dial cinema':(fieldMode==='radio'?'dial radio':'dial');
+    /* the mark always reads dial — cinema and radio sit top right on every view */
+    brandEl.textContent='dial';
   }
   var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null,ytJumped=false;
   var musicIn=document.createElement('span');musicIn.className='in';musicEl.appendChild(musicIn);
