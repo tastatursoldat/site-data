@@ -328,14 +328,17 @@
      silhouette behind them (the packed cabinets on the reference sheet) */
   var MASKS={
     /* wide columns hold the big drivers, narrow ones the small clocks between */
-    packT:{cols:[0.5,1,0.5,1,0.5,1,0.5,1,0.5],rows:[1,1,0.45,1,1,1,0.45,1],
-           cells:['111111111','111111111','111111111','111111111',
-                  '000111000','000111000','000111000','000111000']},
+    /* pairs of very narrow columns flank every driver, so the small clocks
+       crowd in tight beside the big ones */
+    packT:{cols:[0.3,1,0.3,0.3,1,0.3,0.3,1,0.3,0.3,1,0.3],
+           rows:[1,1,0.3,1,1,1,0.3,1],
+           cells:['111111111111','111111111111','111111111111','111111111111',
+                  '000011110000','000011110000','000011110000','000011110000']},
     /* 2 = a square-cased clock: the horn tweeters on top of the H */
-    packH:{cols:[1,0.5,0.9,0.5,1],rows:[0.7,1,0.5,1,1,0.5,1],
-           cells:['20002','10001','10001','11111','10001','10001','10001']},
-    packI:{cols:[1,0.5,1,0.5,1],rows:[1,0.5,1,0.5,1],
-           cells:['11111','00100','00100','00100','11111']}
+    packH:{cols:[0.3,1,0.3,0.55,0.3,1,0.3],rows:[0.65,1,0.3,1,1,0.3,1],
+           cells:['0200020','0100010','0100010','1111111','0100010','0100010','1100011']},
+    packI:{cols:[0.3,1,0.3,0.4,0.3,1,0.3],rows:[1,0.3,1,0.3,1],
+           cells:['1111111','0001000','0001000','0001000','1111111']}
   };
   function cellLayout(fs,base,spec){
     var cw=spec.cols,rh=spec.rows,cells=spec.cells;
