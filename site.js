@@ -520,6 +520,26 @@
     var dealShape=shapeRoll<0.5?'circle':(shapeRoll<0.78?'square':(shapeRoll<0.9?'pill':'tv'));
     var ext=CASE_EXT[dealShape];
 
+    /* mirror pairs across the vertical axis — left and right must match */
+    function mirrorPairs(){
+      var pairs=[],used={};
+      for(var i=0;i<nodes.length;i++){
+        if(used[i])continue;
+        var A=nodes[i];
+        if(Math.abs(A.x-W/2)<A.R*0.35){used[i]=1;continue;} /* sits on the axis */
+        var mx=W-A.x,best=-1,bd=1e9;
+        for(var j=0;j<nodes.length;j++){
+          if(j===i||used[j])continue;
+          var d=Math.hypot(nodes[j].x-mx,nodes[j].y-A.y);
+          if(d<bd){bd=d;best=j;}
+        }
+        if(best>=0&&bd<Math.max(A.R,nodes[best].R)*0.9){used[i]=1;used[best]=1;pairs.push([i,best]);}
+      }
+      return pairs;
+    }
+    var pairs=mirrorPairs();
+    pairs.forEach(function(p){ nodes[p[1]].R=nodes[p[0]].R; }); /* symmetric sizes */
+
     /* a casing only ever holds one and the same watch, all at one size */
     var tagged=nodes.some(function(n){return !!n.cas;});
     var cased=tagged&&Math.random()<0.55;
@@ -671,13 +691,12 @@
         bez:0.08+r()*0.14,
         slim:model===7||r()<0.4,
         accentMode:['ring','dial','hairline'][Math.floor(r()*3)],
-        hairForeign:r()<0.5?['#E8C23A','#4a7fe8','#3fae9e','#e8963a'][Math.floor(r()*4)]:null,
+        hairForeign:r()<0.5?(r(),null):null, /* off-palette hairlines retired; stream kept stable */
         tinted:r()<0.4,
         off:Math.floor(r()*43200000)
       };
       n.accent=order.indexOf(i)<accentBudget;
-      /* grey cones can still wear a small foreign hairline */
-      n.foreignHair=!n.accent&&!monoMode&&r()<0.28;
+      n.foreignHair=(r(),false); /* every colour on the field comes from the theme */
       /* soundbox leftovers from the reference — corner screws + dust-cap dome — show rarely */
       n.style.cornerDots=r()<0.35; /* squares are ~1 in 5 dials, so ≈ one screwed plate per load */
       n.style.dome=r()<0.1;
@@ -687,6 +706,13 @@
         n.style.texture=null;n.style.tinted=false;n.style.cornerDots=false;n.style.dome=false;
         n.accent=false;n.foreignHair=false;
       }
+    });
+
+    /* symmetry: a mirrored clock is the same clock — style, accent and all */
+    pairs.forEach(function(p){
+      var L=nodes[p[0]],Rn=nodes[p[1]];
+      Rn.style=Object.assign({},L.style,{off:Rn.style.off}); /* own time, same watch */
+      Rn.accent=L.accent;Rn.foreignHair=L.foreignHair;
     });
   }
 
@@ -786,7 +812,7 @@
 
     /* thin hairline rings — theme on accents, foreign colors on a few greys */
     if(aHair||n.foreignHair){
-      ctx.strokeStyle=aHair?key:(st.hairForeign||key);
+      ctx.strokeStyle=key;
       ctx.lineWidth=Math.max(.8,Rd*0.02);
       ctx.beginPath();ctx.arc(cx,cy,Rd*0.8,0,7);ctx.stroke();
     }
@@ -856,7 +882,7 @@
         break;
       case 15:{ /* exposed circuit board (U-Boat capsule) */
         var cr=rng(st.seed+7);
-        ctx.fillStyle='#2f7a4b';
+        ctx.fillStyle=shade(key,-95); /* the board wears the theme, never a foreign green */
         ctx.beginPath();ctx.arc(cx,cy,Rd*0.86,0,7);ctx.fill();
         ctx.strokeStyle='rgba(0,0,0,.25)';ctx.lineWidth=Math.max(.5,Rd*0.02);
         ctx.beginPath();ctx.arc(cx,cy,Rd*0.86,0,7);ctx.stroke();
@@ -880,13 +906,13 @@
           var L2=Rd*0.3,Wd=Rd*0.11,hw2=L2/2,hh2=Wd/2,rr3=hh2*0.9;
           ctx.strokeStyle='#d9d9d4';ctx.lineWidth=Math.max(.5,Rd*0.018);
           ctx.beginPath();ctx.moveTo(-L2*0.72,0);ctx.lineTo(L2*0.72,0);ctx.stroke();
-          ctx.fillStyle='#8fc3e8';
+          ctx.fillStyle=shade(key,70);
           ctx.beginPath();
           ctx.moveTo(-hw2+rr3,-hh2);
           ctx.arcTo(hw2,-hh2,hw2,hh2,rr3);ctx.arcTo(hw2,hh2,-hw2,hh2,rr3);
           ctx.arcTo(-hw2,hh2,-hw2,-hh2,rr3);ctx.arcTo(-hw2,-hh2,hw2,-hh2,rr3);
           ctx.closePath();ctx.fill();
-          ctx.fillStyle='#7a4a2b';
+          ctx.fillStyle='#1a1c1e';
           ctx.fillRect(-hw2*0.55,-hh2,Wd*0.2,Wd);
           ctx.fillRect(-hw2*0.05,-hh2,Wd*0.2,Wd);
           ctx.fillRect(hw2*0.4,-hh2,Wd*0.2,Wd);
@@ -895,7 +921,7 @@
         for(var cs=0;cs<2;cs++){
           var ca=cr()*6.283,cd=cr()*Rd*0.5;
           var ox=cx+Math.cos(ca)*cd,oy=cy+Math.sin(ca)*cd;
-          ctx.fillStyle='#d8752e';
+          ctx.fillStyle=key;
           ctx.beginPath();ctx.arc(ox,oy,Rd*0.085,0,7);ctx.fill();
           ctx.strokeStyle='rgba(0,0,0,.3)';ctx.lineWidth=Math.max(.4,Rd*0.012);
           ctx.beginPath();ctx.arc(ox,oy,Rd*0.085,0,7);ctx.stroke();
