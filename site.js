@@ -103,6 +103,15 @@
     '.me-row[data-dim] span{opacity:.35;}'+
     /* the picked rows answer in the deal's colour — hover is never grey */
     '.me-row[data-hot] span{color:var(--me-theme,#111);}'+
+    /* desktop: the list keeps to the left half and the hovered film plays on
+       the right — the old index preview, minus the timecode */
+    '@media (min-width:701px){'+
+      '#me-list{left:clamp(20px,4vw,64px);width:46vw;transform:translateY(-50%);}'+
+      '#me-prev{position:fixed;right:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);'+
+        'width:min(42vw,900px);aspect-ratio:16/9;display:none;background:#000;}'+
+      '#me-prev video{width:100%;height:100%;object-fit:cover;display:block;}'+
+      '#me-app.browse #me-prev.on{display:block;}'+
+    '}'+
     // player
     '#me-player{position:fixed;inset:0;background:#EFEFEC;z-index:2147483600;display:none;}'+
     '#me-player.show{display:block;}'+
@@ -1934,16 +1943,35 @@
   }
   applyDim(null);
 
+  /* the hovered row's film plays on the right — the old index preview */
+  var prevEl=document.createElement('div');prevEl.id='me-prev';
+  var prevVid=document.createElement('video');
+  prevVid.muted=true;prevVid.loop=true;prevVid.playsInline=true;prevVid.autoplay=true;
+  prevEl.appendChild(prevVid);
+  app.querySelector('#me-browse').appendChild(prevEl);
+  function setPreview(row){
+    var url=null;
+    if(row&&!row.dataset.about){var p=PROJECTS[+row.dataset.i];url=(p&&p.preview)||null;}
+    if(!url){
+      prevEl.classList.remove('on');
+      try{prevVid.pause();}catch(e){}
+      return;
+    }
+    if(prevEl.dataset.cur!==url){prevEl.dataset.cur=url;prevVid.src=url;}
+    prevEl.classList.add('on');
+    try{var pr=prevVid.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}
+  }
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
   // hover anywhere else on a row -> dim the rest.
   listEl.addEventListener('mouseover', function(e){
     if(isMobile()) return;
-    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ applyDim(null); return; }
+    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ applyDim(null); setPreview(null); return; }
     var cell=e.target.closest('[data-field]');
     if(cell){ applyDim(null,cell.dataset.field,cell.dataset.value); }
     else { applyDim(row); }
+    setPreview(row);
   });
-  listEl.addEventListener('mouseleave', function(){ applyDim(null); });
+  listEl.addEventListener('mouseleave', function(){ applyDim(null); setPreview(null); });
 
   // click -> opens the film; About row opens the about page (Contact cell opens mail)
   listEl.addEventListener('click', function(e){
