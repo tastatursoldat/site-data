@@ -41,28 +41,31 @@
     '#me-field{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default;}'+
     '#me-brand{position:fixed;top:1.15rem;left:1.2rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     '#me-ctrl{position:fixed;top:1.15rem;right:1.2rem;z-index:10;display:flex;gap:1.1rem;align-items:center;}'+
-    '#me-ctrl button{font:inherit;border:0;background:none;cursor:pointer;padding:0;}'+
-    '#me-ctrl .txt{font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
-    '#me-ctrl .icon{color:#0a0a0a;display:flex;align-items:center;}'+
-    '#me-ctrl .icon svg{width:15px;height:15px;}'+
-    /* leftmost in a right-anchored row: appearing extends the row leftward,
-       so cinema and radio hold their positions without a reserved slot */
-    '#me-ctrl #me-stop{display:none;}'+
+    '#me-ctrl button,#me-corner button{font:inherit;border:0;background:none;cursor:pointer;padding:0;}'+
+    '#me-ctrl .txt,#me-corner .txt{font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
+    '#me-ctrl .icon,#me-corner .icon{color:#0a0a0a;display:flex;align-items:center;}'+
+    '#me-ctrl .icon svg,#me-corner .icon svg{width:15px;height:15px;}'+
+    /* the bottom-right corner is the radio's home: the word radio, or —
+       while a song plays — the pause glyph and the title in its place */
+    '#me-corner{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;display:flex;gap:.8rem;align-items:center;}'+
+    '#me-corner #me-stop{display:none;}'+
     '#me-app.radio-on #me-stop{display:flex;}'+
-    '#me-tc{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';'+
-      'font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
-    '#me-music{position:fixed;left:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;'+
-      'pointer-events:none;min-height:1em;max-width:44vw;white-space:nowrap;overflow:hidden;}'+
+    '#me-music{font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;'+
+      'min-height:1em;max-width:44vw;white-space:nowrap;overflow:hidden;display:none;}'+
+    '#me-app.titled #me-music{display:block;}'+
+    '#me-app.titled #me-corner #me-radio{display:none;}'+
     '#me-music .in{display:inline-block;white-space:nowrap;}'+
     '#me-music.scroll .in{animation:me-marq 6s ease-in-out infinite alternate;}'+
     '@keyframes me-marq{from{transform:translateX(0);}to{transform:translateX(var(--me-shift,0px));}}'+
+    /* the hover title moved to the free bottom-left corner */
+    '#me-tc{position:fixed;left:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';'+
+      'font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
     '#me-app.browse #me-tc{display:none;}'+
     // radio dial — a receiver wheel seen head-on: the needle is fixed dead
     // centre and the scale itself slides underneath as you scrub
     '#me-band{position:fixed;left:0;right:0;top:50%;transform:translateY(-50%);z-index:9;display:none;'+
       'height:230px;overflow:hidden;cursor:ew-resize;touch-action:none;font-family:'+FONT+';}'+
     '#me-app.radio-mode #me-band{display:block;}'+
-    '#me-app.radio-mode #me-music{display:none;}'+
     '#me-app.radio-mode #me-tc{display:none;}'+
     '#me-band-in{position:absolute;top:0;height:230px;will-change:transform;}'+
     '#me-band-in.glide{transition:transform .9s cubic-bezier(.22,1,.36,1);}'+
@@ -97,7 +100,6 @@
       'font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '.me-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(0,3fr) minmax(0,2fr);gap:1em;cursor:pointer;}'+
     '.me-row.head{cursor:default;margin-bottom:.2em;}'+
-    '.me-row.about span{color:#b3b3b3;}'+
     '.me-row span{transition:opacity .15s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'+
     '.me-row span{opacity:1;}'+
     '.me-row[data-dim] span{opacity:.35;}'+
@@ -171,19 +173,22 @@
     '<div id="me-browse"><div id="me-list"></div></div>'+
     '<div id="me-brand">dial</div>'+
     '<div id="me-ctrl">'+
-      /* the view toggles read as words, in the same voice as the mark;
-         the pause glyph enters from the left, so the words never move */
+      /* top right: the views and the about page, in the voice of the mark */
+      '<button id="me-btnview" class="txt" aria-label="Cinema — toggle index view">cinema</button>'+
+      '<button id="me-btnabout" class="txt" aria-label="About — open the about page">about</button>'+
+    '</div>'+
+    /* bottom right: the radio corner — the word, or pause + title while playing */
+    '<div id="me-corner">'+
       '<button id="me-stop" class="icon" aria-label="Pause music">'+
         '<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" stroke="none">'+
           '<rect x="5" y="4.5" width="3.4" height="11" rx="1"/>'+
           '<rect x="11.6" y="4.5" width="3.4" height="11" rx="1"/>'+
         '</svg>'+
       '</button>'+
-      '<button id="me-btnview" class="txt" aria-label="Cinema — toggle index view">cinema</button>'+
+      '<div id="me-music" role="button" aria-label="Radio — current song"></div>'+
       '<button id="me-radio" class="txt" aria-pressed="false" aria-label="Radio — toggle radio view">radio</button>'+
     '</div>'+
-    '<div id="me-tc" aria-hidden="true"></div>'+
-    '<div id="me-music" aria-hidden="true"></div>';
+    '<div id="me-tc" aria-hidden="true"></div>';
   document.body.appendChild(app);
 
   var listEl=app.querySelector('#me-list');
@@ -201,15 +206,14 @@
   var player=null, dragging=false, PROJECTS=[];
 
   // ── dial field — films and songs as clocks ──────────────────────
-  var ABOUT_ENTRY={year:1997,no:'000',client:'Michel Elsasser',title:'About',cat:'Contact',isAbout:true};
-  var FILM_DIALS=[];
+  var FILM_DIALS=[]; /* about lives in the top-right word now — no clock points to it */
   var fieldMode='dial'; /* 'dial' = About+films | 'radio' = the tuning scale alone */
   var fieldMult=[1,1,1,2,2,3][Math.floor(Math.random()*6)]; /* films repeat per deal — mostly once or twice */
   function fieldEntries(){
     /* songs live on the radio page only; the radio view itself has no clocks.
        films may appear several times — copies are identical repeated units */
     if(fieldMode==='radio')return[];
-    var out=[ABOUT_ENTRY];
+    var out=[];
     for(var m=0;m<fieldMult;m++){
       FILM_DIALS.forEach(function(f){
         /* copies keep the film link but each clock is a unique piece */
@@ -386,12 +390,9 @@
      unevenly, exactly as many as the formation wants */
   function padPool(fs,n){
     var out=fs.slice(0,Math.min(fs.length,n)),k=0;
-    if(n>0&&!out.some(function(e){return e.isAbout;}))out[0]=ABOUT_ENTRY;
-    /* before the projects json lands there are no films — the first paint
-       pads with About copies rather than undefined entries */
-    var src=FILM_DIALS.length?FILM_DIALS:[ABOUT_ENTRY];
+    if(!FILM_DIALS.length)return out; /* pre-data the field stays empty anyway */
     while(out.length<n){
-      out.push(Object.assign({},src[k%src.length],{copy:300+k}));
+      out.push(Object.assign({},FILM_DIALS[k%FILM_DIALS.length],{copy:300+k}));
       k++;
     }
     return out;
@@ -810,7 +811,7 @@
       var cells=0;
       /* every non-zero cell holds a clock — '2' is the forced-square cell */
       MASKS[pick].cells.forEach(function(row){for(var c=0;c<row.length;c++)if(row.charAt(c)!=='0')cells++;});
-      pool=[ABOUT_ENTRY];
+      pool=[];
       for(var pk=0;pool.length<cells&&FILM_DIALS.length;pk++){
         pool.push(pk<FILM_DIALS.length?FILM_DIALS[pk]
           :Object.assign({},FILM_DIALS[pk%FILM_DIALS.length],{copy:200+pk}));
@@ -996,15 +997,6 @@
         cm[k]=c;casings.push(c);
       });
     }
-
-    /* the most top-left dial is always About — the rest stays random */
-    var tlI=0,abI=-1,best=Infinity;
-    nodes.forEach(function(n,i){
-      var s=(n.x-n.R)+(n.y-n.R);
-      if(s<best){best=s;tlI=i;}
-      if(n.f&&n.f.isAbout)abI=i;
-    });
-    if(abI>=0&&abI!==tlI){var tf=nodes[tlI].f;nodes[tlI].f=nodes[abI].f;nodes[abI].f=tf;}
 
     /* the reference sheet runs roughly 7 coloured posters to 5 black-and-white */
     var bw=Math.random()<0.4;
@@ -1404,7 +1396,6 @@
     if(i<0){if(e.pointerType==='touch')tcEl.textContent='';return;}
     tcEl.textContent=refCode(nodes[i].f);
     var f=nodes[i].f;
-    if(f.isAbout){ openAboutScreen(); return; }
     if(f.p && f.p.film) openPlayer(f.p);
   });
 
@@ -1434,6 +1425,8 @@
     if(t===lastTitle) return;
     lastTitle=t;
     musicIn.textContent=t;
+    /* a playing title takes the radio word's place in the corner */
+    app.classList.toggle('titled',!!t&&radioPlaying);
     musicEl.classList.remove('scroll');
     musicIn.style.removeProperty('--me-shift');
     if(!t) return;
@@ -1885,7 +1878,8 @@
     tcEl.textContent='';hover=-1;
     radioBtn.setAttribute('aria-pressed','false');
     updateModeClass();updateBrand();
-    requestAnimationFrame(function(){try{sizePreview();}catch(e){}});
+    /* the panel opens with a clock and waits for a hover */
+    requestAnimationFrame(function(){try{sizePreview();setPreview(null);}catch(e){}});
   }
   function goRadio(){
     fieldMode='radio';
@@ -1904,14 +1898,18 @@
   radioBtn.addEventListener('click', function(){
     if(currentView()==='radio')goDial();else goRadio();
   });
+  /* the title stands where the radio word stood — it answers the same way */
+  musicEl.addEventListener('click', function(){
+    if(currentView()==='radio')goDial();else goRadio();
+  });
+  app.querySelector('#me-btnabout').addEventListener('click', function(){ openAboutScreen(); });
   app.querySelector('#me-stop').addEventListener('click', stopRadio);
   brandEl.addEventListener('click', function(){ goDial(); }); /* the mark always leads home */
 
   // ── data + render list ──────────────────────────────────────────
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
     PROJECTS=(d.projects||[]).filter(function(p){return p.published!==false;});
-    var html='<div class="me-row head"><span>Year</span><span>№</span><span>Client</span><span>Title</span><span>Category</span></div>'+
-      '<div class="me-row about" data-about="1"><span>1997</span><span>000</span><span>Michel Elsasser</span><span>About</span><span data-contact="1">Contact</span></div>';
+    var html='<div class="me-row head"><span>Year</span><span>№</span><span>Client</span><span>Title</span><span>Category</span></div>';
     PROJECTS.forEach(function(p,i){
       var no=p.num||String(i+1).padStart(3,'0');
       html+='<div class="me-row" data-i="'+i+'">'+
@@ -2007,6 +2005,7 @@
   }
   function phActive(){return prevEl.classList.contains('on')&&prevEl.classList.contains('ph')&&app.classList.contains('browse');}
   function showPlaceholder(){
+    sizePreview();
     phNode=phNode||randomWatchNode();
     prevEl.classList.add('ph');prevEl.classList.add('on');
     try{prevVid.pause();}catch(e){}
@@ -2016,15 +2015,16 @@
     if(prevEl.classList.contains('on')&&!prevEl.classList.contains('ph'))showPlaceholder();
   });
   function setPreview(row){
-    var url=null,isFilm=false;
-    if(row&&!row.dataset.about){var p=PROJECTS[+row.dataset.i];isFilm=!!p;url=(p&&p.preview)||null;}
-    if(!isFilm){
-      prevEl.classList.remove('on');prevEl.classList.remove('ph');phNode=null;
-      try{prevVid.pause();}catch(e){}
+    var url=null;
+    if(row){var p=PROJECTS[+row.dataset.i];url=(p&&p.preview)||null;}
+    if(!url){
+      /* no film under the cursor (or none hovered at all): a big live clock
+         holds the panel — rolled fresh each time it takes over */
+      phNode=null;
+      showPlaceholder();
       return;
     }
     sizePreview();
-    if(!url){showPlaceholder();return;}
     prevEl.classList.remove('ph');phNode=null;
     if(prevEl.dataset.cur!==url){prevEl.dataset.cur=url;prevVid.src=url;}
     prevEl.classList.add('on');
@@ -2042,13 +2042,9 @@
   });
   listEl.addEventListener('mouseleave', function(){ applyDim(null); setPreview(null); });
 
-  // click -> opens the film; About row opens the about page (Contact cell opens mail)
+  // click -> opens the film
   listEl.addEventListener('click', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
-    if(row.dataset.about){
-      if(e.target.closest('[data-contact]')){ window.location.href='mailto:'+ABOUT_EMAIL; return; }
-      openAboutScreen(); return;
-    }
     var p=PROJECTS[+row.dataset.i];
     if(p && p.film) openPlayer(p);
   });
