@@ -205,16 +205,19 @@
   }
 
   /* one color theme per load */
+  /* the reference palette — these six colours and nothing else */
   var THEMES=[
-    {key:'#5FDBD3',glow:'#5FDBD3'},   /* cyan   */
-    {key:'#D9E04E',glow:'#D9E04E'},   /* yellow */
-    {key:'#D355DE',glow:'#D355DE'},   /* magenta*/
-    {key:'#4A64D8',glow:'#6A82E8'},   /* blue   */
-    {key:'#63BE58',glow:'#7BD46F'},   /* green  */
-    {key:'#D8503E',glow:'#E07361'},   /* red    */
-    {key:'#DE9A3E',glow:'#E8B266'}    /* orange */
+    {key:'#29ABE2',glow:'#5CC4EE'},   /* cyan   */
+    {key:'#1B75BC',glow:'#4A96D2'},   /* blue   */
+    {key:'#8DC63F',glow:'#A9D765'},   /* green  */
+    {key:'#E8112D',glow:'#F04357'},   /* red    */
+    {key:'#F7931E',glow:'#FAAE55'},   /* orange */
+    {key:'#EF8FB4',glow:'#F5AFC9'}    /* pink   */
   ];
   var theme=THEMES[Math.floor(Math.random()*THEMES.length)];
+  /* the palette a deal actually paints with — greyscale on black-and-white deals */
+  var BW_KEY='#8f8f8a',BW_GLOW='#adada7';
+  var paletteKey=theme.key,paletteGlow=theme.glow;
 
   var cvs=app.querySelector('#me-field'),ctx=cvs.getContext('2d');
   var W=0,H=0,DPR=Math.min(devicePixelRatio||1,2),nodes=[],hover=-1,casings=[];
@@ -232,31 +235,33 @@
     return '#'+((R<<16)|(G<<8)|B).toString(16).padStart(6,'0');}
   function shuffled(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}return b;}
 
-  var uniformSize=false; /* cased deals want one size, so spacing stays even */
+  var uniformSize=false; /* cased deals: a steady big/small rhythm, like the cabinets */
   function makeSizes(base,n){
     /* palindromic sizes — the sequence reads the same from either end, so any
        layout that lays clocks out in order comes out mirror-symmetric */
-    if(uniformSize){var u=[];for(var q=0;q<n;q++)u.push(base*0.045);return u;}
-    var h=Math.ceil(n/2),s=[];
-    for(var i=0;i<h;i++){
-      var big=i<1;
-      s.push(base*(big?0.07+Math.random()*0.035:0.03+Math.random()*0.028));
+    var h=Math.ceil(n/2),s=[],i;
+    if(uniformSize){
+      var big=base*(0.05+Math.random()*0.02),small=big*(0.36+Math.random()*0.16);
+      for(i=0;i<h;i++)s.push(i%2?small:big);
+    }else{
+      for(i=0;i<h;i++)s.push(base*(i<1?0.07+Math.random()*0.035:0.03+Math.random()*0.028));
+      s=shuffled(s);
     }
-    s=shuffled(s);
     var out=s.slice();
     for(var j=n-h-1;j>=0;j--)out.push(s[j]);
     return out;
   }
   function evenR(base){ return uniformSize?base*0.045:base*(0.03+Math.random()*0.045); }
 
-  function chaoticClump(fs,base,spreadK,sepK){
+  function chaoticClump(fs,base,spreadK,sepK,bimodal){
     /* organic, but mirrored: scatter one half, reflect it, centre the odd one */
     var cx=W/2,cy=H/2,spread=base*spreadK;
     function gauss(){return (Math.random()+Math.random()+Math.random()-1.5)/1.5;}
     var n=fs.length,half=Math.floor(n/2),odd=n%2,out=[],left=[];
     var bigAt=Math.floor(Math.random()*half);
     for(var i=0;i<half;i++){
-      var R=uniformSize?base*0.045:base*(i===bigAt?0.055+Math.random()*0.03:0.026+Math.random()*0.026);
+      var R=bimodal?(i%3===0?base*(0.072+Math.random()*0.022):base*(0.026+Math.random()*0.018))
+                   :(uniformSize?base*0.045:base*(i===bigAt?0.055+Math.random()*0.03:0.026+Math.random()*0.026));
       var x,y,tries=0;
       do{
         x=cx-Math.abs(gauss())*spread*1.6-R*1.05;
@@ -299,15 +304,15 @@
 
   /* centre hub plus four identical arms — every arm shares one size sequence,
      so opposite arms mirror each other exactly */
-  function armLayout(fs,base,dirs){
+  function armLayout(fs,base,dirs,tags){
     var per=Math.floor((fs.length-1)/4);
     var armR=makeSizes(base,per);
     var cR=uniformSize?base*0.045:base*0.075;
-    var gap=cR*0.08,nodes=[{f:fs[0],x:W/2,y:H/2,R:cR}],fi=1;
-    dirs.forEach(function(d){
+    var gap=cR*0.08,nodes=[{f:fs[0],x:W/2,y:H/2,R:cR,cas:tags&&tags[0]}],fi=1;
+    dirs.forEach(function(d,ai){
       var dist=cR+gap;
       armR.forEach(function(r){
-        nodes.push({f:fs[fi++],x:W/2+d[0]*(dist+r),y:H/2+d[1]*(dist+r),R:r});
+        nodes.push({f:fs[fi++],x:W/2+d[0]*(dist+r),y:H/2+d[1]*(dist+r),R:r,cas:tags&&tags[ai]});
         dist+=2*r+gap;
       });
     });
@@ -328,7 +333,9 @@
       var y=(H-total)/2;
       return fs.map(function(f,i){var r=R[i];var n={f:f,x:W/2,y:y+r,R:r,cas:'a'};y+=2*r;return n;});
     },
-    cross:function(fs,base){ return armLayout(fs,base,[[0,-1],[0,1],[-1,0],[1,0]]); },
+    cross:function(fs,base){ /* casing = a vertical slab crossed by a horizontal one */
+      return armLayout(fs,base,[[0,-1],[0,1],[-1,0],[1,0]],['v','v','v','h','h']);
+    },
     xshape:function(fs,base){
       var q=Math.SQRT1_2;
       return armLayout(fs,base,[[-q,-q],[q,-q],[-q,q],[q,q]]);
@@ -350,7 +357,7 @@
         var rowW=gw*(inRow-1)/(cols-1||1);
         var ox=(W-rowW)/2;
         for(var c=0;c<inRow;c++){
-          nodes.push({f:fs[r*cols+c],x:ox+(inRow>1?rowW*(c/(inRow-1)):0),y:oy+(rows>1?gh*(r/(rows-1)):0),R:rr});
+          nodes.push({f:fs[r*cols+c],x:ox+(inRow>1?rowW*(c/(inRow-1)):0),y:oy+(rows>1?gh*(r/(rows-1)):0),R:rr,cas:'g'});
         }
       }
       return nodes;
@@ -440,6 +447,27 @@
       });
       return nodes;
     },
+    quincunx:function(fs,base){ /* five drivers, satellites around the flanks */
+      var n=fs.length,big=base*0.1,small=base*0.03;
+      var dx=big*1.22,dy=big*1.18,nodes=[],fi=0;
+      nodes.push({f:fs[fi++],x:W/2,y:H/2,R:big});
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(s){
+        if(fi<n)nodes.push({f:fs[fi++],x:W/2+s[0]*dx,y:H/2+s[1]*dy,R:big});
+      });
+      var m=n-fi,rx=dx+big*1.2,ry=dy+big*1.15;
+      if(m%2===1){nodes.push({f:fs[fi++],x:W/2,y:H/2-ry*1.08,R:small});m--;}
+      var np=m/2;
+      for(var k=0;k<np;k++){
+        var t=(k+1)/(np+1),a=(-70+t*140)*Math.PI/180;
+        var px=W/2+Math.cos(a)*rx,py=H/2+Math.sin(a)*ry;
+        nodes.push({f:fs[fi++],x:px,y:py,R:small});
+        nodes.push({f:fs[fi++],x:W-px,y:py,R:small});
+      }
+      return nodes;
+    },
+    bloom:function(fs,base){ /* mirrored bouquet — big cones with small ones between */
+      return chaoticClump(fs,base,0.2,0.99,true);
+    },
     star:function(fs,base){
       var pts=[];
       for(var k=0;k<10;k++){
@@ -499,9 +527,16 @@
     var pool=fieldEntries();
     if(!pool.length||!W||!H){nodes=[];casings=[];ctx.clearRect(0,0,W,H);return;}
     var base=Math.min(W,H);
+    /* half of all posters come in a box, so those deals draw from the
+       formations a casing can be built around */
+    var TAGGED={lineH:1,lineV:1,tshape:1,hshape:1,ishape:1,columns:1,cross:1,grid:1};
     var names=Object.keys(LAYOUTS);
-    var pick=names[Math.floor(Math.random()*names.length)];
+    var cased=Math.random()<0.5;
+    var choices=cased?names.filter(function(k){return TAGGED[k];}):names;
+    var pick=choices[Math.floor(Math.random()*choices.length)];
     cvs.dataset.layout=pick;
+    cvs.dataset.cased=cased?'1':'0';
+    uniformSize=cased;
     /* one case shape for the whole deal — the field is never a mix of forms */
     var CASE_EXT={circle:[1,1],square:[0.94,0.94],pill:[1.08,0.9],tv:[0.8,1.02]};
     var shapeRoll=Math.random();
@@ -650,6 +685,12 @@
       fitField();
       if(worstOverlap()<=0.01)break;
     }
+    /* snapping back onto the axis can undo a push, so the two can oscillate on
+       organic layouts. Shrinking every clock equally always converges and keeps
+       the mirror exact — no arrangement ever leaves this loop overlapping. */
+    for(var shrink=0;shrink<40&&worstOverlap()>0.01;shrink++){
+      nodes.forEach(function(n){n.R*=0.97;});
+    }
     cvs.dataset.overlap=String(Math.round(worstOverlap()*10)/10);
 
     /* sometimes the formation lives in a casing — slabs derived per tagged group */
@@ -707,9 +748,12 @@
     cvs.dataset.uniform=uni?'1':'0';
     cvs.dataset.shape=dealShape;
 
-    /* per load: either a keyed composition (theme-heavy) or a rare monochrome one */
-    var monoMode=Math.random()<0.18;
-    var accentBudget=monoMode?1+Math.floor(Math.random()*2):5+Math.floor(Math.random()*3);
+    /* the reference sheet runs roughly 7 coloured posters to 5 black-and-white */
+    var bw=Math.random()<0.4;
+    paletteKey=bw?BW_KEY:theme.key;
+    paletteGlow=bw?BW_GLOW:theme.glow;
+    cvs.dataset.bw=bw?'1':'0';
+    var accentBudget=bw?0:5+Math.floor(Math.random()*3);
     var order=shuffled(nodes.map(function(_,i){return i;}));
     nodes.forEach(function(n,i){
       var seed=hashSeed((n.f.year*1000+parseInt(n.f.no,10))+(n.f.copy||0)*7919);
@@ -757,7 +801,7 @@
   /* watch renderer — real time */
   function drawWatch(n,hot){
     var R=n.R,cx=n.x,cy=n.y;
-    var key=theme.key,st=n.style;
+    var key=paletteKey,st=n.style;
     var aRing=n.accent&&st.accentMode==='ring';
     var aDial=n.accent&&st.accentMode==='dial';
     var aHair=n.accent&&st.accentMode==='hairline';
@@ -799,7 +843,7 @@
     var ringTones={black:'#101214',dark:'#2e3236',mid:'#6f7377',light:'#c9c9c5'};
     ctx.save();
     if(hot){ctx.shadowColor='rgba(0,0,0,.4)';ctx.shadowBlur=R*0.7;}
-    else if(aRing){ctx.shadowColor=theme.glow;ctx.shadowBlur=R*0.3;}
+    else if(aRing){ctx.shadowColor=paletteGlow;ctx.shadowBlur=R*0.3;}
     else{ctx.shadowColor='rgba(0,0,0,.15)';ctx.shadowBlur=R*0.12;ctx.shadowOffsetY=R*0.04;}
     ctx.fillStyle=aRing?key:ringTones[st.tone];
     casePath(1);ctx.fill();
@@ -1018,7 +1062,7 @@
       /* one path, one fill, one shadow — overlapping slabs merge seamlessly */
       ctx.save();
       ctx.shadowColor='rgba(0,0,0,.18)';ctx.shadowBlur=14;ctx.shadowOffsetY=4;
-      ctx.fillStyle=theme.key;
+      ctx.fillStyle=paletteKey;
       ctx.beginPath();
       casings.forEach(function(c){ctx.rect(c.x,c.y,c.w,c.h);});
       ctx.fill();
