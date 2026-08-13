@@ -189,7 +189,7 @@
   var ABOUT_ENTRY={year:1997,no:'000',client:'Michel Elsasser',title:'About',cat:'Contact',isAbout:true};
   var FILM_DIALS=[];
   var fieldMode='dial'; /* 'dial' = About+films | 'radio' = the tuning scale alone */
-  var fieldMult=[1,1,2,2,2,3,3,4][Math.floor(Math.random()*8)]; /* films repeat per deal */
+  var fieldMult=[1,1,1,2,2,3][Math.floor(Math.random()*6)]; /* films repeat per deal — mostly once or twice */
   function fieldEntries(){
     /* songs live on the radio page only; the radio view itself has no clocks.
        films may appear several times — copies are identical repeated units */
@@ -212,7 +212,7 @@
   var theme=THEMES[Math.floor(Math.random()*THEMES.length)];
 
   var cvs=app.querySelector('#me-field'),ctx=cvs.getContext('2d');
-  var W=0,H=0,DPR=Math.min(devicePixelRatio||1,2),nodes=[],hover=-1;
+  var W=0,H=0,DPR=Math.min(devicePixelRatio||1,2),nodes=[],hover=-1,casings=[];
 
   function rng(seed){var s=seed>>>0||1;return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
   function hashSeed(x){ /* avalanche — sequential film seeds would correlate the LCG */
@@ -261,13 +261,13 @@
       var R=makeSizes(base,fs.length);
       var total=R.reduce(function(a,r){return a+2*r;},0);
       var x=(W-total)/2;
-      return fs.map(function(f,i){var r=R[i];var n={f:f,x:x+r,y:H/2,R:r};x+=2*r;return n;});
+      return fs.map(function(f,i){var r=R[i];var n={f:f,x:x+r,y:H/2,R:r,cas:'a'};x+=2*r;return n;});
     },
     lineV:function(fs,base){
       var R=makeSizes(base,fs.length);
       var total=R.reduce(function(a,r){return a+2*r;},0);
       var y=(H-total)/2;
-      return fs.map(function(f,i){var r=R[i];var n={f:f,x:W/2,y:y+r,R:r};y+=2*r;return n;});
+      return fs.map(function(f,i){var r=R[i];var n={f:f,x:W/2,y:y+r,R:r,cas:'a'};y+=2*r;return n;});
     },
     cross:function(fs,base){ /* shared center, rest split over four arms */
       var Rs=makeSizes(base,fs.length);
@@ -337,9 +337,9 @@
       var Rh=makeSizes(base,nTop),Rv=makeSizes(base,nCol),nodes=[];
       var tot=Rh.reduce(function(a,r){return a+2*r;},0),x=(W-tot)/2;
       var topY=H*0.28;
-      for(var i=0;i<nTop;i++){nodes.push({f:fs[i],x:x+Rh[i],y:topY,R:Rh[i]});x+=2*Rh[i];}
+      for(var i=0;i<nTop;i++){nodes.push({f:fs[i],x:x+Rh[i],y:topY,R:Rh[i],cas:'a'});x+=2*Rh[i];}
       var y=topY+Math.max.apply(null,Rh);
-      for(var k=0;k<nCol;k++){y+=Rv[k];nodes.push({f:fs[nTop+k],x:W/2,y:y,R:Rv[k]});y+=2*Rv[k];}
+      for(var k=0;k<nCol;k++){y+=Rv[k];nodes.push({f:fs[nTop+k],x:W/2,y:y,R:Rv[k],cas:'b'});y+=2*Rv[k];}
       return nodes;
     },
     cluster:function(fs,base){ /* loose organic clump, mild overlap */
@@ -369,6 +369,7 @@
       return nodes;
     },
     hshape:function(fs,base){ /* letter H — uniform drivers, two legs + crossbar */
+      if(fs.length<5)return LAYOUTS.lineH(fs,base); /* too few for a letter */
       var n=fs.length;
       var legN=Math.max(2,Math.round(n*0.36));
       var barN=Math.max(1,n-2*legN);
@@ -376,13 +377,14 @@
       var xL=W/2-base*0.17,xR=W/2+base*0.17;
       var colH=legN*2*r+(legN-1)*gap;
       var nodes=[],fi=0,i;
-      for(i=0;i<legN;i++)nodes.push({f:fs[fi++],x:xL,y:H/2-colH/2+r+i*(2*r+gap),R:r});
-      for(i=0;i<legN;i++)nodes.push({f:fs[fi++],x:xR,y:H/2-colH/2+r+i*(2*r+gap),R:r});
+      for(i=0;i<legN;i++)nodes.push({f:fs[fi++],x:xL,y:H/2-colH/2+r+i*(2*r+gap),R:r,cas:'a'});
+      for(i=0;i<legN;i++)nodes.push({f:fs[fi++],x:xR,y:H/2-colH/2+r+i*(2*r+gap),R:r,cas:'b'});
       var rb=Math.min(r,((xR-xL)-2*r)/(2*barN)*0.85);
-      for(i=0;i<barN;i++){var t=(i+1)/(barN+1);nodes.push({f:fs[fi++],x:xL+t*(xR-xL),y:H/2,R:rb});}
+      for(i=0;i<barN;i++){var t=(i+1)/(barN+1);nodes.push({f:fs[fi++],x:xL+t*(xR-xL),y:H/2,R:rb,cas:'c'});}
       return nodes;
     },
     ishape:function(fs,base){ /* letter I — top and bottom bars, spine between */
+      if(fs.length<5)return LAYOUTS.lineH(fs,base); /* too few for a letter */
       var n=fs.length;
       var barN=Math.max(2,Math.round(n*0.36));
       var colN=Math.max(1,n-2*barN);
@@ -390,12 +392,12 @@
       var topY=H*0.3,botY=H*0.7;
       var barW=barN*2*r+(barN-1)*gap;
       var nodes=[],fi=0,i,x;
-      for(i=0;i<barN;i++){x=W/2-barW/2+r+i*(2*r+gap);nodes.push({f:fs[fi++],x:x,y:topY,R:r});}
+      for(i=0;i<barN;i++){x=W/2-barW/2+r+i*(2*r+gap);nodes.push({f:fs[fi++],x:x,y:topY,R:r,cas:'a'});}
       for(i=0;i<colN;i++){
         var t=(i+1)/(colN+1);
-        nodes.push({f:fs[fi++],x:W/2,y:topY+t*(botY-topY),R:r*0.9});
+        nodes.push({f:fs[fi++],x:W/2,y:topY+t*(botY-topY),R:r*0.9,cas:'b'});
       }
-      for(i=0;i<barN;i++){x=W/2-barW/2+r+i*(2*r+gap);nodes.push({f:fs[fi++],x:x,y:botY,R:r});}
+      for(i=0;i<barN;i++){x=W/2-barW/2+r+i*(2*r+gap);nodes.push({f:fs[fi++],x:x,y:botY,R:r,cas:'c'});}
       return nodes;
     },
     flower:function(fs,base){ /* mirrored rows of 3 and 2 — uniform drivers */
@@ -418,7 +420,7 @@
       for(var c=0;c<2;c++){
         var R=makeSizes(base,counts[c]);
         var tot=R.reduce(function(a,r){return a+2*r;},0),y=(H-tot)/2;
-        for(var i=0;i<counts[c];i++){nodes.push({f:fs[fi++],x:xs[c],y:y+R[i],R:R[i]});y+=2*R[i];}
+        for(var i=0;i<counts[c];i++){nodes.push({f:fs[fi++],x:xs[c],y:y+R[i],R:R[i],cas:c===0?'a':'b'});y+=2*R[i];}
       }
       return nodes;
     }
@@ -426,7 +428,7 @@
 
   function layoutField(){
     var pool=fieldEntries();
-    if(!pool.length||!W||!H){nodes=[];ctx.clearRect(0,0,W,H);return;}
+    if(!pool.length||!W||!H){nodes=[];casings=[];ctx.clearRect(0,0,W,H);return;}
     var base=Math.min(W,H);
     var names=Object.keys(LAYOUTS);
     var pick=names[Math.floor(Math.random()*names.length)];
@@ -434,24 +436,68 @@
     var fs=shuffled(pool);
     nodes=LAYOUTS[pick](fs,base);
 
-    /* normalize: scale + center the whole arrangement into the safe area,
-       so no viewport (previews included) ever cuts dials off */
-    var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
-    nodes.forEach(function(n){
-      minX=Math.min(minX,n.x-n.R);maxX=Math.max(maxX,n.x+n.R);
-      minY=Math.min(minY,n.y-n.R);maxY=Math.max(maxY,n.y+n.R);
-    });
-    var bw=maxX-minX,bh=maxY-minY;
-    var mX=W*0.08,mTop=H*0.12;
-    var mBot=fieldMode==='radio'?Math.max(H*0.14,150):H*0.14; /* keep the tuning band clear */
-    var sc=Math.min((W-2*mX)/bw,(H-mTop-mBot)/bh,1);
-    var bcx=(minX+maxX)/2,bcy=(minY+maxY)/2;
-    var tx=W/2,ty=mTop+(H-mTop-mBot)/2;
-    nodes.forEach(function(n){
-      n.x=tx+(n.x-bcx)*sc;
-      n.y=ty+(n.y-bcy)*sc;
-      n.R*=sc;
-    });
+    /* fit: scale + center the whole arrangement into the safe area */
+    function fitField(){
+      var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+      nodes.forEach(function(n){
+        minX=Math.min(minX,n.x-n.R);maxX=Math.max(maxX,n.x+n.R);
+        minY=Math.min(minY,n.y-n.R);maxY=Math.max(maxY,n.y+n.R);
+      });
+      var bw=maxX-minX,bh=maxY-minY;
+      var mX=W*0.08,mTop=H*0.12;
+      var mBot=fieldMode==='radio'?Math.max(H*0.14,150):H*0.14; /* keep the tuning band clear */
+      var sc=Math.min((W-2*mX)/bw,(H-mTop-mBot)/bh,1);
+      var bcx=(minX+maxX)/2,bcy=(minY+maxY)/2;
+      var tx=W/2,ty=mTop+(H-mTop-mBot)/2;
+      nodes.forEach(function(n){
+        n.x=tx+(n.x-bcx)*sc;
+        n.y=ty+(n.y-bcy)*sc;
+        n.R*=sc;
+      });
+    }
+    /* no clock ever overlays another: relax colliding pairs apart, then refit */
+    function separate(){
+      for(var it=0;it<30;it++){
+        var moved=false;
+        for(var a2=0;a2<nodes.length;a2++)for(var b2=a2+1;b2<nodes.length;b2++){
+          var A=nodes[a2],B=nodes[b2];
+          var dx=B.x-A.x,dy=B.y-A.y;
+          var dist=Math.hypot(dx,dy)||0.001;
+          var minD=(A.R+B.R)*1.04;
+          if(dist<minD){
+            var push=(minD-dist)/2,ux=dx/dist,uy=dy/dist;
+            A.x-=ux*push;A.y-=uy*push;
+            B.x+=ux*push;B.y+=uy*push;
+            moved=true;
+          }
+        }
+        if(!moved)break;
+      }
+    }
+    fitField();
+    separate();
+    fitField();
+    var ov=0; /* debug: worst remaining pair overlap in px (≤0 = clean) */
+    for(var oa=0;oa<nodes.length;oa++)for(var ob=oa+1;ob<nodes.length;ob++){
+      ov=Math.max(ov,(nodes[oa].R+nodes[ob].R)-Math.hypot(nodes[ob].x-nodes[oa].x,nodes[ob].y-nodes[oa].y));
+    }
+    cvs.dataset.overlap=String(Math.round(ov*10)/10);
+
+    /* sometimes the formation lives in a casing — slabs derived per tagged group */
+    casings=[];
+    if(Math.random()<0.5){
+      var groups={};
+      nodes.forEach(function(n){ if(n.cas)(groups[n.cas]=groups[n.cas]||[]).push(n); });
+      Object.keys(groups).forEach(function(k){
+        var g=groups[k];
+        var pad=Math.max.apply(null,g.map(function(n){return n.R;}))*1.3;
+        var gx0=Math.min.apply(null,g.map(function(n){return n.x;}))-pad;
+        var gx1=Math.max.apply(null,g.map(function(n){return n.x;}))+pad;
+        var gy0=Math.min.apply(null,g.map(function(n){return n.y;}))-pad;
+        var gy1=Math.max.apply(null,g.map(function(n){return n.y;}))+pad;
+        casings.push({x:gx0,y:gy0,w:gx1-gx0,h:gy1-gy0,r:pad*0.5});
+      });
+    }
 
     /* the most top-left dial is always About — the rest stays random */
     var tlI=0,abI=-1,best=Infinity;
@@ -475,7 +521,7 @@
       n.style={
         model:model,
         seed:seed,
-        shape:shapeRoll<0.5?'circle':(shapeRoll<0.66?'square':(shapeRoll<0.72?'pill':(shapeRoll<0.78?'poly':(shapeRoll<0.86?'hex':(shapeRoll<0.92?'oct':(shapeRoll<0.96?'diamond':(shapeRoll<0.98?'tv':'crab'))))))),
+        shape:shapeRoll<0.52?'circle':(shapeRoll<0.74?'square':(shapeRoll<0.87?'pill':'tv')),
         tone:toneRoll<0.22?'black':(toneRoll<0.62?'dark':(toneRoll<0.85?'mid':'light')),
         dialDark:toneRoll>=0.85?true:r()<0.15,   /* light rings always get a dark cone — contrast */
         texture:r()<0.18?(r()<0.5?'grille':'ribbed'):null,
@@ -522,31 +568,6 @@
         ctx.arcTo(cx-w,cy+h,cx-w,cy-h,r2);
         ctx.arcTo(cx-w,cy-h,cx+w,cy-h,r2);
         ctx.closePath();
-      }else if(st.shape==='poly'){
-        var N=10;
-        ctx.beginPath();
-        for(var t=0;t<N;t++){
-          var a=t/N*Math.PI*2-Math.PI/2;
-          var rr2=R*scale*(t%2?0.97:1.0);
-          var x=cx+Math.cos(a)*rr2,y=cy+Math.sin(a)*rr2;
-          if(t)ctx.lineTo(x,y);else ctx.moveTo(x,y);
-        }
-        ctx.closePath();
-      }else if(st.shape==='hex'||st.shape==='oct'){
-        var Np=st.shape==='hex'?6:8;
-        var off=st.shape==='hex'?Math.PI/6:Math.PI/8;
-        ctx.beginPath();
-        for(var tp=0;tp<Np;tp++){
-          var ap=tp/Np*Math.PI*2-Math.PI/2+off;
-          var xp=cx+Math.cos(ap)*R*scale,yp=cy+Math.sin(ap)*R*scale;
-          if(tp)ctx.lineTo(xp,yp);else ctx.moveTo(xp,yp);
-        }
-        ctx.closePath();
-      }else if(st.shape==='diamond'){
-        var rd=R*scale;
-        ctx.beginPath();
-        ctx.moveTo(cx,cy-rd);ctx.lineTo(cx+rd,cy);ctx.lineTo(cx,cy+rd);ctx.lineTo(cx-rd,cy);
-        ctx.closePath();
       }else if(st.shape==='tv'){
         var tw=R*0.8*scale,th=R*1.02*scale,tr=R*0.18*scale;
         ctx.beginPath();
@@ -555,15 +576,6 @@
         ctx.arcTo(cx+tw,cy+th,cx-tw,cy+th,tr);
         ctx.arcTo(cx-tw,cy+th,cx-tw,cy-th,tr);
         ctx.arcTo(cx-tw,cy-th,cx+tw,cy-th,tr);
-        ctx.closePath();
-      }else if(st.shape==='crab'){
-        var Sc=R*0.84*scale,rc=R*0.12*scale;
-        ctx.beginPath();
-        ctx.moveTo(cx-Sc+rc,cy-Sc);
-        ctx.arcTo(cx+Sc,cy-Sc,cx+Sc,cy+Sc,rc);
-        ctx.arcTo(cx+Sc,cy+Sc,cx-Sc,cy+Sc,rc);
-        ctx.arcTo(cx-Sc,cy+Sc,cx-Sc,cy-Sc,rc);
-        ctx.arcTo(cx-Sc,cy-Sc,cx+Sc,cy-Sc,rc);
         ctx.closePath();
       }else{
         ctx.beginPath();ctx.arc(cx,cy,R*scale,0,7);
@@ -583,40 +595,6 @@
     ctx.lineWidth=Math.max(.5,R*0.014);
     casePath(1);ctx.stroke();
 
-    /* crab station clock — legs, claws and stalked eyes in the case color */
-    if(st.shape==='crab'){
-      var cc=aRing?key:ringTones[st.tone];
-      var S4=R*0.84;
-      ctx.strokeStyle=cc;ctx.lineCap='round';
-      ctx.lineWidth=Math.max(1.5,R*0.09);
-      [-1,1].forEach(function(sx){
-        [-0.25,0.05,0.35].forEach(function(fy){
-          ctx.beginPath();
-          ctx.moveTo(cx+sx*S4,cy+fy*R);
-          ctx.lineTo(cx+sx*(S4+R*0.38),cy+fy*R+R*0.06);
-          ctx.lineTo(cx+sx*(S4+R*0.6),cy+fy*R+R*0.3);
-          ctx.stroke();
-        });
-        ctx.beginPath();
-        ctx.moveTo(cx+sx*S4*0.7,cy-S4);
-        ctx.lineTo(cx+sx*(S4+R*0.25),cy-S4-R*0.35);
-        ctx.stroke();
-        var clx=cx+sx*(S4+R*0.34),cly=cy-S4-R*0.5;
-        var mid=sx>0?-Math.PI/4:-3*Math.PI/4;
-        ctx.fillStyle=cc;
-        ctx.beginPath();
-        ctx.moveTo(clx,cly);
-        ctx.arc(clx,cly,R*0.22,mid+0.5,mid-0.5+Math.PI*2);
-        ctx.closePath();ctx.fill();
-        var ex2=cx+sx*S4*0.35,ey2=cy-S4-R*0.2;
-        ctx.fillStyle='#f2f2ee';
-        ctx.beginPath();ctx.arc(ex2,ey2,R*0.11,0,7);ctx.fill();
-        ctx.fillStyle='#14171a';
-        ctx.beginPath();ctx.arc(ex2,ey2,R*0.05,0,7);ctx.fill();
-      });
-      ctx.lineCap='butt';
-    }
-
     /* square plates carry corner dots — rare */
     if(st.shape==='square'&&st.cornerDots){
       ctx.fillStyle='#141618';
@@ -627,7 +605,7 @@
     }
 
     /* cone dial — matte, tone-dependent; colored cone if accent-dial */
-    var DIAL_FIT={pill:0.8,hex:0.84,oct:0.88,diamond:0.66,tv:0.7,crab:0.82};
+    var DIAL_FIT={pill:0.8,tv:0.7};
     var Rd=R*(1-st.bez)*(DIAL_FIT[st.shape]||1);
     var g=ctx.createRadialGradient(cx,cy,Rd*0.05,cx,cy,Rd);
     if(aDial){g.addColorStop(0,shade(key,60));g.addColorStop(.65,key);g.addColorStop(1,shade(key,-80));}
@@ -830,42 +808,60 @@
       ctx.beginPath();ctx.arc(cx,cy,Rc,0,7);ctx.fill();
     }
 
-    /* live time, shifted per film — all different, all moving in real time */
-    var now=new Date(Date.now()+st.off);
-    var ms=now.getMilliseconds();
-    var sec=now.getSeconds()+ms/1000;
-    var min=now.getMinutes()+sec/60;
-    var hr=(now.getHours()%12)+min/60;
-    var hA=hr/12*Math.PI*2-Math.PI/2;
-    var mA=min/60*Math.PI*2-Math.PI/2;
-    var sA=sec/60*Math.PI*2-Math.PI/2;
+    /* live time, shifted per film — hands only on analog faces; digital
+       models (flip 16, led 17) tell the time with their digits alone */
+    if(st.model!==16&&st.model!==17){
+      var now=new Date(Date.now()+st.off);
+      var ms=now.getMilliseconds();
+      var sec=now.getSeconds()+ms/1000;
+      var min=now.getMinutes()+sec/60;
+      var hr=(now.getHours()%12)+min/60;
+      var hA=hr/12*Math.PI*2-Math.PI/2;
+      var mA=min/60*Math.PI*2-Math.PI/2;
+      var sA=sec/60*Math.PI*2-Math.PI/2;
 
-    var inkH=(st.tone==='black'||st.tone==='dark')&&!aDial?'rgba(200,203,206,.85)':'#14171a';
-    var hw=st.slim?0.04:0.06,mw=st.slim?0.026:0.038;
-    ctx.strokeStyle=inkH;ctx.lineCap='round';
-    ctx.lineWidth=Math.max(1.2,R*hw);
-    ctx.beginPath();ctx.moveTo(cx-Math.cos(hA)*Rd*0.08,cy-Math.sin(hA)*Rd*0.08);
-    ctx.lineTo(cx+Math.cos(hA)*Rd*0.44,cy+Math.sin(hA)*Rd*0.44);ctx.stroke();
-    ctx.lineWidth=Math.max(.9,R*mw);
-    ctx.beginPath();ctx.moveTo(cx-Math.cos(mA)*Rd*0.1,cy-Math.sin(mA)*Rd*0.1);
-    ctx.lineTo(cx+Math.cos(mA)*Rd*0.66,cy+Math.sin(mA)*Rd*0.66);ctx.stroke();
-    ctx.strokeStyle=n.accent?key:inkH;
-    ctx.lineWidth=Math.max(.7,R*0.016);
-    ctx.beginPath();ctx.moveTo(cx-Math.cos(sA)*Rd*0.14,cy-Math.sin(sA)*Rd*0.14);
-    ctx.lineTo(cx+Math.cos(sA)*Rd*0.7,cy+Math.sin(sA)*Rd*0.7);ctx.stroke();
-    ctx.lineCap='butt';
+      var inkH=(st.tone==='black'||st.tone==='dark')&&!aDial?'rgba(200,203,206,.85)':'#14171a';
+      var hw=st.slim?0.04:0.06,mw=st.slim?0.026:0.038;
+      ctx.strokeStyle=inkH;ctx.lineCap='round';
+      ctx.lineWidth=Math.max(1.2,R*hw);
+      ctx.beginPath();ctx.moveTo(cx-Math.cos(hA)*Rd*0.08,cy-Math.sin(hA)*Rd*0.08);
+      ctx.lineTo(cx+Math.cos(hA)*Rd*0.44,cy+Math.sin(hA)*Rd*0.44);ctx.stroke();
+      ctx.lineWidth=Math.max(.9,R*mw);
+      ctx.beginPath();ctx.moveTo(cx-Math.cos(mA)*Rd*0.1,cy-Math.sin(mA)*Rd*0.1);
+      ctx.lineTo(cx+Math.cos(mA)*Rd*0.66,cy+Math.sin(mA)*Rd*0.66);ctx.stroke();
+      ctx.strokeStyle=n.accent?key:inkH;
+      ctx.lineWidth=Math.max(.7,R*0.016);
+      ctx.beginPath();ctx.moveTo(cx-Math.cos(sA)*Rd*0.14,cy-Math.sin(sA)*Rd*0.14);
+      ctx.lineTo(cx+Math.cos(sA)*Rd*0.7,cy+Math.sin(sA)*Rd*0.7);ctx.stroke();
+      ctx.lineCap='butt';
 
-    ctx.fillStyle=inkH;
-    ctx.beginPath();ctx.arc(cx,cy,Math.max(1.1,Rd*0.06),0,7);ctx.fill();
+      ctx.fillStyle=inkH;
+      ctx.beginPath();ctx.arc(cx,cy,Math.max(1.1,Rd*0.06),0,7);ctx.fill();
+    }
   }
 
   function renderField(){
     /* hover = glow only; the dial keeps its place in the stack */
     ctx.clearRect(0,0,W,H);
+    casings.forEach(function(c){
+      ctx.save();
+      ctx.shadowColor='rgba(0,0,0,.18)';ctx.shadowBlur=14;ctx.shadowOffsetY=4;
+      ctx.fillStyle=theme.key;
+      ctx.beginPath();
+      ctx.moveTo(c.x+c.r,c.y);
+      ctx.arcTo(c.x+c.w,c.y,c.x+c.w,c.y+c.h,c.r);
+      ctx.arcTo(c.x+c.w,c.y+c.h,c.x,c.y+c.h,c.r);
+      ctx.arcTo(c.x,c.y+c.h,c.x,c.y,c.r);
+      ctx.arcTo(c.x,c.y,c.x+c.w,c.y,c.r);
+      ctx.closePath();ctx.fill();
+      ctx.restore();
+    });
     nodes.forEach(function(n,i){drawWatch(n,i===hover);});
   }
   (function loop(){
-    if(nodes.length && !app.classList.contains('browse') && !pl.classList.contains('show')) renderField();
+    try{
+      if(nodes.length && !app.classList.contains('browse') && !pl.classList.contains('show')) renderField();
+    }catch(e){} /* one bad frame must never kill the loop */
     requestAnimationFrame(loop);
   })();
 
@@ -877,7 +873,7 @@
   }
   function rearrange(){ /* same as a fresh page load: new theme + arrangement + film count */
     theme=THEMES[Math.floor(Math.random()*THEMES.length)];
-    fieldMult=[1,1,2,2,2,3,3,4][Math.floor(Math.random()*8)];
+    fieldMult=[1,1,1,2,2,3][Math.floor(Math.random()*6)];
     layoutField();
   }
   addEventListener('resize',sizeField);
