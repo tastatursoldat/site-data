@@ -146,16 +146,7 @@
           '<rect x="5.4" y="5.4" width="9.2" height="9.2" rx="1.4"/>'+
         '</svg>'+
       '</button>'+
-      '<button id="me-radio" class="icon" aria-pressed="false" aria-label="Radio — toggle radio view">'+
-        '<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">'+
-          '<rect x="2.5" y="8" width="15" height="8.5" rx="1.5"/>'+
-          '<line x1="5.5" y1="8" x2="13.5" y2="2.5"/>'+
-          '<circle cx="6.6" cy="12.2" r="1.9"/>'+
-          '<line class="wave" x1="11" y1="10.8" x2="15" y2="10.8"/>'+
-          '<line class="wave" x1="11" y1="13.6" x2="15" y2="13.6"/>'+
-        '</svg>'+
-      '</button>'+
-      '<button id="me-btnview" class="icon" aria-label="Toggle view">'+
+      '<button id="me-btnview" class="icon" aria-label="Cinema — toggle index view">'+
         '<svg class="ic-list" viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">'+
           '<rect x="3" y="4.5" width="14" height="11" rx="1.5"/>'+
           '<line x1="6.4" y1="4.5" x2="6.4" y2="15.5"/>'+
@@ -164,6 +155,15 @@
           '<line x1="3" y1="11.8" x2="6.4" y2="11.8"/>'+
           '<line x1="13.6" y1="8.2" x2="17" y2="8.2"/>'+
           '<line x1="13.6" y1="11.8" x2="17" y2="11.8"/>'+
+        '</svg>'+
+      '</button>'+
+      '<button id="me-radio" class="icon" aria-pressed="false" aria-label="Radio — toggle radio view">'+
+        '<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">'+
+          '<rect x="2.5" y="8" width="15" height="8.5" rx="1.5"/>'+
+          '<line x1="5.5" y1="8" x2="13.5" y2="2.5"/>'+
+          '<circle cx="6.6" cy="12.2" r="1.9"/>'+
+          '<line class="wave" x1="11" y1="10.8" x2="15" y2="10.8"/>'+
+          '<line class="wave" x1="11" y1="13.6" x2="15" y2="13.6"/>'+
         '</svg>'+
       '</button>'+
     '</div>'+
@@ -187,11 +187,11 @@
 
   // ── dial field — films and songs as clocks ──────────────────────
   var ABOUT_ENTRY={year:1997,no:'000',client:'Michel Elsasser',title:'About',cat:'Contact',isAbout:true};
-  var FILM_DIALS=[],SONG_DIALS=[];
-  var fieldMode='dial'; /* 'dial' = About+films+songs mixed | 'radio' = songs only */
+  var FILM_DIALS=[];
+  var fieldMode='dial'; /* 'dial' = About+films | 'radio' = the tuning scale alone */
   function fieldEntries(){
-    /* the radio view is the tuning scale alone — no clocks there */
-    return fieldMode==='radio'?[]:[ABOUT_ENTRY].concat(FILM_DIALS).concat(SONG_DIALS);
+    /* songs live on the radio page only; the radio view itself has no clocks */
+    return fieldMode==='radio'?[]:[ABOUT_ENTRY].concat(FILM_DIALS);
   }
 
   /* one color theme per load */
@@ -688,7 +688,6 @@
     tcEl.textContent=refCode(nodes[i].f);
     var f=nodes[i].f;
     if(f.isAbout){ openAboutScreen(); return; }
-    if(f.kind==='song'){ playSong(f.idx); return; }
     if(f.p && f.p.film) openPlayer(f.p);
   });
 
@@ -700,8 +699,8 @@
   var musicEl=app.querySelector('#me-music');
   var brandEl=app.querySelector('#me-brand');
   function updateBrand(){
-    /* label follows the view — dial film on the index, dial radio on the radio field */
-    brandEl.textContent=app.classList.contains('browse')?'dial film':(fieldMode==='radio'?'dial radio':'dial');
+    /* label follows the view — dial cinema on the index, dial radio on the radio field */
+    brandEl.textContent=app.classList.contains('browse')?'dial cinema':(fieldMode==='radio'?'dial radio':'dial');
   }
   var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null,ytJumped=false;
   var musicIn=document.createElement('span');musicIn.className='in';musicEl.appendChild(musicIn);
@@ -788,16 +787,10 @@
   }
   ensureYT(); /* preload cued player so the radio click starts playback inside the gesture */
   function buildSongs(){
-    /* one clock per playlist track, once the playlist is known */
+    /* build the tuning band once the playlist is known */
     try{
       var l=ytPlayer&&ytPlayer.getPlaylist?ytPlayer.getPlaylist():null;
-      if(l&&l.length&&!SONG_DIALS.length){
-        for(var i=0;i<l.length;i++){
-          SONG_DIALS.push({kind:'song',idx:i,code:'R-'+String(i+1).padStart(2,'0'),year:9090,no:String(i+1).padStart(3,'0')});
-        }
-        layoutField();
-        buildBand();
-      }
+      if(l&&l.length&&!SONG_IDS.length)buildBand();
     }catch(e){}
   }
 
@@ -982,7 +975,7 @@
     if(currentView()==='radio')goDial();else goRadio();
   });
   app.querySelector('#me-stop').addEventListener('click', stopRadio);
-  brandEl.addEventListener('click', function(){ openAboutScreen(); });
+  brandEl.addEventListener('click', function(){ goDial(); }); /* the mark always leads home */
 
   // ── data + render list ──────────────────────────────────────────
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
