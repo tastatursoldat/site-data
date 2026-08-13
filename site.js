@@ -534,25 +534,40 @@
     var fs=shuffled(pool);
     nodes=LAYOUTS[pick](fs,base);
 
-    /* mirror pairs across the vertical axis — left and right must match */
-    function mirrorPairs(){
-      var pairs=[],used={};
+    /* mirror pairs on both axes — a cross must match top-to-bottom as well as
+       left-to-right. Pairing is by position, so it only fires where the
+       formation genuinely is symmetric on that axis (a T never pairs its stem). */
+    function axes(){
+      var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+      nodes.forEach(function(n){
+        minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);
+        minY=Math.min(minY,n.y);maxY=Math.max(maxY,n.y);
+      });
+      return {x:(minX+maxX)/2,y:(minY+maxY)/2};
+    }
+    function mirrorPairs(mode){
+      var ax=axes(),pairs=[],used={};
       for(var i=0;i<nodes.length;i++){
         if(used[i])continue;
         var A=nodes[i];
-        if(Math.abs(A.x-W/2)<A.R*0.35){used[i]=1;continue;} /* sits on the axis */
-        var mx=W-A.x,best=-1,bd=1e9;
+        var onAxis=mode==='h'?Math.abs(A.y-ax.y)<A.R*0.35:Math.abs(A.x-ax.x)<A.R*0.35;
+        if(onAxis){used[i]=1;continue;}
+        var tx=mode==='h'?A.x:2*ax.x-A.x;
+        var ty=mode==='h'?2*ax.y-A.y:A.y;
+        var best=-1,bd=1e9;
         for(var j=0;j<nodes.length;j++){
           if(j===i||used[j])continue;
-          var d=Math.hypot(nodes[j].x-mx,nodes[j].y-A.y);
+          var d=Math.hypot(nodes[j].x-tx,nodes[j].y-ty);
           if(d<bd){bd=d;best=j;}
         }
         if(best>=0&&bd<Math.max(A.R,nodes[best].R)*0.9){used[i]=1;used[best]=1;pairs.push([i,best]);}
       }
       return pairs;
     }
-    var pairs=mirrorPairs();
-    pairs.forEach(function(p){ nodes[p[1]].R=nodes[p[0]].R; }); /* symmetric sizes */
+    var pairsV=mirrorPairs('v'),pairsH=mirrorPairs('h');
+    /* left→right first, then top→bottom: styles propagate from one representative */
+    pairsV.forEach(function(p){ nodes[p[1]].R=nodes[p[0]].R; });
+    pairsH.forEach(function(p){ nodes[p[1]].R=nodes[p[0]].R; });
 
     /* fit: scale + center the whole arrangement into the safe area */
     function fitField(){
@@ -613,12 +628,18 @@
       }
       return w;
     }
-    /* separation can nudge a clock off its mirror — snap pairs back onto the axis */
+    /* separation can nudge a clock off its mirror — snap pairs back onto the axes */
     function snapMirror(){
-      pairs.forEach(function(p){
+      var ax=axes();
+      pairsV.forEach(function(p){
         var L=nodes[p[0]],Rn=nodes[p[1]];
-        var lx=(L.x+(W-Rn.x))/2,ly=(L.y+Rn.y)/2;
-        L.x=lx;L.y=ly;Rn.x=W-lx;Rn.y=ly;
+        var lx=(L.x+(2*ax.x-Rn.x))/2,ly=(L.y+Rn.y)/2;
+        L.x=lx;L.y=ly;Rn.x=2*ax.x-lx;Rn.y=ly;
+      });
+      pairsH.forEach(function(p){
+        var T=nodes[p[0]],B=nodes[p[1]];
+        var tx=(T.x+B.x)/2,ty=(T.y+(2*ax.y-B.y))/2;
+        T.x=tx;T.y=ty;B.x=tx;B.y=2*ax.y-ty;
       });
     }
     fitField();
@@ -724,11 +745,13 @@
     });
 
     /* symmetry: a mirrored clock is the same clock — style, accent and all */
-    pairs.forEach(function(p){
-      var L=nodes[p[0]],Rn=nodes[p[1]];
-      Rn.style=Object.assign({},L.style,{off:Rn.style.off}); /* own time, same watch */
-      Rn.accent=L.accent;Rn.foreignHair=L.foreignHair;
-    });
+    function copyStyle(p){
+      var A=nodes[p[0]],B=nodes[p[1]];
+      B.style=Object.assign({},A.style,{off:B.style.off}); /* own time, same watch */
+      B.accent=A.accent;B.foreignHair=A.foreignHair;
+    }
+    pairsV.forEach(copyStyle);
+    pairsH.forEach(copyStyle);
   }
 
   /* watch renderer — real time */
