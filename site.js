@@ -1434,7 +1434,6 @@
   function startPlayback(){
     /* first start per load: the set wakes up tuned to a random station,
        mid-broadcast, never the same one twice in a row */
-    try{ytPlayer.setVolume(100);}catch(e){} /* a detuned session must not mute the next one */
     try{
       if(!ytJumped){
         var list=SONG_IDS.length?SONG_IDS:(ytPlayer.getPlaylist()||[]);
@@ -1469,13 +1468,19 @@
             buildSongs();
             /* every station is a broadcast that has been running since epoch:
                on the first PLAYING after a load, jump to where the song would
-               be right now (wall clock mod duration, never the last seconds) */
-            if(ev&&ev.data===1&&pendingSeek&&pendingSeek===currentVid()){
-              var id=pendingSeek;pendingSeek=null;
-              try{
-                var dur=ytPlayer.getDuration();
-                if(dur&&dur>60)ytPlayer.seekTo((Date.now()/1000)%(dur-20)+8,true);
-              }catch(e){}
+               be right now (wall clock mod duration, never the last seconds).
+               the mute-hold releases only once the seek has landed, so neither
+               the cut nor the 0:00 start is ever audible — the new signal
+               ramps in from under the static */
+            if(ev&&ev.data===1){
+              if(pendingSeek&&pendingSeek===currentVid()){
+                pendingSeek=null;
+                try{
+                  var dur=ytPlayer.getDuration();
+                  if(dur&&dur>60)ytPlayer.seekTo((Date.now()/1000)%(dur-20)+8,true);
+                }catch(e){}
+              }
+              if(muteHold&&!pendingSeek){muteHold=false;rampMusic(lawVol,350);}
             }
             /* a station never plays another station's song: at the end of the
                video the broadcast simply loops */
@@ -1528,18 +1533,29 @@
     try{
       var t=AC.currentTime;
       staticGain.gain.cancelScheduledValues(t);
-      staticGain.gain.setTargetAtTime(v*0.085,t,0.06); /* hiss level, never blasting */
+      staticGain.gain.setTargetAtTime(v*0.18,t,0.06); /* a proper hiss — present, not painful */
     }catch(e){}
   }
-  function setMusicVol(v){try{ytPlayer.setVolume(Math.round(v*100));}catch(e){}}
-  var volRAF=null;
+  /* a station switch must never be heard: while a load+broadcast-seek is in
+     flight the music is held at zero under the static, and only ramps back in
+     once the new signal is actually sitting mid-song. the onset ramp chases
+     the live law value, so a moving hand stays in charge */
+  var muteHold=false,lawVol=0,volRAF=null,rampUntil=0;
+  function setMusicVol(v){
+    lawVol=v;
+    if(muteHold){try{ytPlayer.setVolume(0);}catch(e){}return;}
+    if(performance.now()<rampUntil)return; /* the onset ramp is chasing lawVol */
+    try{ytPlayer.setVolume(Math.round(v*100));}catch(e){}
+  }
   function rampMusic(target,ms){
-    var from=100;try{from=ytPlayer.getVolume();}catch(e){}
-    var t0=performance.now();cancelAnimationFrame(volRAF);
+    lawVol=target;
+    var from=0;try{from=ytPlayer.getVolume();}catch(e){}
+    var t0=performance.now();rampUntil=t0+ms;
+    cancelAnimationFrame(volRAF);
     (function step(now){
       var u=Math.min(1,(now-t0)/ms);
-      try{ytPlayer.setVolume(Math.round(from+(target*100-from)*u));}catch(e){}
-      if(u<1)volRAF=requestAnimationFrame(step);
+      try{ytPlayer.setVolume(Math.round(from+(lawVol*100-from)*u));}catch(e){}
+      if(u<1)volRAF=requestAnimationFrame(step);else rampUntil=0;
     })(t0);
   }
   fetch(RADIO_URL,{cache:'no-cache'}).then(function(r){return r.json();})
@@ -1684,8 +1700,11 @@
   }
   function tuneLoad(id){
     /* single-video load: a station can only ever play its own song, and the
-       broadcast-time seek lands mid-song on the first PLAYING */
+       broadcast-time seek lands mid-song before the hold releases */
     pendingSeek=id;
+    muteHold=true;
+    cancelAnimationFrame(volRAF);
+    try{ytPlayer.setVolume(0);}catch(e){}
     try{ytPlayer.loadVideoById({videoId:id});}catch(e){}
   }
   function setDial(nx,glide){
@@ -1702,24 +1721,34 @@
     setDial(bandTicks[id].x,true);
     tuneAudio();
   }
+  function proxAt(x){
+    var d0=Math.abs(x-dialNx)%bandCal.P;
+    var d=Math.min(d0,bandCal.P-d0);
+    return Math.max(0,1-d/tuneZone());
+  }
   function tuneAudio(){
     if(!bandCal||dialNx<0||!needleEl)return;
     var st=nearestStation(dialNx);if(!st)return;
-    var Z=tuneZone(),prox=Math.max(0,1-st.d/Z),v=prox*prox;
+    var pn=Math.max(0,1-st.d/tuneZone());
     if(radioPlaying){
+      /* what you hear is the PLAYING station at its own signal strength —
+         leaving it fades it naturally even while another station is nearer */
+      var cur=currentVid();
+      var pp=bandTicks[cur]?proxAt(bandTicks[cur].x):0;
+      var v=pp*pp;
       setMusicVol(v);
-      setStatic(1-v);
-      /* the near station loads — quietly, mid-broadcast — once its signal bites */
-      if(prox>0.25&&st.id!==tuneQueuedId){
+      setStatic(1-(muteHold?0:v));
+      /* the nearer station takes over — loaded under the hold, so the
+         handover happens in silence beneath the hiss */
+      if(pn>0.35&&st.id!==cur&&st.id!==tuneQueuedId){
         tuneQueuedId=st.id;
-        if(st.id!==currentVid()){
-          clearTimeout(tuneLoadTimer);
-          var qid=st.id;
-          tuneLoadTimer=setTimeout(function(){bandId=qid;tuneLoad(qid);},180);
-        }
+        clearTimeout(tuneLoadTimer);
+        var qid=st.id;
+        tuneLoadTimer=setTimeout(function(){bandId=qid;tuneLoad(qid);},180);
       }
-      if(st.d>Z)tuneQueuedId=null;
+      if(pn<0.3)tuneQueuedId=null;
     }
+    var prox=pn;
     var near=prox>0.55;
     bandEl.classList.toggle('near',near);
     Object.keys(bandTicks).forEach(function(id){
