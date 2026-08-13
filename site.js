@@ -142,14 +142,15 @@
     '<div id="me-browse"><div id="me-list"></div></div>'+
     '<div id="me-brand">dial</div>'+
     '<div id="me-ctrl">'+
+      /* the view toggles read as words, in the same voice as the mark;
+         the pause glyph sits between them, right of cinema */
+      '<button id="me-btnview" class="txt" aria-label="Cinema — toggle index view">cinema</button>'+
       '<button id="me-stop" class="icon" aria-label="Pause music">'+
         '<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" stroke="none">'+
           '<rect x="5" y="4.5" width="3.4" height="11" rx="1"/>'+
           '<rect x="11.6" y="4.5" width="3.4" height="11" rx="1"/>'+
         '</svg>'+
       '</button>'+
-      /* the view toggles read as words, in the same voice as the mark */
-      '<button id="me-btnview" class="txt" aria-label="Cinema — toggle index view">cinema</button>'+
       '<button id="me-radio" class="txt" aria-pressed="false" aria-label="Radio — toggle radio view">radio</button>'+
     '</div>'+
     '<div id="me-tc" aria-hidden="true"></div>'+
