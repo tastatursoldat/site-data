@@ -64,7 +64,9 @@
     '#me-app.radio-mode #me-band{display:block;}'+
     '#me-app.radio-mode #me-music{display:none;}'+
     '#me-app.radio-mode #me-tc{display:none;}'+
-    '#me-band-in{position:relative;height:230px;}'+
+    /* the band is a tuning knob: drag to scrub, so touch drags must not scroll */
+    '#me-band-in{position:relative;height:230px;cursor:ew-resize;touch-action:none;}'+
+    '#me-band.scrub .needle{transition:none;}'+
     '#me-band .rule{position:absolute;top:118px;height:1px;background:#9a9a9a;}'+
     '#me-band .g-tick{position:absolute;width:1px;background:#c8c8c4;}'+
     '#me-band .g-tick.major{background:#9a9a9a;}'+
@@ -360,8 +362,11 @@
   function padPool(fs,n){
     var out=fs.slice(0,Math.min(fs.length,n)),k=0;
     if(n>0&&!out.some(function(e){return e.isAbout;}))out[0]=ABOUT_ENTRY;
-    while(out.length<n&&FILM_DIALS.length){
-      out.push(Object.assign({},FILM_DIALS[k%FILM_DIALS.length],{copy:300+k}));
+    /* before the projects json lands there are no films — the first paint
+       pads with About copies rather than undefined entries */
+    var src=FILM_DIALS.length?FILM_DIALS:[ABOUT_ENTRY];
+    while(out.length<n){
+      out.push(Object.assign({},src[k%src.length],{copy:300+k}));
       k++;
     }
     return out;
@@ -972,7 +977,7 @@
     nodes.forEach(function(n,i){
       var s=(n.x-n.R)+(n.y-n.R);
       if(s<best){best=s;tlI=i;}
-      if(n.f.isAbout)abI=i;
+      if(n.f&&n.f.isAbout)abI=i;
     });
     if(abI>=0&&abI!==tlI){var tf=nodes[tlI].f;nodes[tlI].f=nodes[abI].f;nodes[abI].f=tf;}
 
@@ -1420,14 +1425,18 @@
     try{
       var d2=ytPlayer.getVideoData();
       var vid=(d2&&d2.video_id)||'';
+      /* while the hand is on the knob (or the set is parked in the void), the
+         poll must not move the needle — the quiet signal under the static is
+         not a tuned station */
       if(bandPending){
-        if(vid===bandPending){bandPending=null;if(vid!==bandId&&bandTicks[vid])moveNeedle(vid,true);}
-      }else if(vid&&vid!==bandId&&bandTicks[vid])moveNeedle(vid,true);
+        if(vid===bandPending){bandPending=null;if(!scrubbing&&!detuned&&vid!==bandId&&bandTicks[vid])moveNeedle(vid,true);}
+      }else if(!scrubbing&&!detuned&&vid&&vid!==bandId&&bandTicks[vid])moveNeedle(vid,true);
     }catch(e){}
   }
   function startPlayback(){
     /* first start per load: begin at a random track, never the same one twice in a row.
        loadPlaylist(index) — playVideoAt on a merely cued player falls back to track 0 */
+    try{ytPlayer.setVolume(100);}catch(e){} /* a detuned session must not mute the next one */
     try{
       var list=ytPlayer.getPlaylist();
       if(!ytJumped && list && list.length>1){
@@ -1484,6 +1493,44 @@
   app.appendChild(bandEl);
   var bandIn=bandEl.querySelector('#me-band-in');
   var RADIO_META={},bandTicks={},bandId=null,bandPending=null,SONG_IDS=[],ytShuffled=false,needleEl=null,bNote=null,bTitle=null,bFreq=null;
+
+  /* ── tuner audio: radio static in the void between stations. the noise is
+     generated (looped white noise through a lowpass — no assets), and the
+     nearest station's signal crossfades in as the needle approaches it.
+     the YouTube iframe can't be routed through Web Audio, but its volume can
+     be driven, which is all a crossfade needs. */
+  var AC=null,staticGain=null;
+  function ensureStatic(){
+    if(AC){try{if(AC.state==='suspended')AC.resume();}catch(e){}return;}
+    try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    var len=Math.floor(AC.sampleRate*2),buf=AC.createBuffer(1,len,AC.sampleRate);
+    var d=buf.getChannelData(0);
+    for(var i=0;i<len;i++)d[i]=Math.random()*2-1;
+    var src=AC.createBufferSource();src.buffer=buf;src.loop=true;
+    var lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3200;
+    staticGain=AC.createGain();staticGain.gain.value=0;
+    src.connect(lp);lp.connect(staticGain);staticGain.connect(AC.destination);
+    src.start();
+  }
+  function setStatic(v){
+    if(!AC||!staticGain)return;
+    try{
+      var t=AC.currentTime;
+      staticGain.gain.cancelScheduledValues(t);
+      staticGain.gain.setTargetAtTime(v*0.085,t,0.06); /* hiss level, never blasting */
+    }catch(e){}
+  }
+  function setMusicVol(v){try{ytPlayer.setVolume(Math.round(v*100));}catch(e){}}
+  var volRAF=null;
+  function rampMusic(target,ms){
+    var from=100;try{from=ytPlayer.getVolume();}catch(e){}
+    var t0=performance.now();cancelAnimationFrame(volRAF);
+    (function step(now){
+      var u=Math.min(1,(now-t0)/ms);
+      try{ytPlayer.setVolume(Math.round(from+(target*100-from)*u));}catch(e){}
+      if(u<1)volRAF=requestAnimationFrame(step);
+    })(t0);
+  }
   fetch(RADIO_URL,{cache:'no-cache'}).then(function(r){return r.json();})
     .then(function(j){RADIO_META=(j&&j.tracks)||{};buildBand();})
     .catch(function(){buildBand();});
@@ -1514,6 +1561,8 @@
     var lo=Math.floor(minHz/500)*500,hi=Math.ceil(maxHz/500)*500;
     if(hi-lo<1000)hi=lo+1000;
     function X(hz){return x0+(hz-lo)/(hi-lo)*(x1-x0);}
+    bandCal={x0:x0,x1:x1,lo:lo,hi:hi};
+    scrubbing=false;bandEl.classList.remove('scrub');
     bandIn.innerHTML='';
     var rule=document.createElement('div');rule.className='rule';
     rule.style.left=x0+'px';rule.style.width=(x1-x0)+'px';
@@ -1541,7 +1590,8 @@
       var s=document.createElement('div');s.className='station';
       s.style.left=X(e.hz)+'px';
       s.innerHTML='<i></i>';
-      s.addEventListener('click',function(){ if(e.id!==bandId){ playSong(e.i); moveNeedle(e.id,true); } });
+      /* no click handler — tuning happens through the scrub logic below,
+         so a tap near a station and a drag onto it behave the same */
       bandIn.appendChild(s);
       bandTicks[e.id]={x:X(e.hz),hz:e.hz,note:e.note,el:s};
     });
@@ -1590,11 +1640,124 @@
       try{bandEl.scrollTo({left:Math.max(0,x-bandEl.clientWidth/2),behavior:animate?'smooth':'auto'});}catch(e){}
     }
   }
+
+  /* ── scrubbing: the band works like a tuning knob. drag anywhere — the
+     needle follows the pointer, static hisses in the void, and the nearest
+     station's signal fades in the closer the needle gets. release inside the
+     capture range and the set locks on (AFC-style); release in the void and
+     the radio stays detuned, hissing. a tap is just a very short scrub. */
+  var bandCal=null,scrubbing=false,detuned=false,scrubX=0,scrubQueuedId=null,scrubLoadTimer=null;
+  function nearestStation(x){
+    var best=null;
+    Object.keys(bandTicks).forEach(function(id){
+      var d=Math.abs(bandTicks[id].x-x);
+      if(!best||d<best.d)best={id:id,d:d,x:bandTicks[id].x};
+    });
+    return best;
+  }
+  function hzAt(x){
+    if(!bandCal)return 0;
+    var u=(x-bandCal.x0)/(bandCal.x1-bandCal.x0);
+    return Math.round(bandCal.lo+Math.max(0,Math.min(1,u))*(bandCal.hi-bandCal.lo));
+  }
+  function scrubZone(){return Math.max(30,(bandCal?bandCal.x1-bandCal.x0:600)*0.06);}
+  function currentVid(){
+    var v='';try{var d=ytPlayer.getVideoData();v=(d&&d.video_id)||'';}catch(e){}
+    return v;
+  }
+  function scrubUpdate(x){
+    scrubX=x;
+    needleEl.style.left=x+'px';
+    var st=nearestStation(x);if(!st)return;
+    var Z=scrubZone(),prox=Math.max(0,1-st.d/Z),v=prox*prox;
+    /* once the signal starts to bite, the approached song loads quietly and
+       plays underneath the static */
+    if(prox>0.2&&st.id!==scrubQueuedId){
+      scrubQueuedId=st.id;
+      if(st.id!==currentVid()){
+        clearTimeout(scrubLoadTimer);
+        var qid=st.id;
+        scrubLoadTimer=setTimeout(function(){
+          var i=SONG_IDS.indexOf(qid);
+          if(i>=0){
+            armRadio();ytJumped=true;bandPending=qid;ytShuffled=false;
+            setMusicVol(0);
+            try{ytPlayer.loadPlaylist({list:MUSIC_PLAYLIST,listType:'playlist',index:i});}catch(e){}
+          }
+        },160);
+      }
+    }
+    if(st.d>Z)scrubQueuedId=null;
+    setMusicVol(v);
+    setStatic(1-v);
+    bFreq.textContent=fmtHz(hzAt(x));
+    bNote.textContent='';bTitle.textContent='';
+    if(bandEl.scrollWidth>bandEl.clientWidth+1)
+      bandEl.scrollLeft=Math.max(0,x-bandEl.clientWidth/2);
+  }
+  function bandPointX(ev){
+    var r=bandIn.getBoundingClientRect();
+    var x=ev.clientX-r.left;
+    return Math.max(bandCal?bandCal.x0:0,Math.min(bandCal?bandCal.x1:x,x));
+  }
+  bandIn.addEventListener('pointerdown',function(ev){
+    if(!SONG_IDS.length||!bandCal||!needleEl)return;
+    ensureStatic();
+    scrubbing=true;detuned=false;
+    bandEl.classList.add('scrub');
+    try{bandIn.setPointerCapture(ev.pointerId);}catch(e){}
+    scrubUpdate(bandPointX(ev));
+    ev.preventDefault();
+  });
+  bandIn.addEventListener('pointermove',function(ev){
+    if(!scrubbing)return;
+    scrubUpdate(bandPointX(ev));
+  });
+  function scrubEnd(){
+    if(!scrubbing)return;
+    scrubbing=false;
+    bandEl.classList.remove('scrub');
+    var st=nearestStation(scrubX),Z=scrubZone();
+    if(st&&st.d<Z*0.75){
+      detuned=false;
+      var i=SONG_IDS.indexOf(st.id);
+      if(st.id===currentVid()){
+        bandId=st.id;moveNeedle(st.id,true);
+      }else if(i>=0){
+        playSong(i);moveNeedle(st.id,true);
+      }
+      rampMusic(1,500);
+      setStatic(0);
+    }else{
+      detuned=true;
+      setMusicVol(0);
+      setStatic(1);
+      bNote.textContent='';bTitle.textContent='';
+    }
+  }
+  bandIn.addEventListener('pointerup',scrubEnd);
+  bandIn.addEventListener('pointercancel',scrubEnd);
+  function exitBandAudio(){
+    /* static belongs to the radio view alone. leaving while detuned locks
+       onto whatever signal is loaded, so the music can carry on cleanly */
+    setStatic(0);
+    clearTimeout(scrubLoadTimer);
+    scrubbing=false;bandEl.classList.remove('scrub');
+    if(detuned){
+      detuned=false;
+      if(radioPlaying){
+        var vid=currentVid();
+        if(vid&&bandTicks[vid]){bandId=vid;moveNeedle(vid,false);}
+        rampMusic(1,400);
+      }
+    }
+  }
   addEventListener('resize',function(){ if(SONG_IDS.length)buildBand(); });
   function updateModeClass(){
     app.classList.toggle('radio-mode', fieldMode==='radio' && !app.classList.contains('browse'));
   }
   function stopRadio(){
+    setStatic(0);detuned=false; /* the hiss dies with the music */
     if(!radioPlaying) return;
     radioPlaying=false;
     radioBtn.classList.remove('playing');
@@ -1628,6 +1791,7 @@
     return app.classList.contains('browse')?'film':(fieldMode==='radio'?'radio':'dial');
   }
   function goDial(){
+    exitBandAudio();
     app.classList.remove('browse');
     fieldMode='dial';
     rearrange(); /* returning home always deals a fresh composition */
@@ -1636,6 +1800,7 @@
     updateModeClass();updateBrand();
   }
   function goFilm(){
+    exitBandAudio();
     app.classList.add('browse');
     tcEl.textContent='';hover=-1;
     radioBtn.setAttribute('aria-pressed','false');
