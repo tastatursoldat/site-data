@@ -57,33 +57,38 @@
     '#me-music.scroll .in{animation:me-marq 6s ease-in-out infinite alternate;}'+
     '@keyframes me-marq{from{transform:translateX(0);}to{transform:translateX(var(--me-shift,0px));}}'+
     '#me-app.browse #me-tc{display:none;}'+
-    // radio tuning scale — centered on the radio view, receiver-style graduation
+    // radio dial — a receiver wheel seen head-on: the needle is fixed dead
+    // centre and the scale itself slides underneath as you scrub
     '#me-band{position:fixed;left:0;right:0;top:50%;transform:translateY(-50%);z-index:9;display:none;'+
-      'overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;font-family:'+FONT+';}'+
-    '#me-band::-webkit-scrollbar{display:none;}'+
+      'height:230px;overflow:hidden;cursor:ew-resize;touch-action:none;font-family:'+FONT+';}'+
     '#me-app.radio-mode #me-band{display:block;}'+
     '#me-app.radio-mode #me-music{display:none;}'+
     '#me-app.radio-mode #me-tc{display:none;}'+
-    /* the band is a tuning knob: drag to scrub, so touch drags must not scroll */
-    '#me-band-in{position:relative;height:230px;cursor:ew-resize;touch-action:none;}'+
-    '#me-band.scrub .needle{transition:none;}'+
-    '#me-band .rule{position:absolute;top:118px;height:1px;background:#9a9a9a;}'+
+    '#me-band-in{position:absolute;top:0;height:230px;will-change:transform;}'+
+    '#me-band-in.glide{transition:transform .9s cubic-bezier(.22,1,.36,1);}'+
+    /* two rules like the reference set: fm on top, a decorative am row below */
+    '#me-band .rule{position:absolute;height:1px;background:#9a9a9a;}'+
     '#me-band .g-tick{position:absolute;width:1px;background:#c8c8c4;}'+
     '#me-band .g-tick.major{background:#9a9a9a;}'+
-    '#me-band .g-label{position:absolute;top:130px;transform:translateX(-50%);font-size:11px;color:#bdbdbd;'+
+    '#me-band .g-label{position:absolute;top:70px;transform:translateX(-50%);font-size:12px;color:#bdbdbd;'+
       'font-variant-numeric:tabular-nums;white-space:nowrap;}'+
-    '#me-band .station{position:absolute;top:96px;height:44px;width:32px;transform:translateX(-50%);cursor:pointer;}'+
-    '#me-band .station i{position:absolute;left:50%;top:6px;width:1px;height:32px;background:#6f7377;}'+
-    '#me-band .station:hover i{background:#0a0a0a;}'+
-    '#me-band .needle{position:absolute;top:86px;width:1.5px;height:64px;background:#0a0a0a;'+
-      'pointer-events:none;transition:left .8s cubic-bezier(.3,1.45,.5,1);}'+
-    '#me-band .b-note{position:absolute;top:22px;left:50%;transform:translateX(-50%);font:700 15px/1.55 '+FONT+';'+
-      'color:#0a0a0a;text-transform:lowercase;letter-spacing:1px;width:84%;max-width:640px;text-align:center;}'+
-    '#me-band .b-title{position:absolute;top:168px;left:50%;transform:translateX(-50%);font:700 15px/1.55 '+FONT+';'+
-      'color:#0a0a0a;white-space:nowrap;}'+
-    '#me-band .b-freq{position:absolute;top:194px;left:50%;transform:translateX(-50%);font-size:11px;color:#9a9a9a;'+
+    '#me-band .g-label.am{top:142px;font-size:10px;}'+
+    '#me-band .g-unit{position:absolute;font-size:9px;color:#bdbdbd;letter-spacing:.5px;}'+
+    '#me-band .station{position:absolute;top:88px;height:26px;width:2px;transform:translateX(-50%);}'+
+    '#me-band .station i{position:absolute;left:0;top:0;width:2px;height:26px;background:#c2c2be;'+
+      'transition:background .25s ease;}'+
+    /* the needle never moves — it lives on the glass, not the scale */
+    '#me-band .needle{position:absolute;left:50%;top:60px;width:2px;height:96px;background:#0a0a0a;'+
+      'pointer-events:none;transform:translateX(-50%);}'+
+    '#me-band .b-note{position:absolute;top:14px;left:50%;transform:translateX(-50%);font:700 15px/1.55 '+FONT+';'+
+      'color:#0a0a0a;text-transform:lowercase;letter-spacing:1px;width:84%;max-width:640px;text-align:center;'+
+      'opacity:0;transition:opacity .35s ease;}'+
+    '#me-band .b-title{position:absolute;top:170px;left:50%;transform:translateX(-50%);font:700 15px/1.55 '+FONT+';'+
+      'color:#0a0a0a;white-space:nowrap;opacity:0;transition:opacity .35s ease;}'+
+    '#me-band.near .b-note,#me-band.near .b-title{opacity:1;}'+
+    '#me-band .b-freq{position:absolute;top:198px;left:50%;transform:translateX(-50%);font-size:11px;color:#9a9a9a;'+
       'font-variant-numeric:tabular-nums;white-space:nowrap;}'+
-    '@media (max-width:480px){#me-band .g-label{display:none;}}'+
+    '@media (max-width:480px){#me-band .g-label{font-size:10px;}#me-band .g-label.am{display:none;}}'+
     // browse
     '#me-browse{position:absolute;inset:0;display:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
@@ -1419,36 +1424,30 @@
   function updateTitle(){
     if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){setTitle('');return;}
     try{var d=ytPlayer.getVideoData();setTitle(cleanTitle((d&&d.title)?d.title:''));}catch(e){}
-    /* the band subscribes to track changes here — needle glides on natural advance too.
-       tracked by video id (shuffle remaps indices); while a manual tune is pending,
-       the poll must not yank the needle back */
-    try{
-      var d2=ytPlayer.getVideoData();
-      var vid=(d2&&d2.video_id)||'';
-      /* while the hand is on the knob (or the set is parked in the void), the
-         poll must not move the needle — the quiet signal under the static is
-         not a tuned station */
-      if(bandPending){
-        if(vid===bandPending){bandPending=null;if(!scrubbing&&!detuned&&vid!==bandId&&bandTicks[vid])moveNeedle(vid,true);}
-      }else if(!scrubbing&&!detuned&&vid&&vid!==bandId&&bandTicks[vid])moveNeedle(vid,true);
-    }catch(e){}
+    /* the dial never moves by itself — stations loop their own broadcast and
+       tuning is entirely in the user's hand (plus the initial random park).
+       the periodic pass keeps the near-station title fresh once its video
+       has actually loaded */
+    if(app.classList.contains('radio-mode'))tuneAudio();
   }
   function startPlayback(){
-    /* first start per load: begin at a random track, never the same one twice in a row.
-       loadPlaylist(index) — playVideoAt on a merely cued player falls back to track 0 */
+    /* first start per load: the set wakes up tuned to a random station,
+       mid-broadcast, never the same one twice in a row */
     try{ytPlayer.setVolume(100);}catch(e){} /* a detuned session must not mute the next one */
     try{
-      var list=ytPlayer.getPlaylist();
-      if(!ytJumped && list && list.length>1){
-        ytJumped=true;
-        var last=-1;try{last=parseInt(localStorage.getItem('me-radio-last'),10);}catch(e){}
-        var i=Math.floor(Math.random()*list.length);
-        if(i===last)i=(i+1)%list.length;
-        try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
-        SONG_IDS=list.slice();
-        bandPending=SONG_IDS[i]||null;
-        ytShuffled=false;
-        ytPlayer.loadPlaylist({list:MUSIC_PLAYLIST,listType:'playlist',index:i});
+      if(!ytJumped){
+        var list=SONG_IDS.length?SONG_IDS:(ytPlayer.getPlaylist()||[]);
+        if(list.length){
+          ytJumped=true;
+          if(!SONG_IDS.length)SONG_IDS=list.slice();
+          var last=-1;try{last=parseInt(localStorage.getItem('me-radio-last'),10);}catch(e){}
+          var i=Math.floor(Math.random()*list.length);
+          if(i===last)i=(i+1)%list.length;
+          try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
+          tuneLoad(list[i]);
+          bandId=list[i];
+          if(bandTicks[list[i]])parkDial(list[i]);else pendingDial=list[i];
+        }
       }else{
         ytPlayer.playVideo();
       }
@@ -1467,8 +1466,19 @@
           onReady:function(){ytReady=true;buildSongs();if(radioPlaying)startPlayback();},
           onStateChange:function(ev){
             buildSongs();
-            /* always-shuffled playback: re-apply after every (re)load, plus loop */
-            if(ev&&ev.data===1&&!ytShuffled){try{ytPlayer.setShuffle(true);ytPlayer.setLoop(true);ytShuffled=true;}catch(e){}}
+            /* every station is a broadcast that has been running since epoch:
+               on the first PLAYING after a load, jump to where the song would
+               be right now (wall clock mod duration, never the last seconds) */
+            if(ev&&ev.data===1&&pendingSeek&&pendingSeek===currentVid()){
+              var id=pendingSeek;pendingSeek=null;
+              try{
+                var dur=ytPlayer.getDuration();
+                if(dur&&dur>60)ytPlayer.seekTo((Date.now()/1000)%(dur-20)+8,true);
+              }catch(e){}
+            }
+            /* a station never plays another station's song: at the end of the
+               video the broadcast simply loops */
+            if(ev&&ev.data===0){try{ytPlayer.seekTo(0,true);ytPlayer.playVideo();}catch(e){}}
             if(!ytJumped&&radioPlaying)startPlayback();
             updateTitle();
           }
@@ -1492,7 +1502,7 @@
   bandEl.innerHTML='<div id="me-band-in"></div>';
   app.appendChild(bandEl);
   var bandIn=bandEl.querySelector('#me-band-in');
-  var RADIO_META={},bandTicks={},bandId=null,bandPending=null,SONG_IDS=[],ytShuffled=false,needleEl=null,bNote=null,bTitle=null,bFreq=null;
+  var RADIO_META={},bandTicks={},bandId=null,SONG_IDS=[],needleEl=null,bNote=null,bTitle=null,bFreq=null;
 
   /* ── tuner audio: radio static in the void between stations. the noise is
      generated (looped white noise through a lowpass — no assets), and the
@@ -1545,108 +1555,104 @@
     return 800+(h%2400);
   }
   function noteFor(id){var m=RADIO_META[id];return (m&&m.note)?String(m.note).toLowerCase():'';}
-  function fmtHz(hz){
-    return hz>999?(Math.round(hz/100)/10).toFixed(1)+' khz':hz+' hz';
+  /* the dial reads as FM — each song's measured spectral frequency decides its
+     ORDER and spread on the scale, remapped into the 88-108 mhz band */
+  var FM_LO=88,FM_HI=108;
+  function mhzFor(ids,id){
+    var hzs=ids.map(hzFor);
+    var mn=Math.min.apply(null,hzs),mx=Math.max.apply(null,hzs);
+    var u=mx>mn?(hzFor(id)-mn)/(mx-mn):0.5;
+    return 88.9+u*(107.1-88.9);
   }
+  function fmtMhz(m){return m.toFixed(1)+' mhz';}
   function bandAccent(){return theme.key;}
   function buildBand(){
-    var ids;try{ids=ytPlayer&&ytPlayer.getPlaylist?ytPlayer.getPlaylist():null;}catch(e){return;}
+    var ids=SONG_IDS.length?SONG_IDS.slice():null;
+    if(!ids){try{ids=ytPlayer&&ytPlayer.getPlaylist?ytPlayer.getPlaylist():null;}catch(e){return;}}
     if(!ids||!ids.length)return;
-    var iw=Math.max(bandEl.clientWidth||innerWidth,640);
-    bandIn.style.width=iw+'px';
-    var x0=Math.round(iw*0.08),x1=iw-Math.round(iw*0.08);
-    var st=ids.map(function(id,i){return {i:i,id:id,hz:hzFor(id),note:noteFor(id)};});
-    var minHz=Math.min.apply(null,st.map(function(e){return e.hz;}));
-    var maxHz=Math.max.apply(null,st.map(function(e){return e.hz;}));
-    var lo=Math.floor(minHz/500)*500,hi=Math.ceil(maxHz/500)*500;
-    if(hi-lo<1000)hi=lo+1000;
-    function X(hz){return x0+(hz-lo)/(hi-lo)*(x1-x0);}
-    bandCal={x0:x0,x1:x1,lo:lo,hi:hi};
-    scrubbing=false;bandEl.classList.remove('scrub');
+    SONG_IDS=ids.slice();
+    /* the scale is much wider than the screen — a wheel with real travel */
+    var SW=Math.max(1500,Math.round((bandEl.clientWidth||innerWidth)*2.2));
+    bandIn.style.width=SW+'px';
+    var x0=60,x1=SW-60;
+    function X(m){return x0+(m-FM_LO)/(FM_HI-FM_LO)*(x1-x0);}
+    bandCal={x0:x0,x1:x1};
+    bandIn.classList.remove('glide');
     bandIn.innerHTML='';
-    var rule=document.createElement('div');rule.className='rule';
-    rule.style.left=x0+'px';rule.style.width=(x1-x0)+'px';
-    bandIn.appendChild(rule);
-    /* receiver graduation: fine ticks every 100 hz, labelled majors every 500 hz */
-    for(var g=lo;g<=hi;g+=100){
-      var major=g%500===0;
+    /* fm graduation: labelled majors every 2 mhz, fine ticks every 0.5 */
+    var rF=document.createElement('div');rF.className='rule';
+    rF.style.left=x0+'px';rF.style.width=(x1-x0)+'px';rF.style.top='100px';
+    bandIn.appendChild(rF);
+    for(var m=FM_LO;m<=FM_HI+0.001;m+=0.5){
+      var mj=Math.abs(m/2-Math.round(m/2))<0.001;
       var gt=document.createElement('div');
-      gt.className='g-tick'+(major?' major':'');
-      gt.style.left=X(g)+'px';
-      gt.style.top=major?'106px':'112px';
-      gt.style.height=major?'12px':'6px';
+      gt.className='g-tick'+(mj?' major':'');
+      gt.style.left=X(m)+'px';
+      gt.style.top=mj?'88px':'94px';
+      gt.style.height=mj?'12px':'6px';
       bandIn.appendChild(gt);
-      if(major){
+      if(mj){
         var gl=document.createElement('div');gl.className='g-label';
-        gl.style.left=X(g)+'px';gl.textContent=fmtHz(g);
+        gl.style.left=X(m)+'px';gl.textContent=String(Math.round(m));
         bandIn.appendChild(gl);
       }
     }
-    /* stations: one marker per song at its measured frequency — keyed by video id
-       so YouTube's shuffle (which remaps indices) can't confuse the needle */
-    SONG_IDS=ids.slice();
+    var uF=document.createElement('div');uF.className='g-unit';
+    uF.style.left=(x1+16)+'px';uF.style.top='70px';uF.textContent='mhz';
+    bandIn.appendChild(uF);
+    /* decorative am row, log-spaced like a real dual-scale dial */
+    var rA=document.createElement('div');rA.className='rule';
+    rA.style.left=x0+'px';rA.style.width=(x1-x0)+'px';rA.style.top='134px';
+    bandIn.appendChild(rA);
+    var la=Math.log(550),lb=Math.log(1600);
+    [550,600,700,800,1000,1200,1400,1600].forEach(function(f){
+      var ax=x0+(Math.log(f)-la)/(lb-la)*(x1-x0);
+      var at=document.createElement('div');at.className='g-tick major';
+      at.style.left=ax+'px';at.style.top='134px';at.style.height='8px';
+      bandIn.appendChild(at);
+      var al=document.createElement('div');al.className='g-label am';
+      al.style.left=ax+'px';al.textContent=String(f);
+      bandIn.appendChild(al);
+    });
+    var uA=document.createElement('div');uA.className='g-unit';
+    uA.style.left=(x1+16)+'px';uA.style.top='142px';uA.textContent='khz';
+    bandIn.appendChild(uA);
+    /* stations: one marker per song, keyed by video id */
     bandTicks={};
-    st.forEach(function(e){
+    ids.forEach(function(id){
       var s=document.createElement('div');s.className='station';
-      s.style.left=X(e.hz)+'px';
+      var sm=mhzFor(ids,id),sx=X(sm);
+      s.style.left=sx+'px';
       s.innerHTML='<i></i>';
-      /* no click handler — tuning happens through the scrub logic below,
-         so a tap near a station and a drag onto it behave the same */
       bandIn.appendChild(s);
-      bandTicks[e.id]={x:X(e.hz),hz:e.hz,note:e.note,el:s};
+      bandTicks[id]={x:sx,mhz:sm,note:noteFor(id),el:s};
     });
-    needleEl=document.createElement('div');needleEl.className='needle';
-    needleEl.addEventListener('transitionend',applyBandActive);
-    bNote=document.createElement('div');bNote.className='b-note';
-    bTitle=document.createElement('div');bTitle.className='b-title';
-    bFreq=document.createElement('div');bFreq.className='b-freq';
-    bandIn.appendChild(needleEl);bandIn.appendChild(bNote);bandIn.appendChild(bTitle);bandIn.appendChild(bFreq);
-    var vid='';try{var d0=ytPlayer.getVideoData();vid=(d0&&d0.video_id)||'';}catch(e){}
-    moveNeedle(bandTicks[vid]?vid:ids[0],false);
+    /* the glass chrome — needle and readouts — is fixed on the set, built once */
+    if(!needleEl){
+      needleEl=document.createElement('div');needleEl.className='needle';
+      bNote=document.createElement('div');bNote.className='b-note';
+      bTitle=document.createElement('div');bTitle.className='b-title';
+      bFreq=document.createElement('div');bFreq.className='b-freq';
+      bandEl.appendChild(needleEl);bandEl.appendChild(bNote);bandEl.appendChild(bTitle);bandEl.appendChild(bFreq);
+    }
+    paintDial();
+    if(pendingDial&&bandTicks[pendingDial]){var pd=pendingDial;pendingDial=null;bandId=pd;parkDial(pd);}
+    else setDial(dialU>=0?x0+dialU*(x1-x0):(x0+x1)/2,false);
   }
-  function applyBandActive(){
-    /* note, title, colors switch when the needle arrives, not when the audio switches */
+  function paintDial(){
+    /* the theme colour lives on the needle and the note */
     if(!needleEl)return;
-    Object.keys(bandTicks).forEach(function(id){
-      bandTicks[id].el.querySelector('i').style.background=id===bandId?bandAccent():'';
-    });
     needleEl.style.background=bandAccent();
-    var bt=bandTicks[bandId]||{};
-    bNote.textContent=bt.note||'';
     bNote.style.color=bandAccent();
-    var tt='';
-    try{var d=ytPlayer.getVideoData();if(d&&d.video_id===bandId)tt=d.title||'';}catch(e){}
-    bTitle.textContent=cleanTitle(tt);
-    bFreq.textContent=bt.hz?fmtHz(bt.hz):'';
-  }
-  var needleTimer=null;
-  function moveNeedle(id,animate){
-    if(!needleEl||!bandTicks[id])return;
-    var x=bandTicks[id].x;
-    bandId=id;
-    if(!animate){
-      needleEl.style.transition='none';
-      needleEl.style.left=x+'px';
-      needleEl.getBoundingClientRect();
-      needleEl.style.transition='';
-      applyBandActive();
-    }else{
-      needleEl.style.left=x+'px';
-      /* transitionend can be lost in hidden tabs — make sure the swap still lands */
-      clearTimeout(needleTimer);
-      needleTimer=setTimeout(applyBandActive,900);
-    }
-    if(bandEl.scrollWidth>bandEl.clientWidth+1){
-      try{bandEl.scrollTo({left:Math.max(0,x-bandEl.clientWidth/2),behavior:animate?'smooth':'auto'});}catch(e){}
-    }
   }
 
-  /* ── scrubbing: the band works like a tuning knob. drag anywhere — the
-     needle follows the pointer, static hisses in the void, and the nearest
-     station's signal fades in the closer the needle gets. release inside the
-     capture range and the set locks on (AFC-style); release in the void and
-     the radio stays detuned, hissing. a tap is just a very short scrub. */
-  var bandCal=null,scrubbing=false,detuned=false,scrubX=0,scrubQueuedId=null,scrubLoadTimer=null;
+  /* ── the wheel: the needle is fixed dead centre and the scale slides under
+     it, like a tuning wheel seen head-on. drag to spin — with momentum, no
+     snapping — and the set sits wherever you leave it. static hisses in the
+     void; the nearest station's broadcast fades in with proximity, and its
+     note and title only appear once you are near. */
+  var bandCal=null,dialNx=-1,dialU=-1,pendingDial=null,pendingSeek=null;
+  var wheelGrab=null,wheelV=0,wheelRAF=null,tuneQueuedId=null,tuneLoadTimer=null,dialTouched=false;
   function nearestStation(x){
     var best=null;
     Object.keys(bandTicks).forEach(function(id){
@@ -1655,109 +1661,129 @@
     });
     return best;
   }
-  function hzAt(x){
-    if(!bandCal)return 0;
+  function mhzAt(x){
+    if(!bandCal)return FM_LO;
     var u=(x-bandCal.x0)/(bandCal.x1-bandCal.x0);
-    return Math.round(bandCal.lo+Math.max(0,Math.min(1,u))*(bandCal.hi-bandCal.lo));
+    return FM_LO+Math.max(0,Math.min(1,u))*(FM_HI-FM_LO);
   }
-  function scrubZone(){return Math.max(30,(bandCal?bandCal.x1-bandCal.x0:600)*0.06);}
+  function tuneZone(){return bandCal?(bandCal.x1-bandCal.x0)*1.1/(FM_HI-FM_LO):40;} /* ≈1.1 mhz of signal */
   function currentVid(){
     var v='';try{var d=ytPlayer.getVideoData();v=(d&&d.video_id)||'';}catch(e){}
     return v;
   }
-  function scrubUpdate(x){
-    scrubX=x;
-    needleEl.style.left=x+'px';
-    var st=nearestStation(x);if(!st)return;
-    var Z=scrubZone(),prox=Math.max(0,1-st.d/Z),v=prox*prox;
-    /* once the signal starts to bite, the approached song loads quietly and
-       plays underneath the static */
-    if(prox>0.2&&st.id!==scrubQueuedId){
-      scrubQueuedId=st.id;
-      if(st.id!==currentVid()){
-        clearTimeout(scrubLoadTimer);
-        var qid=st.id;
-        scrubLoadTimer=setTimeout(function(){
-          var i=SONG_IDS.indexOf(qid);
-          if(i>=0){
-            armRadio();ytJumped=true;bandPending=qid;ytShuffled=false;
-            setMusicVol(0);
-            try{ytPlayer.loadPlaylist({list:MUSIC_PLAYLIST,listType:'playlist',index:i});}catch(e){}
-          }
-        },160);
+  function tuneLoad(id){
+    /* single-video load: a station can only ever play its own song, and the
+       broadcast-time seek lands mid-song on the first PLAYING */
+    pendingSeek=id;
+    try{ytPlayer.loadVideoById({videoId:id});}catch(e){}
+  }
+  function setDial(nx,glide){
+    if(!bandCal)return;
+    nx=Math.max(bandCal.x0,Math.min(bandCal.x1,nx));
+    dialNx=nx;dialU=(nx-bandCal.x0)/(bandCal.x1-bandCal.x0);
+    bandIn.classList.toggle('glide',!!glide);
+    bandIn.style.transform='translateX('+((bandEl.clientWidth||innerWidth)/2-nx)+'px)';
+  }
+  function parkDial(id){
+    if(!bandTicks[id])return;
+    setDial(bandTicks[id].x,true);
+    tuneAudio();
+  }
+  function tuneAudio(){
+    if(!bandCal||dialNx<0||!needleEl)return;
+    var st=nearestStation(dialNx);if(!st)return;
+    var Z=tuneZone(),prox=Math.max(0,1-st.d/Z),v=prox*prox;
+    if(radioPlaying){
+      setMusicVol(v);
+      setStatic(1-v);
+      /* the near station loads — quietly, mid-broadcast — once its signal bites */
+      if(prox>0.25&&st.id!==tuneQueuedId){
+        tuneQueuedId=st.id;
+        if(st.id!==currentVid()){
+          clearTimeout(tuneLoadTimer);
+          var qid=st.id;
+          tuneLoadTimer=setTimeout(function(){bandId=qid;tuneLoad(qid);},180);
+        }
       }
+      if(st.d>Z)tuneQueuedId=null;
     }
-    if(st.d>Z)scrubQueuedId=null;
-    setMusicVol(v);
-    setStatic(1-v);
-    bFreq.textContent=fmtHz(hzAt(x));
-    bNote.textContent='';bTitle.textContent='';
-    if(bandEl.scrollWidth>bandEl.clientWidth+1)
-      bandEl.scrollLeft=Math.max(0,x-bandEl.clientWidth/2);
+    var near=prox>0.55;
+    bandEl.classList.toggle('near',near);
+    Object.keys(bandTicks).forEach(function(id){
+      bandTicks[id].el.querySelector('i').style.background=(near&&id===st.id)?bandAccent():'';
+    });
+    if(near){
+      bNote.textContent=bandTicks[st.id].note||'';
+      var tt='';
+      if(st.id===currentVid()){try{var d=ytPlayer.getVideoData();tt=(d&&d.title)||'';}catch(e){}}
+      bTitle.textContent=cleanTitle(tt);
+    }
+    bFreq.textContent=fmtMhz(mhzAt(dialNx));
   }
-  function bandPointX(ev){
-    var r=bandIn.getBoundingClientRect();
-    var x=ev.clientX-r.left;
-    return Math.max(bandCal?bandCal.x0:0,Math.min(bandCal?bandCal.x1:x,x));
-  }
-  bandIn.addEventListener('pointerdown',function(ev){
-    if(!SONG_IDS.length||!bandCal||!needleEl)return;
+  bandEl.addEventListener('pointerdown',function(ev){
+    if(!bandCal)return;
     ensureStatic();
-    scrubbing=true;detuned=false;
-    bandEl.classList.add('scrub');
-    try{bandIn.setPointerCapture(ev.pointerId);}catch(e){}
-    scrubUpdate(bandPointX(ev));
+    armRadio(); /* touching the dial switches the set on — hiss and all */
+    dialTouched=true;
+    cancelAnimationFrame(wheelRAF);
+    bandIn.classList.remove('glide');
+    wheelGrab={px:ev.clientX,nx:dialNx<0?(bandCal.x0+bandCal.x1)/2:dialNx,t:performance.now()};
+    wheelV=0;
+    try{bandEl.setPointerCapture(ev.pointerId);}catch(e){}
     ev.preventDefault();
   });
-  bandIn.addEventListener('pointermove',function(ev){
-    if(!scrubbing)return;
-    scrubUpdate(bandPointX(ev));
+  bandEl.addEventListener('pointermove',function(ev){
+    if(!wheelGrab)return;
+    var now=performance.now();
+    /* dragging the glass right spins lower frequencies under the needle */
+    var prev=dialNx;
+    setDial(wheelGrab.nx-(ev.clientX-wheelGrab.px),false);
+    /* a real wheel is heavily damped: floor the event delta and cap the spin
+       so a flick nudges the dial rather than hurling it across the band */
+    var dt=Math.max(8,now-wheelGrab.t);
+    wheelV=0.8*wheelV+0.2*((dialNx-prev)/dt);
+    wheelV=Math.max(-0.6,Math.min(0.6,wheelV));
+    wheelGrab.t=now;
+    tuneAudio();
   });
-  function scrubEnd(){
-    if(!scrubbing)return;
-    scrubbing=false;
-    bandEl.classList.remove('scrub');
-    var st=nearestStation(scrubX),Z=scrubZone();
-    if(st&&st.d<Z*0.75){
-      detuned=false;
-      var i=SONG_IDS.indexOf(st.id);
-      if(st.id===currentVid()){
-        bandId=st.id;moveNeedle(st.id,true);
-      }else if(i>=0){
-        playSong(i);moveNeedle(st.id,true);
+  function wheelRelease(){
+    if(!wheelGrab)return;
+    wheelGrab=null;
+    /* momentum: the wheel coasts and settles on friction — never snapping */
+    var last=performance.now();
+    cancelAnimationFrame(wheelRAF);
+    wheelRAF=requestAnimationFrame(function coast(now){
+      var dt=Math.min(48,now-last);last=now;
+      if(Math.abs(wheelV)>0.02){
+        setDial(dialNx+wheelV*dt,false);
+        wheelV*=Math.exp(-dt/200);
+        if(dialNx<=bandCal.x0||dialNx>=bandCal.x1)wheelV=0;
+        tuneAudio();
+        wheelRAF=requestAnimationFrame(coast);
       }
-      rampMusic(1,500);
-      setStatic(0);
-    }else{
-      detuned=true;
-      setMusicVol(0);
-      setStatic(1);
-      bNote.textContent='';bTitle.textContent='';
-    }
+    });
   }
-  bandIn.addEventListener('pointerup',scrubEnd);
-  bandIn.addEventListener('pointercancel',scrubEnd);
+  bandEl.addEventListener('pointerup',wheelRelease);
+  bandEl.addEventListener('pointercancel',wheelRelease);
   function exitBandAudio(){
-    /* static belongs to the radio view alone. leaving while detuned locks
-       onto whatever signal is loaded, so the music can carry on cleanly */
+    /* static belongs to the radio view alone. leaving with a station audible
+       commits to it at full volume; leaving deep in the void lets the set
+       power down quietly */
     setStatic(0);
-    clearTimeout(scrubLoadTimer);
-    scrubbing=false;bandEl.classList.remove('scrub');
-    if(detuned){
-      detuned=false;
-      if(radioPlaying){
-        var vid=currentVid();
-        if(vid&&bandTicks[vid]){bandId=vid;moveNeedle(vid,false);}
-        rampMusic(1,400);
-      }
-    }
+    clearTimeout(tuneLoadTimer);
+    cancelAnimationFrame(wheelRAF);wheelGrab=null;wheelV=0;
+    if(!radioPlaying)return;
+    var st=dialNx>=0?nearestStation(dialNx):null;
+    var prox=st?Math.max(0,1-st.d/tuneZone()):0;
+    if(prox>0.45)rampMusic(1,400);
+    else stopRadio();
   }
   addEventListener('resize',function(){ if(SONG_IDS.length)buildBand(); });
   function updateModeClass(){
     app.classList.toggle('radio-mode', fieldMode==='radio' && !app.classList.contains('browse'));
   }
   function stopRadio(){
-    setStatic(0);detuned=false; /* the hiss dies with the music */
+    setStatic(0); /* the hiss dies with the music */
     if(!radioPlaying) return;
     radioPlaying=false;
     radioBtn.classList.remove('playing');
@@ -1773,16 +1799,6 @@
     app.classList.add('radio-on');
     clearInterval(titleTimer);titleTimer=setInterval(updateTitle,800);
     updateBrand();
-  }
-  function playSong(i){
-    if(!ytReady) return;
-    try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
-    armRadio();
-    ytJumped=true;
-    bandPending=SONG_IDS[i]||null;
-    ytShuffled=false;
-    /* loadPlaylist is deterministic even while a previous load is settling */
-    try{ytPlayer.loadPlaylist({list:MUSIC_PLAYLIST,listType:'playlist',index:i});}catch(e){}
   }
   /* three views, two buttons: film and radio open their view; clicking the
      view you are already on returns to the main dial page. music is untouched
@@ -1814,7 +1830,7 @@
     if(ytReady)startPlayback();
     radioBtn.setAttribute('aria-pressed','true');
     updateModeClass();
-    if(needleEl)applyBandActive(); /* theme re-rolled — refresh the band accent */
+    paintDial();tuneAudio(); /* theme re-rolled — refresh needle and readouts */
     updateBrand();
   }
   app.querySelector('#me-btnview').addEventListener('click', function(){
