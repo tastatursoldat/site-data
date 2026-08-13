@@ -221,6 +221,7 @@
 
   var cvs=app.querySelector('#me-field'),ctx=cvs.getContext('2d');
   var W=0,H=0,DPR=Math.min(devicePixelRatio||1,2),nodes=[],hover=-1,casings=[];
+  var pendingSlabs=null; /* filled silhouettes hand their slabs straight to the casing pass */
 
   function rng(seed){var s=seed>>>0||1;return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
   function hashSeed(x){ /* avalanche — sequential film seeds would correlate the LCG */
@@ -366,7 +367,185 @@
     return nodes;
   }
 
+  /* grow a pool to exactly n clocks — About once, films duplicated freely and
+     unevenly, exactly as many as the formation wants */
+  function padPool(fs,n){
+    var out=fs.slice(0,Math.min(fs.length,n)),k=0;
+    if(n>0&&!out.some(function(e){return e.isAbout;}))out[0]=ABOUT_ENTRY;
+    while(out.length<n&&FILM_DIALS.length){
+      out.push(Object.assign({},FILM_DIALS[k%FILM_DIALS.length],{copy:300+k}));
+      k++;
+    }
+    return out;
+  }
+
+  /* silhouettes for filled cabinets — unit space, centred, mirror-symmetric.
+     rects are [cx,cy,w,h]; bigs sit on a fixed skeleton, squares are the
+     horn-tweeter positions */
+  var FILL_SIL={
+    fillH:{rects:[[-0.62,0,0.36,1.6],[0.62,0,0.36,1.6],[0,0,0.88,0.5]],
+           bigs:[[-0.62,-0.32],[0.62,-0.32],[-0.62,0.55],[0.62,0.55],[0,0]],
+           squares:[[-0.62,-0.65],[0.62,-0.65]]},
+    fillT:{rects:[[0,-0.55,1.6,0.5],[0,0.35,0.5,1.3]],
+           bigs:[[-0.55,-0.55],[0.55,-0.55],[0,-0.55],[0,0.1],[0,0.65]]},
+    fillI:{rects:[[0,-0.62,1.5,0.36],[0,0,0.44,0.94],[0,0.62,1.5,0.36]],
+           bigs:[[-0.5,-0.62],[0.5,-0.62],[0,-0.2],[0,0.2],[-0.5,0.62],[0.5,0.62]]},
+    fillTower:{rects:[[0,0,0.62,1.8]],
+           bigs:[[0,-0.25],[0,0.62]],squares:[[0,-0.68]]},
+    fillPlus:{rects:[[0,0,1.5,0.46],[0,0,0.46,1.5]],
+           bigs:[[0,0],[-0.52,0],[0.52,0],[0,-0.52],[0,0.52]]}
+  };
+
+  /* fill a silhouette with clocks: big drivers on the skeleton, then
+     super-small ones packed mirror-first into every gap — the green-H and
+     pink-tower posters. The slabs themselves become the casing. */
+  function fillCase(fs,base,sil){
+    var S=base*0.62;
+    var rects=sil.rects.map(function(r){
+      return {x:W/2+r[0]*S,y:H/2+r[1]*S,w:r[2]*S,h:r[3]*S};
+    });
+    pendingSlabs=rects.map(function(r){return {x:r.x-r.w/2,y:r.y-r.h/2,w:r.w,h:r.h};});
+    var geo=[];
+    function inside(x,y,R){
+      return rects.some(function(r){
+        return x>=r.x-r.w/2+R&&x<=r.x+r.w/2-R&&y>=r.y-r.h/2+R&&y<=r.y+r.h/2-R;
+      });
+    }
+    function collide(x,y,R){
+      return geo.some(function(g){return Math.hypot(g.x-x,g.y-y)<(g.R+R)*1.06;});
+    }
+    function rectAt(x,y){
+      var best=rects[0],bd=1e9;
+      rects.forEach(function(r){
+        var d=Math.hypot(r.x-x,r.y-y);
+        if(d<bd){bd=d;best=r;}
+      });
+      return best;
+    }
+    (sil.bigs||[]).forEach(function(p){
+      var x=W/2+p[0]*S,y=H/2+p[1]*S,r=rectAt(x,y);
+      var R=Math.min(Math.min(r.w,r.h)/2*0.84,base*0.115);
+      if(!collide(x,y,R))geo.push({x:x,y:y,R:R});
+    });
+    (sil.squares||[]).forEach(function(p){
+      var x=W/2+p[0]*S,y=H/2+p[1]*S,r=rectAt(x,y);
+      var R=Math.min(Math.min(r.w,r.h)/2*0.62,base*0.08);
+      if(!collide(x,y,R))geo.push({x:x,y:y,R:R,forceShape:'square'});
+    });
+    /* mirrored gap fill — mostly super small, the odd mid-size */
+    for(var t=0;t<700&&geo.length<92;t++){
+      var r2=rects[Math.floor(Math.random()*rects.length)];
+      var x=r2.x-r2.w/2+Math.random()*r2.w;
+      var y=r2.y-r2.h/2+Math.random()*r2.h;
+      var R=base*(0.014+Math.random()*Math.random()*0.05);
+      if(x>W/2+R*1.12)continue;                   /* build left, mirror right */
+      /* the centre band must clear the collision radius — a clock any closer
+         to the axis would overlap its own mirror twin, so it snaps onto it */
+      var center=Math.abs(x-W/2)<R*1.12;
+      if(center)x=W/2;
+      if(!inside(x,y,R)||collide(x,y,R))continue;
+      if(center){geo.push({x:x,y:y,R:R});}
+      else{
+        var mx=W-x;
+        if(!inside(mx,y,R)||collide(mx,y,R))continue;
+        geo.push({x:x,y:y,R:R});
+        geo.push({x:mx,y:y,R:R});
+      }
+    }
+    var fs2=padPool(fs,geo.length);
+    return geo.map(function(g,i){g.f=fs2[i];return g;});
+  }
+
+  /* symmetric cores of big drivers with tiny satellites around them — the
+     face, quincunx, blue-figure and flower posters */
+  var CORES=[
+    {big:[[0,0],[-1.05,-0.95],[1.05,-0.95],[-1.05,0.95],[1.05,0.95]]},        /* quincunx */
+    {big:[[-0.62,-0.3],[0.62,-0.3]],mid:[[0,0.72]],squares:[[-0.62,-1.18],[0.62,-1.18]]}, /* face */
+    {big:[[0,-0.55],[-1.15,-0.55],[1.15,-0.55],[-0.6,0.55],[0.6,0.55]]},      /* flower */
+    {big:[[0,-0.95],[0,0.95]],mid:[[-1.0,0],[1.0,0],[0,0]]},                  /* diamond */
+    {big:[[0,-1],[-0.95,-0.31],[0.95,-0.31],[-0.59,0.81],[0.59,0.81]]},       /* star */
+    {big:[[0,0]],ringN:12,ringR:1.5},                                         /* clockface */
+    {big:[[0,0]],mid:[[0,-1],[0.87,-0.5],[0.87,0.5],[0,1],[-0.87,0.5],[-0.87,-0.5]]} /* bloom */
+  ];
+  function coreSatLayout(fs,base){
+    var S=base*0.42,core=CORES[Math.floor(Math.random()*CORES.length)];
+    var bigR=base*(0.095+Math.random()*0.02);
+    var midR=bigR*0.55,tinyR=base*(0.016+Math.random()*0.008);
+    var geo=[];
+    (core.big||[]).forEach(function(p){geo.push({x:W/2+p[0]*S,y:H/2+p[1]*S,R:bigR});});
+    (core.mid||[]).forEach(function(p){geo.push({x:W/2+p[0]*S,y:H/2+p[1]*S,R:midR});});
+    if(core.ringN){ /* dots on a dial — starts at 12 o'clock, mirror-exact */
+      for(var rk=0;rk<core.ringN;rk++){
+        var ra=-Math.PI/2+rk*2*Math.PI/core.ringN;
+        geo.push({x:W/2+Math.cos(ra)*core.ringR*S,y:H/2+Math.sin(ra)*core.ringR*S,R:midR});
+      }
+    }
+    (core.squares||[]).forEach(function(p){
+      geo.push({x:W/2+p[0]*S,y:H/2+p[1]*S,R:midR*0.8,forceShape:'square',satTiny:true});
+    });
+    var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+    geo.forEach(function(g){
+      minX=Math.min(minX,g.x-g.R);maxX=Math.max(maxX,g.x+g.R);
+      minY=Math.min(minY,g.y-g.R);maxY=Math.max(maxY,g.y+g.R);
+    });
+    var cw=(maxX-minX)/2,ch=(maxY-minY)/2,gap=base*0.045,deco=0;
+    function tiny(x,y){geo.push({x:x,y:y,R:tinyR,satTiny:true});}
+    if(Math.random()<0.7){ /* flank columns */
+      deco++;
+      var nc=2+Math.floor(Math.random()*3);
+      for(var i=0;i<nc;i++){
+        var fy=H/2+((i+0.5)/nc-0.5)*2*ch*0.8;
+        tiny(W/2-cw-gap-tinyR,fy);tiny(W/2+cw+gap+tinyR,fy);
+      }
+    }
+    if(Math.random()<0.5){ /* stack above the crown */
+      deco++;
+      var ns=2+Math.floor(Math.random()*2);
+      for(var s2=0;s2<ns;s2++)tiny(W/2,H/2-ch-gap-tinyR-(s2*2.4*tinyR));
+    }
+    if(Math.random()<0.4){deco++;tiny(W/2,H/2+ch+gap+tinyR);}
+    if(Math.random()<0.4){ /* corner dots, like the pink flower poster */
+      deco++;
+      tiny(W/2-cw-gap,H/2-ch-gap);tiny(W/2+cw+gap,H/2-ch-gap);
+      tiny(W/2-cw-gap,H/2+ch+gap);tiny(W/2+cw+gap,H/2+ch+gap);
+    }
+    if(!deco||Math.random()<0.35){ /* dotted ring around everything */
+      var K=3+Math.floor(Math.random()*3);
+      var ea=cw*1.35+gap,eb=ch*1.35+gap;
+      for(var k2=0;k2<K;k2++){
+        var a=(k2+0.5)/K*(Math.PI/2);
+        var ex=Math.cos(a)*ea,ey=Math.sin(a)*eb;
+        tiny(W/2+ex,H/2+ey);tiny(W/2-ex,H/2+ey);
+        tiny(W/2+ex,H/2-ey);tiny(W/2-ex,H/2-ey);
+      }
+    }
+    var fs2=padPool(fs,geo.length);
+    return geo.map(function(g,i){g.f=fs2[i];return g;});
+  }
+
+  /* a vertical stack of mid clocks, each flanked by a pair of tiny ones */
+  function stackSatLayout(fs,base){
+    var n=3+Math.floor(Math.random()*2);
+    var midR=base*(0.055+Math.random()*0.015),tinyR=base*0.02,gap=midR*0.5;
+    var geo=[],step=2*midR+gap;
+    for(var i=0;i<n;i++){
+      var y=H/2+(i-(n-1)/2)*step;
+      geo.push({x:W/2,y:y,R:midR});
+      geo.push({x:W/2-midR-tinyR*1.9,y:y,R:tinyR,satTiny:true});
+      geo.push({x:W/2+midR+tinyR*1.9,y:y,R:tinyR,satTiny:true});
+    }
+    var fs2=padPool(fs,geo.length);
+    return geo.map(function(g,i){g.f=fs2[i];return g;});
+  }
+
   var LAYOUTS={
+    fillH:function(fs,base){return fillCase(fs,base,FILL_SIL.fillH);},
+    fillT:function(fs,base){return fillCase(fs,base,FILL_SIL.fillT);},
+    fillI:function(fs,base){return fillCase(fs,base,FILL_SIL.fillI);},
+    fillTower:function(fs,base){return fillCase(fs,base,FILL_SIL.fillTower);},
+    fillPlus:function(fs,base){return fillCase(fs,base,FILL_SIL.fillPlus);},
+    coreSat:function(fs,base){return coreSatLayout(fs,base);},
+    stackSat:function(fs,base){return stackSatLayout(fs,base);},
     lineH:function(fs,base){
       var R=makeSizes(base,fs.length);
       var total=R.reduce(function(a,r){return a+2*r;},0);
@@ -535,28 +714,35 @@
     var pool=fieldEntries();
     if(!pool.length||!W||!H){nodes=[];casings=[];ctx.clearRect(0,0,W,H);return;}
     var base=Math.min(W,H);
-    /* half of all posters come in a box, so those deals draw from the
-       formations a casing can be built around */
-    /* a boxed letter is always the solid version — the sparse T/H/I stay unboxed,
-       otherwise the casing is mostly empty */
-    var TAGGED={lineV:1,columns:1,cross:1,packT:1,packH:1,packI:1};
-    var PACKED={packT:1,packH:1,packI:1}; /* solid letterforms only make sense boxed */
-    var names=Object.keys(LAYOUTS);
+    /* half of all posters come in a box; the weights lean on the reference-sheet
+       archetypes — filled letter cabinets when boxed, core+satellite comps when free */
+    var PACKED={packT:1,packH:1,packI:1};   /* one clock per mask cell, casing tiled off radii */
+    var FILLED={fillH:1,fillT:1,fillI:1,fillTower:1,fillPlus:1}; /* organic mixed-size fill */
+    var GEO={coreSat:1,stackSat:1};         /* geometry-first — pool pads itself */
+    function weighted(list){
+      var tot=0;list.forEach(function(e){tot+=e[1];});
+      var t=Math.random()*tot;
+      for(var wi=0;wi<list.length;wi++){t-=list[wi][1];if(t<=0)return list[wi][0];}
+      return list[list.length-1][0];
+    }
     var cased=Math.random()<0.5;
-    /* boxed deals lean hard on the packed cabinets — they are the signature */
-    var choices=cased
-      ?(Math.random()<0.75?names.filter(function(k){return PACKED[k];})
-                          :names.filter(function(k){return TAGGED[k]&&!PACKED[k];}))
-      :names.filter(function(k){return !PACKED[k];});
-    var pick=choices[Math.floor(Math.random()*choices.length)];
+    var pick=cased
+      ?weighted([['fillH',4],['fillT',4],['fillTower',3],['fillI',2],['fillPlus',2],
+                 ['packT',3],['packH',3],['packI',2],
+                 ['lineV',1],['columns',1],['cross',1]])
+      :weighted([['coreSat',10],['stackSat',2],
+                 ['lineH',1],['lineV',1],['columns',1],['cross',1],['xshape',1]]);
+    /* the organic piles never mirror — the requested formations (quincunx, star,
+       bloom, clockface, eye) live on as cores inside coreSat instead */
     cvs.dataset.layout=pick;
     cvs.dataset.cased=cased?'1':'0';
-    uniformSize=cased;
+    uniformSize=cased&&!PACKED[pick]&&!FILLED[pick];
+    pendingSlabs=null;
     /* one case shape for the whole deal — the field is never a mix of forms */
     var CASE_EXT={circle:[1,1],square:[0.94,0.94],pill:[1.08,0.9],tv:[0.8,1.02]};
     var shapeRoll=Math.random();
-    /* boxed posters always use round drivers, like the reference cabinets */
-    var dealShape=cased?'circle'
+    /* boxed posters and the satellite comps use round drivers, like the reference */
+    var dealShape=(cased||GEO[pick]||pick==='bloom')?'circle'
       :(shapeRoll<0.5?'circle':(shapeRoll<0.78?'square':(shapeRoll<0.9?'pill':'tv')));
     var ext=CASE_EXT[dealShape];
 
@@ -574,7 +760,8 @@
     if(PACKED[pick]){
       /* a solid letterform needs exactly one clock per cell */
       var cells=0;
-      MASKS[pick].cells.forEach(function(row){for(var c=0;c<row.length;c++)if(row.charAt(c)==='1')cells++;});
+      /* every non-zero cell holds a clock — '2' is the forced-square cell */
+      MASKS[pick].cells.forEach(function(row){for(var c=0;c<row.length;c++)if(row.charAt(c)!=='0')cells++;});
       pool=[ABOUT_ENTRY];
       for(var pk=0;pool.length<cells&&FILM_DIALS.length;pk++){
         pool.push(pk<FILM_DIALS.length?FILM_DIALS[pk]
@@ -625,12 +812,15 @@
       }
       return pairs;
     }
-    var pairsV=mirrorPairs('v'),pairsH=mirrorPairs('h');
+    /* a filled silhouette mirrors left-right only — greedy top-bottom pairing
+       would grab near-misses in the random fill and resize them into overlap */
+    var pairsV=mirrorPairs('v'),pairsH=FILLED[pick]?[]:mirrorPairs('h');
     /* left→right first, then top→bottom: styles propagate from one representative */
     pairsV.forEach(function(p){ nodes[p[1]].R=nodes[p[0]].R; });
     pairsH.forEach(function(p){ nodes[p[1]].R=nodes[p[0]].R; });
 
     /* fit: scale + center the whole arrangement into the safe area */
+    var lastFit=null; /* slab casings ride through the same transform as the clocks */
     function fitField(){
       var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
       nodes.forEach(function(n){
@@ -643,6 +833,7 @@
       var sc=Math.min((W-2*mX)/bw,(H-mTop-mBot)/bh,1);
       var bcx=(minX+maxX)/2,bcy=(minY+maxY)/2;
       var tx=W/2,ty=mTop+(H-mTop-mBot)/2;
+      lastFit={sc:sc,bcx:bcx,bcy:bcy,tx:tx,ty:ty};
       nodes.forEach(function(n){
         n.x=tx+(n.x-bcx)*sc;
         n.y=ty+(n.y-bcy)*sc;
@@ -704,9 +895,10 @@
       });
     }
     fitField();
-    /* a packed mask is collision-free by construction and its casing tiles off
-       the clock radii — separating or shrinking would tear gaps in the letter */
-    if(!PACKED[pick]){
+    /* packed masks and filled silhouettes are collision-free by construction and
+       their casings derive from the clocks — separating or shrinking would tear
+       gaps in the letter */
+    if(!PACKED[pick]&&!FILLED[pick]){
       /* fitting can re-tighten what separation just opened — settle, then verify */
       for(var round=0;round<6;round++){
         separate();
@@ -722,10 +914,18 @@
       }
     }
     cvs.dataset.overlap=String(Math.round(worstOverlap()*10)/10);
+    cvs._nodes=nodes; /* audit handle, like the dataset flags */
 
-    /* sometimes the formation lives in a casing — slabs derived per tagged group */
+    /* sometimes the formation lives in a casing — a filled silhouette IS its own
+       casing (the slabs, fitted like the clocks); otherwise slabs derive per group */
     casings=[];
-    if(cased){
+    if(pendingSlabs&&lastFit){
+      casings=pendingSlabs.map(function(s){
+        return {x:lastFit.tx+(s.x-lastFit.bcx)*lastFit.sc,
+                y:lastFit.ty+(s.y-lastFit.bcy)*lastFit.sc,
+                w:s.w*lastFit.sc,h:s.h*lastFit.sc};
+      });
+    }else if(cased){
       var groups={},cm={};
       nodes.forEach(function(n){ if(n.cas)(groups[n.cas]=groups[n.cas]||[]).push(n); });
       Object.keys(groups).forEach(function(k){
@@ -751,6 +951,15 @@
     });
     if(abI>=0&&abI!==tlI){var tf=nodes[tlI].f;nodes[tlI].f=nodes[abI].f;nodes[abI].f=tf;}
 
+    /* the reference sheet runs roughly 7 coloured posters to 5 black-and-white */
+    var bw=Math.random()<0.4;
+    paletteKey=bw?BW_KEY:theme.key;
+    paletteGlow=bw?BW_GLOW:theme.glow;
+    cvs.dataset.bw=bw?'1':'0';
+    /* satellite comps: the tiny outriders stay quiet, the core may wear full colour */
+    var coreColored=!bw&&GEO[pick]&&Math.random()<0.6;
+    var coreMode=['ring','dial'][Math.floor(Math.random()*2)];
+
     /* often the whole field is one and the same simple watch — different times only.
        inside a casing it always is: one watch, one size, like the reference posters */
     var uni=null;
@@ -763,20 +972,15 @@
         dialDark:Math.random()<0.5,
         bez:0.08+Math.random()*0.14,
         slim:Math.random()<0.5,
-        /* a coloured deal often wears its colour on every clock, not just the
-           casing — the cyan and orange posters on the sheet */
-        accentAll:!bw&&Math.random()<0.55,
+        /* an open deal often wears its colour on every clock — but inside a
+           casing the box carries the colour and the clocks stay dark */
+        accentAll:!cased&&!bw&&Math.random()<0.55,
         accentMode:['ring','dial'][Math.floor(Math.random()*2)]
       };
     }
     cvs.dataset.uniform=uni?'1':'0';
     cvs.dataset.shape=dealShape;
 
-    /* the reference sheet runs roughly 7 coloured posters to 5 black-and-white */
-    var bw=Math.random()<0.4;
-    paletteKey=bw?BW_KEY:theme.key;
-    paletteGlow=bw?BW_GLOW:theme.glow;
-    cvs.dataset.bw=bw?'1':'0';
     var accentBudget=bw?0:5+Math.floor(Math.random()*3);
     var order=shuffled(nodes.map(function(_,i){return i;}));
     nodes.forEach(function(n,i){
@@ -811,6 +1015,9 @@
         n.style.accentMode=uni.accentMode;
         n.accent=uni.accentAll;n.foreignHair=false;
       }
+      /* the tiny outriders read as dots — no accents, no ornament on them */
+      if(n.satTiny){n.accent=false;n.style.texture=null;n.style.cornerDots=false;n.style.dome=false;}
+      else if(coreColored){n.accent=true;n.style.accentMode=coreMode;}
     });
 
     /* symmetry: a mirrored clock is the same clock — style, accent and all */
