@@ -316,7 +316,8 @@
     dirs.forEach(function(d,ai){
       var dist=cR+gap;
       armR.forEach(function(r){
-        nodes.push({f:fs[fi++],x:W/2+d[0]*(dist+r),y:H/2+d[1]*(dist+r),R:r,cas:tags&&tags[ai]});
+        /* tags[0] is the hub, so arm n takes tags[n+1] */
+        nodes.push({f:fs[fi++],x:W/2+d[0]*(dist+r),y:H/2+d[1]*(dist+r),R:r,cas:tags&&tags[ai+1]});
         dist+=2*r+gap;
       });
     });
@@ -542,8 +543,11 @@
     var PACKED={packT:1,packH:1,packI:1}; /* solid letterforms only make sense boxed */
     var names=Object.keys(LAYOUTS);
     var cased=Math.random()<0.5;
-    var choices=cased?names.filter(function(k){return TAGGED[k];})
-                     :names.filter(function(k){return !PACKED[k];});
+    /* boxed deals lean hard on the packed cabinets — they are the signature */
+    var choices=cased
+      ?(Math.random()<0.75?names.filter(function(k){return PACKED[k];})
+                          :names.filter(function(k){return TAGGED[k]&&!PACKED[k];}))
+      :names.filter(function(k){return !PACKED[k];});
     var pick=choices[Math.floor(Math.random()*choices.length)];
     cvs.dataset.layout=pick;
     cvs.dataset.cased=cased?'1':'0';
@@ -758,7 +762,11 @@
                   :['black','dark','mid','light'][Math.floor(Math.random()*4)],
         dialDark:Math.random()<0.5,
         bez:0.08+Math.random()*0.14,
-        slim:Math.random()<0.5
+        slim:Math.random()<0.5,
+        /* a coloured deal often wears its colour on every clock, not just the
+           casing — the cyan and orange posters on the sheet */
+        accentAll:!bw&&Math.random()<0.55,
+        accentMode:['ring','dial'][Math.floor(Math.random()*2)]
       };
     }
     cvs.dataset.uniform=uni?'1':'0';
@@ -800,7 +808,8 @@
         n.style.model=uni.model;n.style.tone=uni.tone;
         n.style.dialDark=uni.dialDark;n.style.bez=uni.bez;n.style.slim=uni.slim;
         n.style.texture=null;n.style.tinted=false;n.style.cornerDots=false;n.style.dome=false;
-        n.accent=false;n.foreignHair=false;
+        n.style.accentMode=uni.accentMode;
+        n.accent=uni.accentAll;n.foreignHair=false;
       }
     });
 
