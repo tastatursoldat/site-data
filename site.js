@@ -103,13 +103,23 @@
     '.me-row[data-dim] span{opacity:.35;}'+
     /* the picked rows answer in the deal's colour — hover is never grey */
     '.me-row[data-hot] span{color:var(--me-theme,#111);}'+
-    /* desktop: the list keeps to the left half and the hovered film plays on
-       the right — the old index preview, minus the timecode */
+    /* desktop: the list is one grid with content-sized columns — names are
+       never cut — and the hovered film plays on the right, sized to whatever
+       room the list leaves (measured in js). rows keep their behaviour via
+       display:contents. a film without a preview gets a big live clock */
     '@media (min-width:701px){'+
-      '#me-list{left:clamp(20px,4vw,64px);width:46vw;transform:translateY(-50%);}'+
+      '#me-list{display:grid;grid-template-columns:repeat(5,max-content);column-gap:2em;'+
+        'left:clamp(20px,4vw,64px);width:auto;transform:translateY(-50%);}'+
+      '.me-row{display:contents;}'+
+      '.me-row span{cursor:pointer;}'+
+      '.me-row.head span{margin-bottom:.2em;cursor:default;}'+
       '#me-prev{position:fixed;right:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);'+
-        'width:min(42vw,900px);aspect-ratio:16/9;display:none;background:#000;}'+
+        'aspect-ratio:16/9;display:none;background:#000;}'+
       '#me-prev video{width:100%;height:100%;object-fit:cover;display:block;}'+
+      '#me-prev canvas{width:100%;height:100%;display:block;}'+
+      '#me-prev.ph{background:transparent;}'+
+      '#me-prev.ph video{display:none;}'+
+      '#me-prev:not(.ph) canvas{display:none;}'+
       '#me-app.browse #me-prev.on{display:block;}'+
     '}'+
     // player
@@ -1352,6 +1362,8 @@
   (function loop(){
     try{
       if(nodes.length && !app.classList.contains('browse') && !pl.classList.contains('show')) renderField();
+      /* the index placeholder clock ticks even while the field sleeps */
+      if(typeof prevEl!=='undefined'&&prevEl&&phActive())drawPlaceholder();
     }catch(e){} /* one bad frame must never kill the loop */
     requestAnimationFrame(loop);
   })();
@@ -1368,6 +1380,7 @@
     layoutField();
   }
   addEventListener('resize',sizeField);
+  addEventListener('resize',function(){if(app.classList.contains('browse')&&typeof sizePreview==='function')sizePreview();});
   /* preview iframes settle late — re-measure once after load */
   setTimeout(function(){if(innerWidth!==W||innerHeight!==H)sizeField();},400);
 
@@ -1872,6 +1885,7 @@
     tcEl.textContent='';hover=-1;
     radioBtn.setAttribute('aria-pressed','false');
     updateModeClass();updateBrand();
+    requestAnimationFrame(function(){try{sizePreview();}catch(e){}});
   }
   function goRadio(){
     fieldMode='radio';
@@ -1943,20 +1957,75 @@
   }
   applyDim(null);
 
-  /* the hovered row's film plays on the right — the old index preview */
+  /* the hovered row's film plays on the right — the old index preview.
+     a film without a (working) preview shows a big live clock instead */
   var prevEl=document.createElement('div');prevEl.id='me-prev';
   var prevVid=document.createElement('video');
   prevVid.muted=true;prevVid.loop=true;prevVid.playsInline=true;prevVid.autoplay=true;
-  prevEl.appendChild(prevVid);
+  var phCanvas=document.createElement('canvas');
+  var phCtx=phCanvas.getContext('2d');
+  var phNode=null,phW=0,phH=0;
+  prevEl.appendChild(prevVid);prevEl.appendChild(phCanvas);
   app.querySelector('#me-browse').appendChild(prevEl);
+  function sizePreview(){
+    /* the panel takes whatever room the content-sized list leaves */
+    if(isMobile()||!app.classList.contains('browse'))return;
+    var margin=Math.min(Math.max(innerWidth*0.04,20),64);
+    var lr=listEl.getBoundingClientRect().right;
+    var w=Math.max(220,Math.min(innerWidth-lr-margin*2,innerWidth*0.42));
+    prevEl.style.width=w+'px';
+    var h=w*9/16;
+    phCanvas.width=Math.round(w*DPR);phCanvas.height=Math.round(h*DPR);
+    phCtx.setTransform(DPR,0,0,DPR,0,0);
+    phW=w;phH=h;
+  }
+  function randomWatchNode(){
+    /* same recipe as the field clocks, rolled fresh per hover */
+    var seed=hashSeed(Math.floor(Math.random()*1e9));
+    var r=rng(seed);
+    var model=Math.floor(r()*15);r();
+    var toneRoll=r();
+    return {x:0,y:0,R:100,f:{},accent:Math.random()<0.5,foreignHair:false,
+      style:{model:model,seed:seed,shape:'circle',
+        tone:toneRoll<0.22?'black':(toneRoll<0.62?'dark':(toneRoll<0.85?'mid':'light')),
+        dialDark:toneRoll>=0.85?true:r()<0.15,
+        texture:r()<0.18?(r()<0.5?'grille':'ribbed'):null,
+        bez:0.08+r()*0.14,slim:model===7||r()<0.4,
+        accentMode:['ring','dial','hairline'][Math.floor(r()*3)],
+        hairForeign:null,tinted:r()<0.4,off:Math.floor(r()*43200000)}};
+  }
+  function drawPlaceholder(){
+    /* borrows the field renderer for one frame — swap the context, draw, swap back */
+    if(!phNode||!phW)return;
+    var mainCtx=ctx;ctx=phCtx;
+    try{
+      ctx.clearRect(0,0,phW,phH);
+      phNode.x=phW/2;phNode.y=phH/2;phNode.R=Math.min(phW,phH)*0.42;
+      drawWatch(phNode,false);
+    }catch(e){}
+    ctx=mainCtx;
+  }
+  function phActive(){return prevEl.classList.contains('on')&&prevEl.classList.contains('ph')&&app.classList.contains('browse');}
+  function showPlaceholder(){
+    phNode=phNode||randomWatchNode();
+    prevEl.classList.add('ph');prevEl.classList.add('on');
+    try{prevVid.pause();}catch(e){}
+  }
+  prevVid.addEventListener('error',function(){
+    /* a dead preview url falls back to the clock */
+    if(prevEl.classList.contains('on')&&!prevEl.classList.contains('ph'))showPlaceholder();
+  });
   function setPreview(row){
-    var url=null;
-    if(row&&!row.dataset.about){var p=PROJECTS[+row.dataset.i];url=(p&&p.preview)||null;}
-    if(!url){
-      prevEl.classList.remove('on');
+    var url=null,isFilm=false;
+    if(row&&!row.dataset.about){var p=PROJECTS[+row.dataset.i];isFilm=!!p;url=(p&&p.preview)||null;}
+    if(!isFilm){
+      prevEl.classList.remove('on');prevEl.classList.remove('ph');phNode=null;
       try{prevVid.pause();}catch(e){}
       return;
     }
+    sizePreview();
+    if(!url){showPlaceholder();return;}
+    prevEl.classList.remove('ph');phNode=null;
     if(prevEl.dataset.cur!==url){prevEl.dataset.cur=url;prevVid.src=url;}
     prevEl.classList.add('on');
     try{var pr=prevVid.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}
