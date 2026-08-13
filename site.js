@@ -195,7 +195,12 @@
        films may appear several times — copies are identical repeated units */
     if(fieldMode==='radio')return[];
     var out=[ABOUT_ENTRY];
-    for(var m=0;m<fieldMult;m++)out=out.concat(FILM_DIALS);
+    for(var m=0;m<fieldMult;m++){
+      FILM_DIALS.forEach(function(f){
+        /* copies keep the film link but each clock is a unique piece */
+        out.push(m===0?f:Object.assign({},f,{copy:m}));
+      });
+    }
     return out;
   }
 
@@ -495,7 +500,7 @@
         var gx1=Math.max.apply(null,g.map(function(n){return n.x;}))+pad;
         var gy0=Math.min.apply(null,g.map(function(n){return n.y;}))-pad;
         var gy1=Math.max.apply(null,g.map(function(n){return n.y;}))+pad;
-        casings.push({x:gx0,y:gy0,w:gx1-gx0,h:gy1-gy0,r:pad*0.5});
+        casings.push({x:gx0,y:gy0,w:gx1-gx0,h:gy1-gy0,r:0}); /* hard corners */
       });
     }
 
@@ -513,7 +518,7 @@
     var accentBudget=monoMode?1+Math.floor(Math.random()*2):5+Math.floor(Math.random()*3);
     var order=shuffled(nodes.map(function(_,i){return i;}));
     nodes.forEach(function(n,i){
-      var seed=hashSeed(n.f.year*1000+parseInt(n.f.no,10));
+      var seed=hashSeed((n.f.year*1000+parseInt(n.f.no,10))+(n.f.copy||0)*7919);
       var r=rng(seed);
       var model=Math.floor(r()*18);
       var shapeRoll=r();
