@@ -45,10 +45,10 @@
     '#me-ctrl .txt{font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '#me-ctrl .icon{color:#0a0a0a;display:flex;align-items:center;}'+
     '#me-ctrl .icon svg{width:15px;height:15px;}'+
-    /* the pause slot is always reserved — cinema and radio never move,
-       the glyph just becomes visible while music plays */
-    '#me-ctrl #me-stop{visibility:hidden;}'+
-    '#me-app.radio-on #me-stop{visibility:visible;}'+
+    /* leftmost in a right-anchored row: appearing extends the row leftward,
+       so cinema and radio hold their positions without a reserved slot */
+    '#me-ctrl #me-stop{display:none;}'+
+    '#me-app.radio-on #me-stop{display:flex;}'+
     '#me-tc{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';'+
       'font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
     '#me-music{position:fixed;left:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;'+
@@ -145,14 +145,14 @@
     '<div id="me-brand">dial</div>'+
     '<div id="me-ctrl">'+
       /* the view toggles read as words, in the same voice as the mark;
-         the pause glyph sits between them, right of cinema */
-      '<button id="me-btnview" class="txt" aria-label="Cinema — toggle index view">cinema</button>'+
+         the pause glyph enters from the left, so the words never move */
       '<button id="me-stop" class="icon" aria-label="Pause music">'+
         '<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" stroke="none">'+
           '<rect x="5" y="4.5" width="3.4" height="11" rx="1"/>'+
           '<rect x="11.6" y="4.5" width="3.4" height="11" rx="1"/>'+
         '</svg>'+
       '</button>'+
+      '<button id="me-btnview" class="txt" aria-label="Cinema — toggle index view">cinema</button>'+
       '<button id="me-radio" class="txt" aria-pressed="false" aria-label="Radio — toggle radio view">radio</button>'+
     '</div>'+
     '<div id="me-tc" aria-hidden="true"></div>'+
