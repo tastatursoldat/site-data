@@ -118,8 +118,9 @@
       '.me-row{display:contents;}'+
       '.me-row span{cursor:pointer;}'+
       '.me-row.head span{margin-bottom:.2em;cursor:default;}'+
+      /* no fixed ratio — the panel takes each film's own format (js-sized) */
       '#me-prev{position:fixed;right:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);'+
-        'aspect-ratio:16/9;display:none;background:#000;}'+
+        'display:none;background:#000;}'+
       '#me-prev video{width:100%;height:100%;object-fit:cover;display:block;}'+
       '#me-prev canvas{width:100%;height:100%;display:block;}'+
       '#me-prev.ph{background:transparent;}'+
@@ -1443,7 +1444,7 @@
   }
   function updateTitle(){
     if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){setTitle('');return;}
-    try{var d=ytPlayer.getVideoData();setTitle(cleanTitle((d&&d.title)?d.title:''));}catch(e){}
+    try{var d=ytPlayer.getVideoData();setTitle(titleFor(currentVid())||cleanTitle((d&&d.title)?d.title:''));}catch(e){}
     /* the dial never moves by itself — stations loop their own broadcast and
        tuning is entirely in the user's hand (plus the initial random park).
        the periodic pass keeps the near-station title fresh once its video
@@ -1578,7 +1579,11 @@
     })(t0);
   }
   fetch(RADIO_URL,{cache:'no-cache'}).then(function(r){return r.json();})
-    .then(function(j){RADIO_META=(j&&j.tracks)||{};buildBand();})
+    .then(function(j){RADIO_META=(j&&j.tracks)||{};
+      /* radio.json IS the station list — the playlist only stands in when it
+         is empty or unreachable. tuning is a single-video load either way */
+      var rids=Object.keys(RADIO_META);if(rids.length)SONG_IDS=rids;
+      buildBand();})
     .catch(function(){buildBand();});
   function hzFor(id){
     /* each track's number is its measured average audio frequency (spectral centroid, Hz) */
@@ -1591,6 +1596,7 @@
     return 800+(h%2400);
   }
   function noteFor(id){var m=RADIO_META[id];return (m&&m.note)?String(m.note).toLowerCase():'';}
+  function titleFor(id){var m=RADIO_META[id];return (m&&typeof m.title==='string'&&m.title)?m.title:'';} /* a set title wins over youtube's, verbatim */
   /* the dial reads as FM — each song's measured spectral frequency decides its
      ORDER and spread on the scale, remapped into the 88-108 mhz band */
   var FM_LO=88,FM_HI=108;
@@ -1778,7 +1784,7 @@
       bNote.textContent=bandTicks[st.id].note||'';
       var tt='';
       if(st.id===currentVid()){try{var d=ytPlayer.getVideoData();tt=(d&&d.title)||'';}catch(e){}}
-      bTitle.textContent=cleanTitle(tt);
+      bTitle.textContent=titleFor(st.id)||cleanTitle(tt);
     }
     bFreq.textContent=fmtMhz(mhzAt(dialNx));
   }
@@ -1884,7 +1890,7 @@
     updateModeClass();updateBrand();
     /* the panel opens with a clock and waits for a hover — synchronous:
        rAF never fires while the tab is hidden and the clock must not wait */
-    try{sizePreview();setPreview(null);}catch(e){}
+    try{probeRatios();sizePreview();setPreview(null);}catch(e){}
   }
   function goRadio(){
     fieldMode='radio';
@@ -1972,14 +1978,18 @@
   app.querySelector('#me-browse').appendChild(prevEl);
   /* the side-by-side list+panel pair only exists on wide screens */
   function canPreview(){return matchMedia('(min-width:1050px)').matches;}
+  var vidRatio=0; /* height/width of the loaded preview; 0 until metadata lands */
   function sizePreview(){
-    /* the panel takes whatever room the content-sized list leaves */
+    /* the panel takes whatever room the content-sized list leaves, in the
+       film's own format — never cropped to 16:9 */
     if(!canPreview()||!app.classList.contains('browse'))return;
     var margin=Math.min(Math.max(innerWidth*0.04,20),64);
     var lr=listEl.getBoundingClientRect().right;
     var w=Math.max(220,Math.min(innerWidth-lr-margin*2,innerWidth*0.42));
-    prevEl.style.width=w+'px';
-    var h=w*9/16;
+    var r=(prevEl.classList.contains('ph')||!vidRatio)?9/16:vidRatio;
+    var h=w*r,maxH=innerHeight*0.72;
+    if(h>maxH){h=maxH;w=h/r;}
+    prevEl.style.width=w+'px';prevEl.style.height=h+'px';
     phCanvas.width=Math.round(w*DPR);phCanvas.height=Math.round(h*DPR);
     phCtx.setTransform(DPR,0,0,DPR,0,0);
     phW=w;phH=h;
@@ -2014,15 +2024,40 @@
   }
   function phActive(){return canPreview()&&prevEl.classList.contains('on')&&prevEl.classList.contains('ph')&&app.classList.contains('browse');}
   function showPlaceholder(){
-    sizePreview();
     phNode=phNode||randomWatchNode();
     prevEl.classList.add('ph');prevEl.classList.add('on');
+    sizePreview(); /* after the ph flip — the clock box is 16:9, not the last film's */
     try{prevVid.pause();}catch(e){}
   }
   prevVid.addEventListener('error',function(){
     /* a dead preview url falls back to the clock */
     if(prevEl.classList.contains('on')&&!prevEl.classList.contains('ph'))showPlaceholder();
   });
+  prevVid.addEventListener('loadedmetadata',function(){
+    /* each film reshapes the panel to its own format */
+    if(prevVid.videoWidth){
+      vidRatio=prevVid.videoHeight/prevVid.videoWidth;
+      if(prevEl.dataset.cur)RATIOS[prevEl.dataset.cur]=vidRatio;
+    }
+    sizePreview();
+  });
+  /* formats are probed once (metadata only) so the panel takes the right
+     shape immediately instead of flashing the previous film's */
+  var RATIOS={};
+  function probeRatios(){
+    if(probeRatios.done||!PROJECTS.length)return;
+    probeRatios.done=true;
+    PROJECTS.forEach(function(p){
+      if(!p.preview)return;
+      var v=document.createElement('video');
+      v.preload='metadata';v.muted=true;
+      v.onloadedmetadata=function(){
+        if(v.videoWidth)RATIOS[p.preview]=v.videoHeight/v.videoWidth;
+        v.removeAttribute('src');
+      };
+      v.src=p.preview;
+    });
+  }
   function setPreview(row){
     if(!canPreview()){
       prevEl.classList.remove('on');
@@ -2037,8 +2072,9 @@
       showPlaceholder();
       return;
     }
-    sizePreview();
     prevEl.classList.remove('ph');
+    vidRatio=RATIOS[url]||vidRatio; /* known format applies instantly */
+    sizePreview();
     if(prevEl.dataset.cur!==url){prevEl.dataset.cur=url;prevVid.src=url;}
     prevEl.classList.add('on');
     try{var pr=prevVid.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}
