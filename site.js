@@ -105,11 +105,14 @@
     '.me-row[data-dim] span{opacity:.35;}'+
     /* the picked rows answer in the deal's colour — hover is never grey */
     '.me-row[data-hot] span{color:var(--me-theme,#111);}'+
-    /* desktop: the list is one grid with content-sized columns — names are
-       never cut — and the hovered film plays on the right, sized to whatever
-       room the list leaves (measured in js). rows keep their behaviour via
-       display:contents. a film without a preview gets a big live clock */
-    '@media (min-width:701px){'+
+    /* wide screens only: the list is one grid with content-sized columns —
+       names are never cut — and the hovered film plays on the right, sized to
+       whatever room the list leaves (measured in js). rows keep their
+       behaviour via display:contents. a film without a preview gets a big
+       live clock. below this width the centred list stands alone — the
+       side-by-side pair needs the room */
+    '#me-prev{display:none;}'+ /* exists only on wide screens — hidden everywhere else */
+    '@media (min-width:1050px){'+
       '#me-list{display:grid;grid-template-columns:repeat(5,max-content);column-gap:2em;'+
         'left:clamp(20px,4vw,64px);width:auto;transform:translateY(-50%);}'+
       '.me-row{display:contents;}'+
@@ -1878,8 +1881,9 @@
     tcEl.textContent='';hover=-1;
     radioBtn.setAttribute('aria-pressed','false');
     updateModeClass();updateBrand();
-    /* the panel opens with a clock and waits for a hover */
-    requestAnimationFrame(function(){try{sizePreview();setPreview(null);}catch(e){}});
+    /* the panel opens with a clock and waits for a hover — synchronous:
+       rAF never fires while the tab is hidden and the clock must not wait */
+    try{sizePreview();setPreview(null);}catch(e){}
   }
   function goRadio(){
     fieldMode='radio';
@@ -1965,9 +1969,11 @@
   var phNode=null,phW=0,phH=0;
   prevEl.appendChild(prevVid);prevEl.appendChild(phCanvas);
   app.querySelector('#me-browse').appendChild(prevEl);
+  /* the side-by-side list+panel pair only exists on wide screens */
+  function canPreview(){return matchMedia('(min-width:1050px)').matches;}
   function sizePreview(){
     /* the panel takes whatever room the content-sized list leaves */
-    if(isMobile()||!app.classList.contains('browse'))return;
+    if(!canPreview()||!app.classList.contains('browse'))return;
     var margin=Math.min(Math.max(innerWidth*0.04,20),64);
     var lr=listEl.getBoundingClientRect().right;
     var w=Math.max(220,Math.min(innerWidth-lr-margin*2,innerWidth*0.42));
@@ -2003,7 +2009,7 @@
     }catch(e){}
     ctx=mainCtx;
   }
-  function phActive(){return prevEl.classList.contains('on')&&prevEl.classList.contains('ph')&&app.classList.contains('browse');}
+  function phActive(){return canPreview()&&prevEl.classList.contains('on')&&prevEl.classList.contains('ph')&&app.classList.contains('browse');}
   function showPlaceholder(){
     sizePreview();
     phNode=phNode||randomWatchNode();
@@ -2015,6 +2021,11 @@
     if(prevEl.classList.contains('on')&&!prevEl.classList.contains('ph'))showPlaceholder();
   });
   function setPreview(row){
+    if(!canPreview()){
+      prevEl.classList.remove('on');
+      try{prevVid.pause();}catch(e){}
+      return;
+    }
     var url=null;
     if(row){var p=PROJECTS[+row.dataset.i];url=(p&&p.preview)||null;}
     if(!url){
