@@ -151,8 +151,9 @@
     // mobile: compact desktop-style list, full-screen About
     '#me-about-screen{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;'+
       'padding:max(24px,env(safe-area-inset-top)) 24px 40px;box-sizing:border-box;overflow-y:auto;}'+
-    '#me-about-close{position:absolute;top:max(16px,env(safe-area-inset-top));right:20px;'+
-      'background:none;border:0;font:400 16px/1 '+FONT+';cursor:pointer;color:#111;}'+
+    /* close sits exactly where the words sit, in exactly their voice */
+    '#me-about-close{position:fixed;top:1.15rem;right:1.2rem;'+
+      'background:none;border:0;padding:0;font:700 15px/1.55 '+FONT+';cursor:pointer;color:#0a0a0a;}'+
     '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
