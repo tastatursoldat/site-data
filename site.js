@@ -2018,14 +2018,13 @@
     var url=null;
     if(row){var p=PROJECTS[+row.dataset.i];url=(p&&p.preview)||null;}
     if(!url){
-      /* no film under the cursor (or none hovered at all): a big live clock
-         holds the panel — rolled fresh each time it takes over */
-      phNode=null;
+      /* no film under the cursor (or none hovered at all): the page's ONE
+         clock holds the panel — rolled once per load, never re-rolled */
       showPlaceholder();
       return;
     }
     sizePreview();
-    prevEl.classList.remove('ph');phNode=null;
+    prevEl.classList.remove('ph');
     if(prevEl.dataset.cur!==url){prevEl.dataset.cur=url;prevVid.src=url;}
     prevEl.classList.add('on');
     try{var pr=prevVid.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}
