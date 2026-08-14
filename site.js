@@ -2002,7 +2002,9 @@
         texture:r()<0.18?(r()<0.5?'grille':'ribbed'):null,
         bez:0.08+r()*0.14,slim:model===7||r()<0.4,
         accentMode:['ring','dial','hairline'][Math.floor(r()*3)],
-        hairForeign:null,tinted:r()<0.4,off:Math.floor(r()*43200000)}};
+        /* standalone clocks (index panel, about) always tell the LOCAL time —
+           only the field clocks wear time fictions */
+        hairForeign:null,tinted:r()<0.4,off:0}};
   }
   function drawPlaceholder(){
     /* borrows the field renderer for one frame — swap the context, draw, swap back */
@@ -2090,8 +2092,7 @@
     ac.style.width=s+'px';ac.style.height=s+'px';
     ac.width=Math.round(s*DPR);ac.height=Math.round(s*DPR);
     var actx=ac.getContext('2d');actx.setTransform(DPR,0,0,DPR,0,0);
-    var node=randomWatchNode();
-    node.style.off=0; /* local time, not a station's fiction */
+    var node=randomWatchNode(); /* already on local time */
     abClock={ctx:actx,node:node,w:s,h:s};
     ov.appendChild(ac);
     document.body.appendChild(ov);
