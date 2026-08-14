@@ -157,6 +157,9 @@
     '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
+    /* the about clock — always on local time */
+    '#me-about-screen .ab-clock{position:fixed;right:8vw;top:50%;transform:translateY(-50%);}'+
+    '@media (max-width:700px){#me-about-screen .ab-clock{position:static;display:block;margin:40px auto 0;transform:none;}}'+
     '@media (max-width:700px){'+
       '#me-app.browse #me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
@@ -1360,6 +1363,8 @@
       if(nodes.length && !app.classList.contains('browse') && !pl.classList.contains('show')) renderField();
       /* the index placeholder clock ticks even while the field sleeps */
       if(typeof prevEl!=='undefined'&&prevEl&&phActive())drawPlaceholder();
+      /* so does the about clock — on local time */
+      if(typeof abClock!=='undefined'&&abClock)drawAboutClock();
     }catch(e){} /* one bad frame must never kill the loop */
     requestAnimationFrame(loop);
   })();
@@ -2060,15 +2065,39 @@
     if(p && p.film) openPlayer(p);
   });
 
+  var abClock=null;
+  function drawAboutClock(){
+    /* same context-swap trick as the index placeholder */
+    if(!abClock)return;
+    var mainCtx=ctx;ctx=abClock.ctx;
+    try{
+      ctx.clearRect(0,0,abClock.w,abClock.h);
+      abClock.node.x=abClock.w/2;abClock.node.y=abClock.h/2;
+      abClock.node.R=Math.min(abClock.w,abClock.h)*0.42;
+      drawWatch(abClock.node,false);
+    }catch(e){}
+    ctx=mainCtx;
+  }
   function openAboutScreen(){
     if(document.getElementById('me-about-screen')) return;
     var ov=document.createElement('div'); ov.id='me-about-screen';
     ov.innerHTML='<button id="me-about-close">close</button>'+
       '<div class="ab-brand">'+esc(brandEl.textContent)+'</div>'+
       '<div class="txt">'+buildAboutHTML()+'</div>';
+    /* one big clock, random dress, but the hands always tell the local time */
+    var ac=document.createElement('canvas');ac.className='ab-clock';
+    var s=Math.round(Math.min(Math.min(innerWidth,innerHeight)*(innerWidth>700?0.38:0.55),420));
+    ac.style.width=s+'px';ac.style.height=s+'px';
+    ac.width=Math.round(s*DPR);ac.height=Math.round(s*DPR);
+    var actx=ac.getContext('2d');actx.setTransform(DPR,0,0,DPR,0,0);
+    var node=randomWatchNode();
+    node.style.off=0; /* local time, not a station's fiction */
+    abClock={ctx:actx,node:node,w:s,h:s};
+    ov.appendChild(ac);
     document.body.appendChild(ov);
-    ov.querySelector('#me-about-close').addEventListener('click', function(){ ov.remove(); });
-    ov.querySelector('.ab-brand').addEventListener('click', function(){ ov.remove(); });
+    function closeAbout(){abClock=null;ov.remove();}
+    ov.querySelector('#me-about-close').addEventListener('click', closeAbout);
+    ov.querySelector('.ab-brand').addEventListener('click', closeAbout);
   }
 
   // ── player ──────────────────────────────────────────────────────
