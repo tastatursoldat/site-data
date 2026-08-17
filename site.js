@@ -45,15 +45,38 @@
     '#me-ctrl .txt,#me-corner .txt{font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '#me-ctrl .icon,#me-corner .icon{color:#0a0a0a;display:flex;align-items:center;}'+
     '#me-ctrl .icon svg,#me-corner .icon svg{width:15px;height:15px;}'+
+    /* words answer: hover settles, press scales, keyboard sees an outline */
+    '#me-brand,#me-ctrl .txt,#me-corner .txt,#me-corner .icon,#me-music,#me-about-close,'+
+    '#me-bar button,#me-close{'+
+      'transition:opacity 150ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1);}'+
+    '@media (hover:hover) and (pointer:fine){'+
+      '#me-brand:hover,#me-ctrl .txt:hover,#me-corner .txt:hover,#me-corner .icon:hover,'+
+      '#me-music:hover,#me-about-close:hover{opacity:.55;}'+
+    '}'+
+    '#me-brand:active,#me-ctrl .txt:active,#me-corner .txt:active,#me-corner .icon:active,'+
+    '#me-music:active,#me-about-close:active,#me-bar button:active,#me-close:active{'+
+      'transform:scale(0.97);}'+
+    '#me-ctrl .txt:focus-visible,#me-corner .txt:focus-visible,#me-corner .icon:focus-visible,'+
+    '#me-about-close:focus-visible{outline:1.5px solid #0a0a0a;outline-offset:4px;}'+
+    '#me-ctrl .txt:focus:not(:focus-visible),#me-corner .txt:focus:not(:focus-visible),'+
+    '#me-corner .icon:focus:not(:focus-visible),#me-about-close:focus:not(:focus-visible){outline:none;}'+
     /* the bottom-right corner is the radio's home: the word radio, or —
-       while a song plays — the pause glyph and the title in its place */
+       while a song plays — the pause glyph and the title in its place.
+       nothing pops from nothing: pause+title rise in, the word fades;
+       exit runs faster than enter */
     '#me-corner{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;display:flex;gap:.8rem;align-items:center;}'+
-    '#me-corner #me-stop{display:none;}'+
-    '#me-app.radio-on #me-stop{display:flex;}'+
+    '#me-corner #me-stop{display:flex;opacity:0;transform:translateY(6px);pointer-events:none;'+
+      'transition:opacity 120ms ease,transform 120ms cubic-bezier(0.23,1,0.32,1);}'+
+    '#me-app.radio-on #me-stop{opacity:1;transform:none;pointer-events:auto;'+
+      'transition:opacity 180ms cubic-bezier(0.23,1,0.32,1),transform 180ms cubic-bezier(0.23,1,0.32,1);}'+
     '#me-music{font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;'+
-      'min-height:1em;max-width:44vw;white-space:nowrap;overflow:hidden;display:none;}'+
-    '#me-app.titled #me-music{display:block;}'+
-    '#me-app.titled #me-corner #me-radio{display:none;}'+
+      'min-height:1em;max-width:44vw;white-space:nowrap;overflow:hidden;'+
+      'display:block;opacity:0;transform:translateY(6px);pointer-events:none;'+
+      'transition:opacity 120ms ease,transform 120ms cubic-bezier(0.23,1,0.32,1);}'+
+    '#me-app.titled #me-music{opacity:1;transform:none;pointer-events:auto;'+
+      'transition:opacity 180ms cubic-bezier(0.23,1,0.32,1) 40ms,transform 180ms cubic-bezier(0.23,1,0.32,1) 40ms;}'+
+    '#me-corner #me-radio{transition:opacity 120ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1);}'+
+    '#me-app.titled #me-corner #me-radio{opacity:0;pointer-events:none;position:absolute;right:0;bottom:0;}'+
     '#me-music .in{display:inline-block;white-space:nowrap;}'+
     '#me-music.scroll .in{animation:me-marq 6s ease-in-out infinite alternate;}'+
     '@keyframes me-marq{from{transform:translateX(0);}to{transform:translateX(var(--me-shift,0px));}}'+
@@ -101,6 +124,12 @@
     '.me-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(0,3fr) minmax(0,2fr);gap:1em;cursor:pointer;}'+
     '.me-row.head{cursor:default;margin-bottom:.2em;}'+
     '.me-row span{transition:opacity .15s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'+
+    /* entering the cinema deals the rows: 40ms apart, 8px rise. backwards fill
+       holds the hidden state through the delay, then the base rules take over
+       (forwards would fight the hover dim) */
+    '#me-app.browse.dealt .me-row span{animation:me-rowin 260ms cubic-bezier(0.23,1,0.32,1) backwards;'+
+      'animation-delay:calc(var(--i,0)*40ms);}'+
+    '@keyframes me-rowin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}'+
     '.me-row span{opacity:1;}'+
     '.me-row[data-dim] span{opacity:.35;}'+
     /* the picked rows answer in the deal's colour — hover is never grey */
@@ -118,9 +147,13 @@
       '.me-row{display:contents;}'+
       '.me-row span{cursor:pointer;}'+
       '.me-row.head span{margin-bottom:.2em;cursor:default;}'+
-      /* no fixed ratio — the panel takes each film's own format (js-sized) */
+      /* no fixed ratio — the panel takes each film's own format (js-sized),
+         morphing between formats; a swap crossfades under a light blur */
       '#me-prev{position:fixed;right:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);'+
-        'display:none;background:#000;}'+
+        'display:none;background:#000;'+
+        'transition:width 220ms cubic-bezier(0.23,1,0.32,1),height 220ms cubic-bezier(0.23,1,0.32,1);}'+
+      '#me-prev video,#me-prev canvas{transition:opacity 140ms ease,filter 140ms ease;}'+
+      '#me-prev.swapping video,#me-prev.swapping canvas{opacity:0;filter:blur(2px);}'+
       '#me-prev video{width:100%;height:100%;object-fit:cover;display:block;}'+
       '#me-prev canvas{width:100%;height:100%;display:block;}'+
       '#me-prev.ph{background:transparent;}'+
@@ -150,8 +183,15 @@
       'font:700 15px/1.55 '+FONT+';max-width:60vw;opacity:0;pointer-events:none;transition:opacity .2s;}'+
     '#me-info.show{opacity:1;}#me-info .t{margin-bottom:.4em;}#me-info .d{opacity:.7;}'+
     // mobile: compact desktop-style list, full-screen About
+    /* the about page breathes in: fade + 0.98 scale, centred (a modal has no
+       trigger to grow from). exit runs faster than enter */
     '#me-about-screen{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;'+
-      'padding:max(24px,env(safe-area-inset-top)) 24px 40px;box-sizing:border-box;overflow-y:auto;}'+
+      'padding:max(24px,env(safe-area-inset-top)) 24px 40px;box-sizing:border-box;overflow-y:auto;'+
+      'opacity:1;transform:scale(1);'+
+      'transition:opacity 200ms ease,transform 200ms cubic-bezier(0.23,1,0.32,1);}'+
+    '@starting-style{#me-about-screen{opacity:0;transform:scale(0.98);}}'+
+    '#me-about-screen.closing{opacity:0;transform:scale(0.98);'+
+      'transition:opacity 140ms ease,transform 140ms cubic-bezier(0.23,1,0.32,1);}'+
     /* close sits exactly where the words sit, in exactly their voice */
     '#me-about-close{position:fixed;top:1.15rem;right:1.2rem;'+
       'background:none;border:0;padding:0;font:700 15px/1.55 '+FONT+';cursor:pointer;color:#0a0a0a;}'+
@@ -168,6 +208,14 @@
       '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
       '#me-music{max-width:calc(100vw - 2.4rem);}'+
       '#me-bar [data-a="full"]{display:none;}'+
+    '}'+
+    /* reduced motion: movement dies, fades stay */
+    '@media (prefers-reduced-motion:reduce){'+
+      '#me-app.browse.dealt .me-row span{animation:none;}'+
+      '#me-corner #me-stop,#me-music,#me-app.titled #me-music,#me-app.radio-on #me-stop{transform:none;}'+
+      '#me-prev{transition:none;}'+
+      '#me-about-screen,#me-about-screen.closing{transform:none;}'+
+      '#me-band-in.glide{transition:none;}'+
     '}';
   document.head.appendChild(st);
 
@@ -1885,6 +1933,10 @@
   function goFilm(){
     exitBandAudio();
     app.classList.add('browse');
+    /* every entry re-deals the rows: drop, reflow, restart the stagger */
+    app.classList.remove('dealt');
+    void listEl.offsetWidth;
+    app.classList.add('dealt');
     tcEl.textContent='';hover=-1;
     radioBtn.setAttribute('aria-pressed','false');
     updateModeClass();updateBrand();
@@ -1920,10 +1972,10 @@
   // ── data + render list ──────────────────────────────────────────
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
     PROJECTS=(d.projects||[]).filter(function(p){return p.published!==false;});
-    var html='<div class="me-row head"><span>Year</span><span>№</span><span>Client</span><span>Title</span><span>Category</span></div>';
+    var html='<div class="me-row head" style="--i:0"><span>Year</span><span>№</span><span>Client</span><span>Title</span><span>Category</span></div>';
     PROJECTS.forEach(function(p,i){
       var no=p.num||String(i+1).padStart(3,'0');
-      html+='<div class="me-row" data-i="'+i+'">'+
+      html+='<div class="me-row" data-i="'+i+'" style="--i:'+(i+1)+'">'+
         '<span data-field="year" data-value="'+esc(p.year)+'">'+esc(p.year)+'</span>'+
         '<span>'+no+'</span>'+
         '<span data-field="client" data-value="'+esc(p.client)+'">'+esc(p.client)+'</span>'+
@@ -2033,6 +2085,12 @@
     /* a dead preview url falls back to the clock */
     if(prevEl.classList.contains('on')&&!prevEl.classList.contains('ph'))showPlaceholder();
   });
+  var swapTimer=null;
+  prevVid.addEventListener('loadeddata',function(){
+    /* first frame ready: lift the crossfade veil */
+    clearTimeout(swapTimer);
+    prevEl.classList.remove('swapping');
+  });
   prevVid.addEventListener('loadedmetadata',function(){
     /* each film reshapes the panel to its own format */
     if(prevVid.videoWidth){
@@ -2075,7 +2133,14 @@
     prevEl.classList.remove('ph');
     vidRatio=RATIOS[url]||vidRatio; /* known format applies instantly */
     sizePreview();
-    if(prevEl.dataset.cur!==url){prevEl.dataset.cur=url;prevVid.src=url;}
+    if(prevEl.dataset.cur!==url){
+      /* film swap crossfades under a light blur; first frame lifts it */
+      prevEl.dataset.cur=url;
+      prevEl.classList.add('swapping');
+      prevVid.src=url;
+      clearTimeout(swapTimer);
+      swapTimer=setTimeout(function(){prevEl.classList.remove('swapping');},600);
+    }
     prevEl.classList.add('on');
     try{var pr=prevVid.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}
   }
@@ -2105,8 +2170,13 @@
       '<div class="ab-brand">'+esc(brandEl.textContent)+'</div>'+
       '<div class="txt">'+buildAboutHTML()+'</div>';
     document.body.appendChild(ov);
-    ov.querySelector('#me-about-close').addEventListener('click', function(){ ov.remove(); });
-    ov.querySelector('.ab-brand').addEventListener('click', function(){ ov.remove(); });
+    /* exit faster than enter: 140ms out via .closing, then gone */
+    function closeAbout(){
+      ov.classList.add('closing');
+      setTimeout(function(){ov.remove();},150);
+    }
+    ov.querySelector('#me-about-close').addEventListener('click', closeAbout);
+    ov.querySelector('.ab-brand').addEventListener('click', closeAbout);
   }
 
   // ── player ──────────────────────────────────────────────────────
