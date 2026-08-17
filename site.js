@@ -45,10 +45,10 @@
     '#me-ctrl .txt,#me-corner .txt{font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '#me-ctrl .icon,#me-corner .icon{color:#0a0a0a;display:flex;align-items:center;}'+
     '#me-ctrl .icon svg,#me-corner .icon svg{width:15px;height:15px;}'+
-    /* words answer: hover settles, press scales, keyboard sees an outline */
+    /* words answer: hover settles fast, press scales, keyboard sees an outline */
     '#me-brand,#me-ctrl .txt,#me-corner .txt,#me-corner .icon,#me-music,#me-about-close,'+
     '#me-bar button,#me-close{'+
-      'transition:opacity 150ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1);}'+
+      'transition:opacity 100ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1);}'+
     '@media (hover:hover) and (pointer:fine){'+
       '#me-brand:hover,#me-ctrl .txt:hover,#me-corner .txt:hover,#me-corner .icon:hover,'+
       '#me-music:hover,#me-about-close:hover{opacity:.55;}'+
@@ -152,12 +152,20 @@
       '#me-prev{position:fixed;right:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);'+
         'display:none;background:#000;'+
         'transition:width 220ms cubic-bezier(0.23,1,0.32,1),height 220ms cubic-bezier(0.23,1,0.32,1);}'+
-      '#me-prev video,#me-prev canvas{transition:opacity 140ms ease,filter 140ms ease;}'+
-      '#me-prev.swapping video,#me-prev.swapping canvas{opacity:0;filter:blur(2px);}'+
-      '#me-prev video{width:100%;height:100%;object-fit:cover;display:block;}'+
-      '#me-prev canvas{width:100%;height:100%;display:block;}'+
+      '#me-prev video,#me-prev canvas,#me-prev img{transition:opacity 140ms ease,filter 140ms ease;}'+
+      '#me-prev.swapping video,#me-prev.swapping canvas,#me-prev.swapping img{opacity:0;filter:blur(2px);}'+
+      /* absolute + fill: the box already carries the film's exact format, so
+         fill cannot distort — and safari's object-fit/inline-video quirks
+         (baked black borders) die here */
+      '#me-prev video{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;}'+
+      '#me-prev canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}'+
+      /* hub may stage .gif previews — those render through an img, not video */
+      '#me-prev img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:none;}'+
+      '#me-prev.gif video{display:none;}'+
+      '#me-prev.gif:not(.ph) img{display:block;}'+
       '#me-prev.ph{background:transparent;}'+
       '#me-prev.ph video{display:none;}'+
+      '#me-prev.ph img{display:none;}'+
       '#me-prev:not(.ph) canvas{display:none;}'+
       '#me-app.browse #me-prev.on{display:block;}'+
     '}'+
@@ -2023,10 +2031,12 @@
   var prevEl=document.createElement('div');prevEl.id='me-prev';
   var prevVid=document.createElement('video');
   prevVid.muted=true;prevVid.loop=true;prevVid.playsInline=true;prevVid.autoplay=true;
+  var prevImg=document.createElement('img'); /* .gif previews (hub-staged) */
+  prevImg.alt='';
   var phCanvas=document.createElement('canvas');
   var phCtx=phCanvas.getContext('2d');
   var phNode=null,phW=0,phH=0;
-  prevEl.appendChild(prevVid);prevEl.appendChild(phCanvas);
+  prevEl.appendChild(prevVid);prevEl.appendChild(prevImg);prevEl.appendChild(phCanvas);
   app.querySelector('#me-browse').appendChild(prevEl);
   /* the side-by-side list+panel pair only exists on wide screens */
   function canPreview(){return matchMedia('(min-width:1050px)').matches;}
@@ -2091,6 +2101,18 @@
     clearTimeout(swapTimer);
     prevEl.classList.remove('swapping');
   });
+  prevImg.addEventListener('load',function(){
+    clearTimeout(swapTimer);
+    prevEl.classList.remove('swapping');
+    if(prevImg.naturalWidth){
+      vidRatio=prevImg.naturalHeight/prevImg.naturalWidth;
+      if(prevEl.dataset.cur)RATIOS[prevEl.dataset.cur]=vidRatio;
+      sizePreview();
+    }
+  });
+  prevImg.addEventListener('error',function(){
+    if(prevEl.classList.contains('on')&&!prevEl.classList.contains('ph'))showPlaceholder();
+  });
   prevVid.addEventListener('loadedmetadata',function(){
     /* each film reshapes the panel to its own format */
     if(prevVid.videoWidth){
@@ -2107,6 +2129,12 @@
     probeRatios.done=true;
     PROJECTS.forEach(function(p){
       if(!p.preview)return;
+      if(/\.gif(\?|$)/i.test(p.preview)){
+        var im=new Image();
+        im.onload=function(){if(im.naturalWidth)RATIOS[p.preview]=im.naturalHeight/im.naturalWidth;};
+        im.src=p.preview;
+        return;
+      }
       var v=document.createElement('video');
       v.preload='metadata';v.muted=true;
       v.onloadedmetadata=function(){
@@ -2133,16 +2161,19 @@
     prevEl.classList.remove('ph');
     vidRatio=RATIOS[url]||vidRatio; /* known format applies instantly */
     sizePreview();
+    var gif=/\.gif(\?|$)/i.test(url);
+    prevEl.classList.toggle('gif',gif);
     if(prevEl.dataset.cur!==url){
       /* film swap crossfades under a light blur; first frame lifts it */
       prevEl.dataset.cur=url;
       prevEl.classList.add('swapping');
-      prevVid.src=url;
+      if(gif){prevImg.src=url;try{prevVid.pause();}catch(e){}}
+      else prevVid.src=url;
       clearTimeout(swapTimer);
       swapTimer=setTimeout(function(){prevEl.classList.remove('swapping');},600);
     }
     prevEl.classList.add('on');
-    try{var pr=prevVid.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}
+    if(!gif){try{var pr=prevVid.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}}
   }
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
   // hover anywhere else on a row -> dim the rest.
