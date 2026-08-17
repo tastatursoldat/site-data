@@ -126,12 +126,12 @@
     '.me-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(0,3fr) minmax(0,2fr);gap:1em;cursor:pointer;}'+
     '.me-row.head{cursor:default;margin-bottom:.2em;}'+
     '.me-row span{transition:opacity .15s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'+
-    /* entering the cinema deals the rows: apple-crisp — 16ms apart, 6px rise,
-       220ms critically-damped feel. backwards fill holds the hidden state
-       through the delay, then the base rules take over (forwards would fight
-       the hover dim) */
-    '#me-app.browse.dealt .me-row span{animation:me-rowin 220ms cubic-bezier(0.23,1,0.32,1) backwards;'+
-      'animation-delay:calc(var(--i,0)*16ms);}'+
+    /* entering the cinema deals the rows with a speedramp: the cascade pours
+       in accelerating — first gaps ~30ms, closing to ~4ms (per-row --d,
+       computed at build). 200ms each, 6px rise. backwards fill holds the
+       hidden state through the delay (forwards would fight the hover dim) */
+    '#me-app.browse.dealt .me-row span{animation:me-rowin 200ms cubic-bezier(0.23,1,0.32,1) backwards;'+
+      'animation-delay:var(--d,0ms);}'+
     '@keyframes me-rowin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}'+
     '.me-row span{opacity:1;}'+
     '.me-row[data-dim] span{opacity:.35;}'+
@@ -151,10 +151,13 @@
       '.me-row span{cursor:pointer;}'+
       '.me-row.head span{margin-bottom:.2em;cursor:default;}'+
       /* no fixed ratio — the panel takes each film's own format (js-sized),
-         morphing between formats; a swap crossfades under a light blur */
+         morphing between formats; a swap crossfades under a light blur.
+         no black box EVER: the panel is invisible until the film's first
+         frame is actually decoded (.ready), and carries no background */
       '#me-prev{position:fixed;right:clamp(20px,4vw,64px);top:50%;transform:translateY(-50%);'+
-        'display:none;background:#000;'+
-        'transition:width 220ms cubic-bezier(0.23,1,0.32,1),height 220ms cubic-bezier(0.23,1,0.32,1);}'+
+        'display:none;background:transparent;opacity:0;'+
+        'transition:opacity 140ms ease,width 220ms cubic-bezier(0.23,1,0.32,1),height 220ms cubic-bezier(0.23,1,0.32,1);}'+
+      '#me-prev.ready,#me-prev.ph{opacity:1;}'+
       '#me-prev video,#me-prev canvas,#me-prev img{transition:opacity 140ms ease,filter 140ms ease;}'+
       '#me-prev.swapping video,#me-prev.swapping canvas,#me-prev.swapping img{opacity:0;filter:blur(2px);}'+
       /* absolute + fill: the box already carries the film's exact format, so
@@ -1982,10 +1985,12 @@
   // ── data + render list ──────────────────────────────────────────
   fetch(DATA_URL,{cache:"no-cache"}).then(function(r){return r.json();}).then(function(d){
     PROJECTS=(d.projects||[]).filter(function(p){return p.published!==false;});
-    var html='<div class="me-row head" style="--i:0"><span>Year</span><span>№</span><span>Client</span><span>Title</span><span>Category</span></div>';
+    /* speedramp delays: d(i)=150(1-0.8^i) — accelerating pour, caps ~150ms */
+    function rampD(i){return Math.round(150*(1-Math.pow(0.8,i)))+'ms';}
+    var html='<div class="me-row head" style="--d:0ms"><span>Year</span><span>№</span><span>Client</span><span>Title</span><span>Category</span></div>';
     PROJECTS.forEach(function(p,i){
       var no=p.num||String(i+1).padStart(3,'0');
-      html+='<div class="me-row" data-i="'+i+'" style="--i:'+(i+1)+'">'+
+      html+='<div class="me-row" data-i="'+i+'" style="--d:'+rampD(i+1)+'">'+
         '<span data-field="year" data-value="'+esc(p.year)+'">'+esc(p.year)+'</span>'+
         '<span>'+no+'</span>'+
         '<span data-field="client" data-value="'+esc(p.client)+'">'+esc(p.client)+'</span>'+
@@ -2099,12 +2104,14 @@
   });
   var swapTimer=null;
   prevVid.addEventListener('loadeddata',function(){
-    /* first frame ready: lift the crossfade veil */
+    /* first frame decoded: panel may appear, crossfade veil lifts */
     clearTimeout(swapTimer);
+    prevEl.classList.add('ready');
     prevEl.classList.remove('swapping');
   });
   prevImg.addEventListener('load',function(){
     clearTimeout(swapTimer);
+    prevEl.classList.add('ready');
     prevEl.classList.remove('swapping');
     if(prevImg.naturalWidth){
       vidRatio=prevImg.naturalHeight/prevImg.naturalWidth;
@@ -2166,9 +2173,11 @@
     var gif=/\.gif(\?|$)/i.test(url);
     prevEl.classList.toggle('gif',gif);
     if(prevEl.dataset.cur!==url){
-      /* film swap crossfades under a light blur; first frame lifts it */
+      /* film swap crossfades under a light blur; the panel hides entirely
+         until the incoming film's first frame is decoded — never a black box */
       prevEl.dataset.cur=url;
       prevEl.classList.add('swapping');
+      prevEl.classList.remove('ready');
       if(gif){prevImg.src=url;try{prevVid.pause();}catch(e){}}
       else prevVid.src=url;
       clearTimeout(swapTimer);
