@@ -45,13 +45,15 @@
     '#me-ctrl .txt,#me-corner .txt{font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '#me-ctrl .icon,#me-corner .icon{color:#0a0a0a;display:flex;align-items:center;}'+
     '#me-ctrl .icon svg,#me-corner .icon svg{width:15px;height:15px;}'+
-    /* words answer: hover settles fast, press scales, keyboard sees an outline */
+    /* words answer: hover-in is INSTANT (apple: kill every latency), only the
+       release back to full eases; press scales; keyboard sees an outline */
     '#me-brand,#me-ctrl .txt,#me-corner .txt,#me-corner .icon,#me-music,#me-about-close,'+
     '#me-bar button,#me-close{'+
       'transition:opacity 100ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1);}'+
     '@media (hover:hover) and (pointer:fine){'+
       '#me-brand:hover,#me-ctrl .txt:hover,#me-corner .txt:hover,#me-corner .icon:hover,'+
-      '#me-music:hover,#me-about-close:hover{opacity:.55;}'+
+      '#me-music:hover,#me-about-close:hover,#me-bar button:hover,#me-close:hover{'+
+        'opacity:.55;transition-duration:0ms,160ms;}'+
     '}'+
     '#me-brand:active,#me-ctrl .txt:active,#me-corner .txt:active,#me-corner .icon:active,'+
     '#me-music:active,#me-about-close:active,#me-bar button:active,#me-close:active{'+
@@ -124,12 +126,13 @@
     '.me-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(0,3fr) minmax(0,2fr);gap:1em;cursor:pointer;}'+
     '.me-row.head{cursor:default;margin-bottom:.2em;}'+
     '.me-row span{transition:opacity .15s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'+
-    /* entering the cinema deals the rows: 40ms apart, 8px rise. backwards fill
-       holds the hidden state through the delay, then the base rules take over
-       (forwards would fight the hover dim) */
-    '#me-app.browse.dealt .me-row span{animation:me-rowin 260ms cubic-bezier(0.23,1,0.32,1) backwards;'+
-      'animation-delay:calc(var(--i,0)*40ms);}'+
-    '@keyframes me-rowin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}'+
+    /* entering the cinema deals the rows: apple-crisp — 16ms apart, 6px rise,
+       220ms critically-damped feel. backwards fill holds the hidden state
+       through the delay, then the base rules take over (forwards would fight
+       the hover dim) */
+    '#me-app.browse.dealt .me-row span{animation:me-rowin 220ms cubic-bezier(0.23,1,0.32,1) backwards;'+
+      'animation-delay:calc(var(--i,0)*16ms);}'+
+    '@keyframes me-rowin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}'+
     '.me-row span{opacity:1;}'+
     '.me-row[data-dim] span{opacity:.35;}'+
     /* the picked rows answer in the deal's colour — hover is never grey */
@@ -181,12 +184,11 @@
       'font:700 15px/1 '+FONT+';}'+
     '#me-bar.idle{opacity:0;}'+
     '#me-bar button{background:none;border:0;color:#fff;font:inherit;cursor:pointer;padding:4px 0;white-space:nowrap;}'+
-    '#me-bar button:hover{opacity:.55;}'+
     '#me-track{position:relative;flex:1;height:16px;cursor:pointer;display:flex;align-items:center;}'+
     '#me-track::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.85);transform:translateY(-50%);}'+
     '#me-head{position:absolute;top:50%;left:0;width:1px;height:13px;background:#fff;transform:translate(-50%,-50%);}'+
     '#me-close{position:absolute;top:clamp(16px,3vw,40px);right:clamp(16px,3vw,40px);z-index:4;background:none;border:0;'+
-      'color:#fff;mix-blend-mode:difference;font:700 15px/1.55 '+FONT+';cursor:pointer;}#me-close:hover{opacity:.55;}'+
+      'color:#fff;mix-blend-mode:difference;font:700 15px/1.55 '+FONT+';cursor:pointer;}'+
     '#me-info{position:absolute;top:clamp(16px,3vw,40px);left:clamp(20px,4vw,64px);z-index:4;color:#fff;mix-blend-mode:difference;'+
       'font:700 15px/1.55 '+FONT+';max-width:60vw;opacity:0;pointer-events:none;transition:opacity .2s;}'+
     '#me-info.show{opacity:1;}#me-info .t{margin-bottom:.4em;}#me-info .d{opacity:.7;}'+
