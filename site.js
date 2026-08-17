@@ -15,9 +15,12 @@
   vp.content='width=device-width, initial-scale=1, viewport-fit=cover';
   document.head.appendChild(vp);
   document.title='DIAL — Michel Elsasser';
-  var DATA_URL     = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/website-projects.json";
+  /* data comes from github raw: ~5min cache, CORS-open, and — unlike the
+     jsdelivr @main mirror — never stuck behind a throttled purge. heavy media
+     (previews, site.js itself) stays on the jsdelivr CDN. */
+  var DATA_URL     = "https://raw.githubusercontent.com/tastatursoldat/site-data/main/website-projects.json";
   var MUSIC_PLAYLIST = "PLAMrTQJLnU5E"; // YouTube playlist id for the radio
-  var RADIO_URL    = "https://cdn.jsdelivr.net/gh/tastatursoldat/site-data@main/radio.json"; // khz + note per track
+  var RADIO_URL    = "https://raw.githubusercontent.com/tastatursoldat/site-data/main/radio.json"; // hz + note + title per track
   var ABOUT_EMAIL  = "m@michelelsasser.com";
   var ABOUT_INSTAGRAM = "@michelelsasser";
   var ABOUT_TEXT =
