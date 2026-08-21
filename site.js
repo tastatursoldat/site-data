@@ -2270,8 +2270,9 @@
           var g=SCRAM_CHARS.charAt(Math.floor(Math.random()*SCRAM_CHARS.length));
           var col=SCRAM_KEYS[Math.floor(Math.random()*SCRAM_KEYS.length)];
           /* plain inline span — anything block-ish rides off the baseline.
-             the frozen grid tracks keep the columns pinned regardless */
-          html+='<span style="color:'+col+'">'+esc(g)+'</span>';
+             font:inherit inline, so no host stylesheet (cargo has global
+             span rules) can hand the glyph a foreign face */
+          html+='<span style="color:'+col+';font:inherit">'+esc(g)+'</span>';
         }else html+=esc(ch);
       }
       if(any)s.innerHTML=html;
