@@ -133,7 +133,9 @@
        in accelerating — first gaps ~30ms, closing to ~4ms (per-row --d,
        computed at build). 200ms each, 6px rise. backwards fill holds the
        hidden state through the delay (forwards would fight the hover dim) */
-    '#me-app.browse.dealt .me-row span{animation:me-rowin 200ms cubic-bezier(0.23,1,0.32,1) backwards;'+
+    /* direct cells only — the scramble effect inserts inner spans that must
+       not restart this animation (backwards fill would hide them) */
+    '#me-app.browse.dealt .me-row > span{animation:me-rowin 200ms cubic-bezier(0.23,1,0.32,1) backwards;'+
       'animation-delay:var(--d,0ms);}'+
     '@keyframes me-rowin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}'+
     '.me-row span{opacity:1;}'+
@@ -281,7 +283,7 @@
   function fieldEntries(){
     /* songs live on the radio page only; the radio view itself has no clocks.
        films may appear several times — copies are identical repeated units */
-    if(fieldMode==='radio')return[];
+    /* radio hides the field via render/hit gates — the deal itself survives */
     var out=[];
     for(var m=0;m<fieldMult;m++){
       FILM_DIALS.forEach(function(f){
@@ -1040,6 +1042,10 @@
     }
     cvs.dataset.overlap=String(Math.round(worstOverlap()*10)/10);
     cvs._nodes=nodes; /* audit handle, like the dataset flags */
+    /* freeze the fitted deal — refits map from this snapshot, never re-deal */
+    dealBase={W:W,H:H,
+      nodes:nodes.map(function(n){return {x:n.x,y:n.y,R:n.R};}),
+      casings:casings.map(function(c){return {x:c.x,y:c.y,w:c.w,h:c.h};})};
 
     /* sometimes the formation lives in a casing — a filled silhouette IS its own
        casing (the slabs, fitted like the clocks); otherwise slabs derive per group */
@@ -1420,11 +1426,18 @@
     }
     nodes.forEach(function(n,i){drawWatch(n,i===hover);});
   }
-  (function loop(){
+  /* phones repaint the field at 8fps — a clock needs no more, and a full-
+     canvas 60fps redraw cooks the battery. desktop stays at full rate. */
+  var FRAME_MS=matchMedia('(pointer: coarse)').matches?125:0;
+  var lastFrameTs=0;
+  (function loop(ts){
     try{
-      if(nodes.length && !app.classList.contains('browse') && !pl.classList.contains('show')) renderField();
-      /* the index placeholder clock ticks even while the field sleeps */
-      if(typeof prevEl!=='undefined'&&prevEl&&phActive())drawPlaceholder();
+      if(!FRAME_MS||!ts||ts-lastFrameTs>=FRAME_MS){
+        lastFrameTs=ts||0;
+        if(nodes.length && fieldMode!=='radio' && !app.classList.contains('browse') && !pl.classList.contains('show')) renderField();
+        /* the index placeholder clock ticks even while the field sleeps */
+        if(typeof prevEl!=='undefined'&&prevEl&&phActive())drawPlaceholder();
+      }
     }catch(e){} /* one bad frame must never kill the loop */
     requestAnimationFrame(loop);
   })();
@@ -1433,12 +1446,26 @@
     W=innerWidth;H=innerHeight;
     cvs.width=W*DPR;cvs.height=H*DPR;
     ctx.setTransform(DPR,0,0,DPR,0,0);
-    layoutField();
+    /* one deal per page load: a resize or orientation flip rescales the
+       existing composition, it never deals a new one */
+    if(nodes.length)refitField();else layoutField();
   }
-  function rearrange(){ /* same as a fresh page load: new theme + arrangement + film count */
-    theme=THEMES[Math.floor(Math.random()*THEMES.length)];
-    fieldMult=[1,1,1,2,2,3][Math.floor(Math.random()*6)];
-    layoutField();
+  var dealBase=null; /* the fitted deal at its birth viewport — refits map from HERE */
+  function refitField(){
+    /* pure box-to-box mapping of the original deal: identical dims give the
+       identical field, an orientation flip rescales proportionally */
+    if(!dealBase||!nodes.length)return;
+    function box(w,h){return {x:w*0.08,y:h*0.12,w:w*0.84,h:h*0.74};}
+    var ob=box(dealBase.W,dealBase.H),nb=box(W,H);
+    var sc=Math.min(nb.w/ob.w,nb.h/ob.h);
+    var ocx=ob.x+ob.w/2,ocy=ob.y+ob.h/2,ncx=nb.x+nb.w/2,ncy=nb.y+nb.h/2;
+    nodes.forEach(function(n,i){
+      var b=dealBase.nodes[i];if(!b)return;
+      n.x=ncx+(b.x-ocx)*sc;n.y=ncy+(b.y-ocy)*sc;n.R=b.R*sc;
+    });
+    casings=dealBase.casings.map(function(c){
+      return {x:ncx+(c.x-ocx)*sc,y:ncy+(c.y-ocy)*sc,w:c.w*sc,h:c.h*sc};
+    });
   }
   addEventListener('resize',sizeField);
   addEventListener('resize',function(){if(app.classList.contains('browse')&&typeof sizePreview==='function')sizePreview();});
@@ -1454,13 +1481,14 @@
   }
   function refCode(f){return f.code||f.year+'-'+String(parseInt(f.no,10)).padStart(2,'0');}
   cvs.addEventListener('pointermove',function(e){
-    if(e.pointerType==='touch')return;
+    if(e.pointerType==='touch'||fieldMode==='radio')return; /* invisible clocks take no input */
     var prev=hover;
     hover=hitTest(e.clientX,e.clientY);
     cvs.style.cursor=hover>=0?'pointer':'default';
     if(hover!==prev)tcEl.textContent=hover>=0?refCode(nodes[hover].f):'';
   });
   cvs.addEventListener('pointerdown',function(e){
+    if(fieldMode==='radio')return; /* invisible clocks take no input */
     var i=hitTest(e.clientX,e.clientY);
     if(i<0){if(e.pointerType==='touch')tcEl.textContent='';return;}
     tcEl.textContent=refCode(nodes[i].f);
@@ -1939,9 +1967,11 @@
   }
   function goDial(){
     exitBandAudio();
+    scrambleStop();
     app.classList.remove('browse');
     fieldMode='dial';
-    rearrange(); /* returning home always deals a fresh composition */
+    /* the composition survives navigation — only a reload deals fresh */
+    if(!nodes.length)layoutField();
     tcEl.textContent='';hover=-1;
     radioBtn.setAttribute('aria-pressed','false');
     updateModeClass();updateBrand();
@@ -1963,12 +1993,13 @@
   function goRadio(){
     fieldMode='radio';
     app.classList.remove('browse');
-    rearrange();
+    scrambleStop();
+    ctx.clearRect(0,0,W,H); /* the field sleeps under the band, un-drawn */
     armRadio();
     if(ytReady)startPlayback();
     radioBtn.setAttribute('aria-pressed','true');
     updateModeClass();
-    paintDial();tuneAudio(); /* theme re-rolled — refresh needle and readouts */
+    paintDial();tuneAudio();
     updateBrand();
   }
   app.querySelector('#me-btnview').addEventListener('click', function(){
@@ -2189,21 +2220,68 @@
     prevEl.classList.add('on');
     if(!gif){try{var pr=prevVid.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}}
   }
+  /* ── scramble hover: a quarter of the hovered row's letters flicker
+     through random glyphs in the six clock colours. desktop pointers only —
+     and only some letters, so the words stay readable ── */
+  var SCRAM_KEYS=THEMES.map(function(t){return t.key;});
+  var SCRAM_CHARS='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789<>[]{}()#@$%&*+=?!/\\^~;:_';
+  var scramTimer=null,scramRow=null;
+  function canScramble(){return matchMedia('(hover: hover) and (pointer: fine)').matches&&!isMobile();}
+  function scrambleStop(){
+    clearInterval(scramTimer);scramTimer=null;
+    if(scramRow){
+      scramRow.querySelectorAll('span').forEach(function(s){
+        if(s.dataset.orig!==undefined){s.textContent=s.dataset.orig;delete s.dataset.orig;}
+      });
+      scramRow=null;
+    }
+  }
+  function scrambleStart(row){
+    if(!canScramble()||row===scramRow)return;
+    scrambleStop();
+    scramRow=row;
+    var cells=[];
+    row.querySelectorAll('span').forEach(function(s){
+      var txt=s.textContent;
+      s.dataset.orig=txt;
+      var marks=[];
+      for(var i=0;i<txt.length;i++)if(txt.charAt(i)!==' '&&Math.random()<0.25)marks.push(i);
+      cells.push({el:s,txt:txt,marks:marks});
+    });
+    function tick(){
+      cells.forEach(function(c){
+        if(!c.marks.length)return;
+        var html='';
+        for(var i=0;i<c.txt.length;i++){
+          if(c.marks.indexOf(i)>=0){
+            var ch=SCRAM_CHARS.charAt(Math.floor(Math.random()*SCRAM_CHARS.length));
+            var col=SCRAM_KEYS[Math.floor(Math.random()*SCRAM_KEYS.length)];
+            html+='<span style="color:'+col+'">'+esc(ch)+'</span>';
+          }else html+=esc(c.txt.charAt(i));
+        }
+        c.el.innerHTML=html;
+      });
+    }
+    tick();
+    scramTimer=setInterval(tick,80);
+  }
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
   // hover anywhere else on a row -> dim the rest.
   listEl.addEventListener('mouseover', function(e){
     if(isMobile()) return;
-    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ applyDim(null); setPreview(null); return; }
+    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ applyDim(null); setPreview(null); scrambleStop(); return; }
     var cell=e.target.closest('[data-field]');
     if(cell){ applyDim(null,cell.dataset.field,cell.dataset.value); }
     else { applyDim(row); }
     setPreview(row);
+    scrambleStart(row);
   });
-  listEl.addEventListener('mouseleave', function(){ applyDim(null); setPreview(null); });
+  listEl.addEventListener('mouseleave', function(){ applyDim(null); setPreview(null); scrambleStop(); });
 
   // click -> opens the film
   listEl.addEventListener('click', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
+    scrambleStop(); /* the ticker must not run on behind the player */
     var p=PROJECTS[+row.dataset.i];
     if(p && p.film) openPlayer(p);
   });
