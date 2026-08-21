@@ -2225,70 +2225,68 @@
      and only some letters, so the words stay readable ── */
   var SCRAM_KEYS=THEMES.map(function(t){return t.key;});
   var SCRAM_CHARS='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789<>[]{}()#@$%&*+=?!/\\^~;:_';
-  var scramTimer=null,scramRow=null,scramMeasure=null;
+  var scramRow=null,scramMeasure=null;
   function canScramble(){return matchMedia('(hover: hover) and (pointer: fine)').matches&&!isMobile();}
+  function cellFont(s){
+    /* built by hand — safari serialises the font shorthand as '' */
+    var cs=getComputedStyle(s);
+    return cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
+  }
   function glyphW(ch,font){
-    /* exact width of the original character — the flickering glyph lives in a
+    /* exact width of the original character — the swapped glyph lives in a
        fixed slot of that width, so nothing on the line ever moves */
     if(!scramMeasure)scramMeasure=document.createElement('canvas').getContext('2d');
     scramMeasure.font=font;
     return scramMeasure.measureText(ch).width;
   }
-  function scrambleSettle(){
-    /* burst over: restore the line but remember the row — moving around
-       inside it must not re-trigger. only leaving re-arms it */
-    clearInterval(scramTimer);scramTimer=null;
-    if(scramRow){
-      scramRow.querySelectorAll(':scope > span').forEach(function(s){
-        if(s.dataset.orig!==undefined){
-          s.textContent=s.dataset.orig;delete s.dataset.orig;
-          s.style.removeProperty('width');
-        }
-      });
+  function lockColumns(){
+    /* pin the grid tracks at their resolved pixel widths for the duration —
+       the max-content grid can then never re-measure and shift a column */
+    if(!listEl.dataset.lock){
+      listEl.dataset.lock='1';
+      var t=getComputedStyle(listEl).gridTemplateColumns;
+      if(t&&t!=='none')listEl.style.gridTemplateColumns=t;
+    }
+  }
+  function unlockColumns(){
+    if(listEl.dataset.lock){
+      delete listEl.dataset.lock;
+      listEl.style.removeProperty('grid-template-columns');
     }
   }
   function scrambleStop(){
-    scrambleSettle();
-    scramRow=null;
+    if(scramRow){
+      scramRow.querySelectorAll(':scope > span').forEach(function(s){
+        if(s.dataset.orig!==undefined){s.textContent=s.dataset.orig;delete s.dataset.orig;}
+      });
+      scramRow=null;
+    }
+    unlockColumns();
   }
   function scrambleStart(row){
+    /* ONE swap per entry, no loop: the picked letters flip to a random glyph
+       in a random clock colour and simply hold; the line restores on leave.
+       every entry rolls fresh letters, glyphs and colours */
     if(!canScramble()||row===scramRow)return;
     scrambleStop();
     scramRow=row;
-    var cells=[];
+    lockColumns();
     row.querySelectorAll(':scope > span').forEach(function(s){
       var txt=s.textContent;
       s.dataset.orig=txt;
-      /* freeze the cell at its current width — the max-content grid must not
-         re-measure mid-burst and shift the columns */
-      s.style.width=s.getBoundingClientRect().width+'px';
-      var font=getComputedStyle(s).font;
-      var marks={};
-      for(var i=0;i<txt.length;i++)
-        if(txt.charAt(i)!==' '&&Math.random()<0.25)marks[i]=glyphW(txt.charAt(i),font);
-      cells.push({el:s,txt:txt,marks:marks});
+      var font=cellFont(s);
+      var html='',any=false;
+      for(var i=0;i<txt.length;i++){
+        var ch=txt.charAt(i);
+        if(ch!==' '&&Math.random()<0.25){
+          any=true;
+          var g=SCRAM_CHARS.charAt(Math.floor(Math.random()*SCRAM_CHARS.length));
+          var col=SCRAM_KEYS[Math.floor(Math.random()*SCRAM_KEYS.length)];
+          html+='<span style="color:'+col+';display:inline-block;text-align:center;width:'+glyphW(ch,font)+'px">'+esc(g)+'</span>';
+        }else html+=esc(ch);
+      }
+      if(any)s.innerHTML=html;
     });
-    /* one burst per entry: a short flicker, then the line settles back.
-       leaving and returning rolls a fresh scramble */
-    var ticks=0,TOTAL=7;
-    function tick(){
-      ticks++;
-      if(ticks>TOTAL){scrambleSettle();return;}
-      cells.forEach(function(c){
-        var html='',any=false;
-        for(var i=0;i<c.txt.length;i++){
-          if(c.marks[i]!==undefined){
-            any=true;
-            var ch=SCRAM_CHARS.charAt(Math.floor(Math.random()*SCRAM_CHARS.length));
-            var col=SCRAM_KEYS[Math.floor(Math.random()*SCRAM_KEYS.length)];
-            html+='<span style="color:'+col+';display:inline-block;text-align:center;width:'+c.marks[i]+'px">'+esc(ch)+'</span>';
-          }else html+=esc(c.txt.charAt(i));
-        }
-        if(any)c.el.innerHTML=html;
-      });
-    }
-    tick();
-    scramTimer=setInterval(tick,70);
   }
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
   // hover anywhere else on a row -> dim the rest.
@@ -2306,7 +2304,7 @@
   // click -> opens the film
   listEl.addEventListener('click', function(e){
     var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')) return;
-    scrambleStop(); /* the ticker must not run on behind the player */
+    scrambleStop(); /* the row must read clean behind the player */
     var p=PROJECTS[+row.dataset.i];
     if(p && p.film) openPlayer(p);
   });
