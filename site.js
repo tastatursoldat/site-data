@@ -2225,20 +2225,8 @@
      and only some letters, so the words stay readable ── */
   var SCRAM_KEYS=THEMES.map(function(t){return t.key;});
   var SCRAM_CHARS='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789<>[]{}()#@$%&*+=?!/\\^~;:_';
-  var scramRow=null,scramMeasure=null;
+  var scramRow=null;
   function canScramble(){return matchMedia('(hover: hover) and (pointer: fine)').matches&&!isMobile();}
-  function cellFont(s){
-    /* built by hand — safari serialises the font shorthand as '' */
-    var cs=getComputedStyle(s);
-    return cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
-  }
-  function glyphW(ch,font){
-    /* exact width of the original character — the swapped glyph lives in a
-       fixed slot of that width, so nothing on the line ever moves */
-    if(!scramMeasure)scramMeasure=document.createElement('canvas').getContext('2d');
-    scramMeasure.font=font;
-    return scramMeasure.measureText(ch).width;
-  }
   function lockColumns(){
     /* pin the grid tracks at their resolved pixel widths for the duration —
        the max-content grid can then never re-measure and shift a column */
@@ -2274,7 +2262,6 @@
     row.querySelectorAll(':scope > span').forEach(function(s){
       var txt=s.textContent;
       s.dataset.orig=txt;
-      var font=cellFont(s);
       var html='',any=false;
       for(var i=0;i<txt.length;i++){
         var ch=txt.charAt(i);
@@ -2282,7 +2269,9 @@
           any=true;
           var g=SCRAM_CHARS.charAt(Math.floor(Math.random()*SCRAM_CHARS.length));
           var col=SCRAM_KEYS[Math.floor(Math.random()*SCRAM_KEYS.length)];
-          html+='<span style="color:'+col+';display:inline-block;text-align:center;width:'+glyphW(ch,font)+'px">'+esc(g)+'</span>';
+          /* plain inline span — anything block-ish rides off the baseline.
+             the frozen grid tracks keep the columns pinned regardless */
+          html+='<span style="color:'+col+'">'+esc(g)+'</span>';
         }else html+=esc(ch);
       }
       if(any)s.innerHTML=html;
