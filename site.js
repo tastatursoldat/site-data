@@ -2225,45 +2225,70 @@
      and only some letters, so the words stay readable ── */
   var SCRAM_KEYS=THEMES.map(function(t){return t.key;});
   var SCRAM_CHARS='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789<>[]{}()#@$%&*+=?!/\\^~;:_';
-  var scramTimer=null,scramRow=null;
+  var scramTimer=null,scramRow=null,scramMeasure=null;
   function canScramble(){return matchMedia('(hover: hover) and (pointer: fine)').matches&&!isMobile();}
-  function scrambleStop(){
+  function glyphW(ch,font){
+    /* exact width of the original character — the flickering glyph lives in a
+       fixed slot of that width, so nothing on the line ever moves */
+    if(!scramMeasure)scramMeasure=document.createElement('canvas').getContext('2d');
+    scramMeasure.font=font;
+    return scramMeasure.measureText(ch).width;
+  }
+  function scrambleSettle(){
+    /* burst over: restore the line but remember the row — moving around
+       inside it must not re-trigger. only leaving re-arms it */
     clearInterval(scramTimer);scramTimer=null;
     if(scramRow){
-      scramRow.querySelectorAll('span').forEach(function(s){
-        if(s.dataset.orig!==undefined){s.textContent=s.dataset.orig;delete s.dataset.orig;}
+      scramRow.querySelectorAll(':scope > span').forEach(function(s){
+        if(s.dataset.orig!==undefined){
+          s.textContent=s.dataset.orig;delete s.dataset.orig;
+          s.style.removeProperty('width');
+        }
       });
-      scramRow=null;
     }
+  }
+  function scrambleStop(){
+    scrambleSettle();
+    scramRow=null;
   }
   function scrambleStart(row){
     if(!canScramble()||row===scramRow)return;
     scrambleStop();
     scramRow=row;
     var cells=[];
-    row.querySelectorAll('span').forEach(function(s){
+    row.querySelectorAll(':scope > span').forEach(function(s){
       var txt=s.textContent;
       s.dataset.orig=txt;
-      var marks=[];
-      for(var i=0;i<txt.length;i++)if(txt.charAt(i)!==' '&&Math.random()<0.25)marks.push(i);
+      /* freeze the cell at its current width — the max-content grid must not
+         re-measure mid-burst and shift the columns */
+      s.style.width=s.getBoundingClientRect().width+'px';
+      var font=getComputedStyle(s).font;
+      var marks={};
+      for(var i=0;i<txt.length;i++)
+        if(txt.charAt(i)!==' '&&Math.random()<0.25)marks[i]=glyphW(txt.charAt(i),font);
       cells.push({el:s,txt:txt,marks:marks});
     });
+    /* one burst per entry: a short flicker, then the line settles back.
+       leaving and returning rolls a fresh scramble */
+    var ticks=0,TOTAL=7;
     function tick(){
+      ticks++;
+      if(ticks>TOTAL){scrambleSettle();return;}
       cells.forEach(function(c){
-        if(!c.marks.length)return;
-        var html='';
+        var html='',any=false;
         for(var i=0;i<c.txt.length;i++){
-          if(c.marks.indexOf(i)>=0){
+          if(c.marks[i]!==undefined){
+            any=true;
             var ch=SCRAM_CHARS.charAt(Math.floor(Math.random()*SCRAM_CHARS.length));
             var col=SCRAM_KEYS[Math.floor(Math.random()*SCRAM_KEYS.length)];
-            html+='<span style="color:'+col+'">'+esc(ch)+'</span>';
+            html+='<span style="color:'+col+';display:inline-block;text-align:center;width:'+c.marks[i]+'px">'+esc(ch)+'</span>';
           }else html+=esc(c.txt.charAt(i));
         }
-        c.el.innerHTML=html;
+        if(any)c.el.innerHTML=html;
       });
     }
     tick();
-    scramTimer=setInterval(tick,80);
+    scramTimer=setInterval(tick,70);
   }
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
   // hover anywhere else on a row -> dim the rest.
