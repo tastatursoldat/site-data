@@ -153,6 +153,9 @@
       '#me-list{display:grid;grid-template-columns:repeat(5,max-content);column-gap:2em;'+
         'left:clamp(20px,4vw,64px);width:auto;transform:translateY(-50%);}'+
       '.me-row{display:contents;}'+
+      /* content-sized columns never need an ellipsis — and a swapped glyph
+         must never produce one */
+      '.me-row > span{overflow:visible;text-overflow:clip;}'+
       '.me-row span{cursor:pointer;}'+
       '.me-row.head span{margin-bottom:.2em;cursor:default;}'+
       /* no fixed ratio — the panel takes each film's own format (js-sized),
@@ -2271,10 +2274,16 @@
       /* a wider glyph may overflow the pinned cell — never an ellipsis, it
          just spills into the column gap for the hover */
       s.style.overflow='visible';s.style.textOverflow='clip';
+      /* every word gets 1 or 2 changed letters — never none, never a flood */
+      var marks={},re=/\S+/g,m;
+      while((m=re.exec(txt))){
+        var w=m[0],n=Math.min(w.length,1+((w.length>=4&&Math.random()<0.5)?1:0)),seen={};
+        while(n>0){var p=Math.floor(Math.random()*w.length);if(seen[p])continue;seen[p]=1;marks[m.index+p]=1;n--;}
+      }
       var html='',any=false;
       for(var i=0;i<txt.length;i++){
         var ch=txt.charAt(i);
-        if(ch!==' '&&Math.random()<0.25){
+        if(marks[i]){
           any=true;
           var g=SCRAM_CHARS.charAt(Math.floor(Math.random()*SCRAM_CHARS.length));
           var col=pool[Math.floor(Math.random()*pool.length)];
