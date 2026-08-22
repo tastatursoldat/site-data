@@ -2245,7 +2245,10 @@
   function scrambleStop(){
     if(scramRow){
       scramRow.querySelectorAll(':scope > span').forEach(function(s){
-        if(s.dataset.orig!==undefined){s.textContent=s.dataset.orig;delete s.dataset.orig;}
+        if(s.dataset.orig!==undefined){
+          s.textContent=s.dataset.orig;delete s.dataset.orig;
+          s.style.removeProperty('overflow');s.style.removeProperty('text-overflow');
+        }
       });
       scramRow=null;
     }
@@ -2265,6 +2268,9 @@
     row.querySelectorAll(':scope > span').forEach(function(s){
       var txt=s.textContent;
       s.dataset.orig=txt;
+      /* a wider glyph may overflow the pinned cell — never an ellipsis, it
+         just spills into the column gap for the hover */
+      s.style.overflow='visible';s.style.textOverflow='clip';
       var html='',any=false;
       for(var i=0;i<txt.length;i++){
         var ch=txt.charAt(i);
