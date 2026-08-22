@@ -140,8 +140,8 @@
     '@keyframes me-rowin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}'+
     '.me-row span{opacity:1;}'+
     '.me-row[data-dim] span{opacity:.35;}'+
-    /* the picked rows answer in the deal's colour — hover is never grey */
-    '.me-row[data-hot] span{color:var(--me-theme,#111);}'+
+    /* the index is black, always — only the scrambled glyphs carry colour */
+    '.me-row[data-hot] span{color:#0a0a0a;}'+
     /* wide screens only: the list is one grid with content-sized columns —
        names are never cut — and the hovered film plays on the right, sized to
        whatever room the list leaves (measured in js). rows keep their
