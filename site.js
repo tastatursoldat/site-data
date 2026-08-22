@@ -2283,16 +2283,24 @@
   }
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
   // hover anywhere else on a row -> dim the rest.
+  var hotRow=null;
   listEl.addEventListener('mouseover', function(e){
     if(isMobile()) return;
-    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ applyDim(null); setPreview(null); scrambleStop(); return; }
+    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ applyDim(null); setPreview(null); scrambleStop(); hotRow=null; return; }
+    /* no blinking on the seam: leaving one row for another needs the cursor
+       clearly inside the new one (4px past its edge), not on the boundary */
+    if(hotRow&&row!==hotRow){
+      var rb=row.querySelector('span').getBoundingClientRect();
+      if(e.clientY<rb.top+4||e.clientY>rb.bottom-4)return;
+    }
+    hotRow=row;
     var cell=e.target.closest('[data-field]');
     if(cell){ applyDim(null,cell.dataset.field,cell.dataset.value); }
     else { applyDim(row); }
     setPreview(row);
     scrambleStart(row);
   });
-  listEl.addEventListener('mouseleave', function(){ applyDim(null); setPreview(null); scrambleStop(); });
+  listEl.addEventListener('mouseleave', function(){ applyDim(null); setPreview(null); scrambleStop(); hotRow=null; });
 
   // click -> opens the film
   listEl.addEventListener('click', function(e){
