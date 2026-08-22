@@ -2259,6 +2259,9 @@
     scrambleStop();
     scramRow=row;
     lockColumns();
+    /* the hovered row already wears the deal colour — a glyph in that same
+       colour would vanish into the line, so it never gets picked */
+    var pool=SCRAM_KEYS.filter(function(k){return k!==theme.key;});
     row.querySelectorAll(':scope > span').forEach(function(s){
       var txt=s.textContent;
       s.dataset.orig=txt;
@@ -2268,7 +2271,7 @@
         if(ch!==' '&&Math.random()<0.25){
           any=true;
           var g=SCRAM_CHARS.charAt(Math.floor(Math.random()*SCRAM_CHARS.length));
-          var col=SCRAM_KEYS[Math.floor(Math.random()*SCRAM_KEYS.length)];
+          var col=pool[Math.floor(Math.random()*pool.length)];
           /* plain inline span — anything block-ish rides off the baseline.
              font:inherit inline, so no host stylesheet (cargo has global
              span rules) can hand the glyph a foreign face */
