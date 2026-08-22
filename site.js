@@ -2298,24 +2298,35 @@
   }
   // desktop: hover a Year/Client/Category cell -> highlight every row sharing that value.
   // hover anywhere else on a row -> dim the rest.
-  var hotRow=null;
-  listEl.addEventListener('mouseover', function(e){
+  /* driven by mousemove, not mouseover: mouseover fires once at the edge —
+     inside the seam dead-zone — and then never again while the cursor moves
+     within the same cell, which froze the hover on one row */
+  var hotRow=null,hotCell;
+  listEl.addEventListener('mousemove', function(e){
     if(isMobile()) return;
-    var row=e.target.closest('.me-row'); if(!row||row.classList.contains('head')){ applyDim(null); setPreview(null); scrambleStop(); hotRow=null; return; }
-    /* no blinking on the seam: leaving one row for another needs the cursor
-       clearly inside the new one (4px past its edge), not on the boundary */
-    if(hotRow&&row!==hotRow){
-      var rb=row.querySelector('span').getBoundingClientRect();
-      if(e.clientY<rb.top+4||e.clientY>rb.bottom-4)return;
+    var row=e.target.closest('.me-row');
+    if(!row||row.classList.contains('head')){
+      if(hotRow){ applyDim(null); setPreview(null); scrambleStop(); hotRow=null; hotCell=undefined; }
+      return;
     }
-    hotRow=row;
     var cell=e.target.closest('[data-field]');
+    if(row!==hotRow){
+      /* no blinking on the seam: leaving one row for another needs the
+         cursor clearly inside the new one (4px past its edge) */
+      if(hotRow){
+        var rb=row.querySelector('span').getBoundingClientRect();
+        if(e.clientY<rb.top+4||e.clientY>rb.bottom-4)return;
+      }
+      hotRow=row;hotCell=undefined;
+    }
+    if(cell===hotCell)return; /* nothing changed — mousemove is chatty */
+    hotCell=cell;
     if(cell){ applyDim(null,cell.dataset.field,cell.dataset.value); }
     else { applyDim(row); }
     setPreview(row);
     scrambleStart(row);
   });
-  listEl.addEventListener('mouseleave', function(){ applyDim(null); setPreview(null); scrambleStop(); hotRow=null; });
+  listEl.addEventListener('mouseleave', function(){ applyDim(null); setPreview(null); scrambleStop(); hotRow=null; hotCell=undefined; });
 
   // click -> opens the film
   listEl.addEventListener('click', function(e){
