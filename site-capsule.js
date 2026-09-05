@@ -335,19 +335,19 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function outQuint(t){return 1-Math.pow(1-t,5);}
   function canHover(){return matchMedia('(hover:hover) and (pointer:fine)').matches&&!isMobile();}
   var roll={
-    exposure:0.86,
-    rough:0.16,   /* mirror polish: the room is recognisable in it */
-    aniso:0.2,
+    exposure:0.8,
+    rough:0.24,   /* polished, with the brushing softening what it shows */
+    aniso:0.85,
     tone:0.78,
     key:1.6,
     shadow:0.2,
-    yaw:16,
-    fov:26,       /* lens: wider = more perspective in the reflections */
-    dist:24,
-    wave:0.04,    /* polish waviness: bends the reflections */
+    yaw:30,
+    fov:32,       /* lens: wider = more perspective in the reflections */
+    dist:19,
+    wave:0.015,    /* polish waviness: bends the reflections */
     camMix:1.2,   /* the visitor in the room light */
-    mirror:0.5,   /* the visitor on the steel */
-    warp:0.16,    /* how much the curvature bends the picture */
+    mirror:0.32,   /* the visitor on the steel */
+    warp:0.12,    /* how much the curvature bends the picture */
     cut:3.5,      /* engraving: wall width (px of blur at 652px/unit) */
     relief:20,    /* engraving: wall slope */
     depth:3.5     /* engraving: normal strength */
@@ -376,7 +376,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }else app.classList.add('nogl');
   var scene=new THREE.Scene();
   var camera=new THREE.PerspectiveCamera(roll.fov,1,1,400);
-  var CAM_DIST=roll.dist,CAM_EL=THREE.MathUtils.degToRad(9);
+  var CAM_DIST=roll.dist,CAM_EL=THREE.MathUtils.degToRad(14);
   camera.position.set(0,CAM_DIST*Math.sin(CAM_EL),CAM_DIST*Math.cos(CAM_EL));
   camera.lookAt(0,0,0);
 
@@ -389,10 +389,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       var m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:c,side:THREE.DoubleSide}));
       m.position.set(x,y,z);m.rotation.set(rx,ry,0);room.add(m);return m;
     }
-    var walls=new THREE.Mesh(new THREE.BoxGeometry(30,20,30),new THREE.MeshBasicMaterial({color:new THREE.Color(0.30,0.30,0.31),side:THREE.BackSide}));
+    var walls=new THREE.Mesh(new THREE.BoxGeometry(30,20,30),new THREE.MeshBasicMaterial({color:new THREE.Color(0.22,0.22,0.23),side:THREE.BackSide}));
     room.add(walls);
-    panel(30,30,0,-10,0,Math.PI/2,0,new THREE.Color(0.66,0.66,0.65));           /* floor: the paper */
-    panel(10,6,0,9.9,1,Math.PI/2,0,new THREE.Color(2.2,2.2,2.15));              /* key softbox above */
+    panel(30,30,0,-10,0,Math.PI/2,0,new THREE.Color(0.8,0.8,0.79));             /* floor: the paper */
+    panel(10,6,0,9.9,1,Math.PI/2,0,new THREE.Color(1.5,1.5,1.45));              /* key softbox above */
     panel(12,4,0,3,-14,0,0,new THREE.Color(1.4,1.4,1.45));                      /* rim strip behind */
     function disc(r,x,y,z,ry,rx,c){ /* round lights: their reflections curve around the tube */
       var m=new THREE.Mesh(new THREE.CircleGeometry(r,48),new THREE.MeshBasicMaterial({color:c,side:THREE.DoubleSide}));
@@ -417,38 +417,44 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   roomScene=buildRoom();renderEnv();
 
   /* ── geometry in object units: tube radius 1 ─────────────────────
-     a stainless tube with a welded flange ring at each end; a round end
-     plate sits on each ring, held by a circle of socket-head bolts. the
-     right plate is the lid: its bolts back out, then it lifts off. */
+     a polished stainless tube; at each end a thick flange ring clamped by
+     eight small radial socket screws, and beyond it a heavy machined end
+     cap. the right cap is the lid: its screws back out of the ring, then
+     the cap is pulled off. */
   var R=1,D=2,LTOT=3.6*D;
-  var RF=1.22,TR=0.22,TP=0.26,GAP=0.02,NB=8,RB=1.07,RH=0.095,HH=0.11,RS=0.055,FIL=0.03,SHANK=0.26+0.02+0.22-0.02,PITCH=0.032,TURNS=7; /* shank hidden in plate and ring at rest */
-  var XL=0, XR=LTOT;                                  /* outer faces of the two plates */
-  var TUBE0=XL+TP+GAP+TR, TUBE1=XR-TP-GAP-TR;         /* the tube between the rings */
-  var LID_HOME=XR-TP;                                 /* the right plate's inner face */
+  var RF=1.28,TR=0.55,CAPL=0.5,CAPR=0.98,GAP=0.035,NB=8,FIL=0.035,SR=0.07,SL=0.16,SOUT=0.24;
+  var XL=0, XR=LTOT;
+  var TUBE0=XL+CAPL+GAP+TR, TUBE1=XR-CAPL-GAP-TR;    /* the tube between the rings */
+  var LID_HOME=XR-CAPL;                              /* the right cap's inner face */
+  var TP=CAPL;                                       /* (kept for the placement code) */
 
-  function ringGeo(len){ /* a flange ring: chamfered disc of radius RF, length len */
+  function discGeo(rad,len){ /* a chamfered disc, axis y, from 0 to len */
     var p=[];
-    p.push(new THREE.Vector2(0,0));p.push(new THREE.Vector2(RF-FIL,0));p.push(new THREE.Vector2(RF,FIL));
-    p.push(new THREE.Vector2(RF,len-FIL));p.push(new THREE.Vector2(RF-FIL,len));p.push(new THREE.Vector2(0,len));
+    p.push(new THREE.Vector2(0,0));p.push(new THREE.Vector2(rad-FIL,0));p.push(new THREE.Vector2(rad,FIL));
+    p.push(new THREE.Vector2(rad,len-FIL));p.push(new THREE.Vector2(rad-FIL,len));p.push(new THREE.Vector2(0,len));
     return new THREE.LatheGeometry(p,160);
   }
+  function ringGeo(len){return discGeo(RF,len);}
   function tubeGeo(){
     var p=[new THREE.Vector2(0,0),new THREE.Vector2(R,0),new THREE.Vector2(R,TUBE1-TUBE0),new THREE.Vector2(0,TUBE1-TUBE0)];
     var g=new THREE.LatheGeometry(p,192);
-    /* uv v as true length so the brushing runs straight */
     var pos=g.attributes.position,uv=g.attributes.uv;
     for(var i=0;i<pos.count;i++)uv.setY(i,clamp(pos.getY(i)/(TUBE1-TUBE0),0,1));
     return g;
   }
+  function lengthUV(geo,y0,y1){
+    var pos=geo.attributes.position,uv=geo.attributes.uv;
+    for(var i=0;i<pos.count;i++){uv.setY(i,clamp((pos.getY(i)-y0)/(y1-y0),0,1));}
+    uv.needsUpdate=true;
+  }
 
   /* ── surfaces ─────────────────────────────────────────────────── */
-  /* brushed stainless: fine lines along the tube in the roughness */
-  function brush(r,w,h,ppx,ppy,seed){ /* lines along the tube: ~76 per unit², widths and lengths in units */
+  function brush(r,w,h,ppx,ppy,seed){ /* lines along the tube: the grain of polished stainless */
     r.fillStyle='#8c8c8c';r.fillRect(0,0,w,h);
     var rnd=(function(){var q=seed;return function(){q=(q*1664525+1013904223)>>>0;return q/4294967296;};})();
-    var n=Math.round(76*(w/ppx)*(h/ppy));
+    var n=Math.round(110*(w/ppx)*(h/ppy));
     for(var i=0;i<n;i++){
-      var x=rnd()*w,len=(0.6+rnd()*5.5)*ppy,y=rnd()*h,a=0.03+rnd()*0.06,dark=rnd()<0.5;
+      var x=rnd()*w,len=(0.6+rnd()*5.5)*ppy,y=rnd()*h,a=0.05+rnd()*0.12,dark=rnd()<0.5;
       r.strokeStyle=dark?'rgba(40,40,40,'+a+')':'rgba(230,230,230,'+a+')';r.lineWidth=(0.6+rnd()*1.2)*ppx/326;
       r.beginPath();r.moveTo(x,y);r.lineTo(x+(rnd()-0.5)*2,y+len);r.stroke();
     }
@@ -458,11 +464,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     envMapIntensity:1.0
   });
   steel.anisotropy=roll.aniso;steel.anisotropyRotation=Math.PI/2;
-  var plateSteel=new THREE.MeshPhysicalMaterial({
-    color:new THREE.Color(roll.tone*0.84,roll.tone*0.84,roll.tone*0.84),metalness:1,roughness:roll.rough+0.12,envMapIntensity:0.85
+  var plateSteel=new THREE.MeshPhysicalMaterial({ /* rings and caps: machined, a little more matte, turned marks */
+    color:new THREE.Color(roll.tone*0.64,roll.tone*0.64,roll.tone*0.65),metalness:1,roughness:roll.rough+0.28,envMapIntensity:0.75
   });
-  plateSteel.anisotropy=roll.aniso*0.5;plateSteel.anisotropyRotation=0;
-  var boltSteel=new THREE.MeshPhysicalMaterial({color:new THREE.Color(0.62,0.62,0.63),metalness:1,roughness:0.42,envMapIntensity:0.9});
+  plateSteel.anisotropy=0.6;plateSteel.anisotropyRotation=0;
+  var boltSteel=new THREE.MeshPhysicalMaterial({color:new THREE.Color(0.5,0.5,0.51),metalness:1,roughness:0.5,envMapIntensity:0.8});
+  var socketMat=new THREE.MeshStandardMaterial({color:0x111213,metalness:0.6,roughness:0.85});
+  var boreMat=new THREE.MeshStandardMaterial({color:0x2a2a2c,metalness:0.6,roughness:0.85,side:THREE.DoubleSide,envMapIntensity:0.35});
+  var sealMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(sealColor),metalness:0.0,roughness:0.55,clearcoat:0.3,clearcoatRoughness:0.4,envMapIntensity:0.8}); /* the gasket */
   /* the visitor in the steel, the way the reel does it: the mirrored camera picture is laid
      over the metal in screen space — where you look, you see yourself — and bent by the
      surface normal so it wraps and compresses around the tube like a curved mirror */
@@ -477,8 +486,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
           'if(uCamMix>0.0){\n'+
           '  vec2 suv=gl_FragCoord.xy/uRes;\n'+
           '  float sa=uRes.x/uRes.y;\n'+
-          '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*0.55,0.5+(suv.y-0.5)*0.75);\n'+ /* the camera frame fills the screen, centred */
-          '  cuv+=normal.xy*uWarp;\n'+                                                    /* bent by the curvature */
+          '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*0.55,0.5+(suv.y-0.5)*0.75);\n'+
+          '  cuv+=normal.xy*uWarp;\n'+
           '  vec3 camc=texture2D(uCam,clamp(cuv,0.0,1.0)).rgb;\n'+
           '  float edge=smoothstep(0.0,0.08,cuv.x)*smoothstep(1.0,0.92,cuv.x)*smoothstep(0.0,0.08,cuv.y)*smoothstep(1.0,0.92,cuv.y);\n'+
           '  float fres=pow(1.0-max(normal.z,0.0),1.5);\n'+
@@ -489,34 +498,34 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     mat.customProgramCacheKey=function(){return 'mirror';};
   }
   mirrorSteel(steel);mirrorSteel(plateSteel);
-  var boreMat=new THREE.MeshStandardMaterial({color:0x3a3a3c,metalness:0.8,roughness:0.6,side:THREE.DoubleSide,envMapIntensity:0.7});
-  var sealMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(sealColor),metalness:0.0,roughness:0.55,clearcoat:0.3,clearcoatRoughness:0.4,envMapIntensity:0.8}); /* the gasket */
 
-  /* ── the engraving lives in the tube's own surface: one bump map (the cut) and one
-     roughness map (brushing, matte floor) over the whole tube, so there is no seam ── */
+  /* ── the engraving lives in the tube's own surface: a normal map (the cut), a roughness map
+     (brushing, matte floor) and an albedo map (the floor of a deep cut sits in shadow) ── */
   var TEX=(matchMedia('(pointer:coarse)').matches?2048:4096);
   var TW=TEX,TH=TEX,PPX=TW/(2*Math.PI*R),PPY=TH/(TUBE1-TUBE0); /* px per unit: around, along */
   var tubeRough=document.createElement('canvas');tubeRough.width=TW;tubeRough.height=TH;
   var tubeBump=document.createElement('canvas');tubeBump.width=TW;tubeBump.height=TH;
   var tubeNormal=document.createElement('canvas');tubeNormal.width=TW;tubeNormal.height=TH;
+  var tubeAlbedo=document.createElement('canvas');tubeAlbedo.width=TW/4;tubeAlbedo.height=TH/4;
   var plateLines=['sealed in zürich by michel elsasser','…','open when found'];
-  function plateText(g,fill,blur){
-    var fontPx=Math.round(0.19*PPX),lineH=fontPx*1.55;
-    g.save();g.translate(TW/2,TH-0.42*PPY);          /* front of the tube, inset from the left ring */
-    g.rotate(-Math.PI/2);g.scale(PPY/PPX,1);          /* reading runs along the tube, lines stack around it */
+  function plateText(g,fillLight,blur,scale){
+    scale=scale||1;
+    var fontPx=Math.round(0.19*PPX*scale),lineH=fontPx*1.55;
+    g.save();g.translate(TW/2*scale,(TH-0.42*PPY)*scale);
+    g.rotate(-Math.PI/2);g.scale(PPY/PPX,1);
     if(blur)g.filter='blur('+blur+'px)';
-    g.font='700 '+fontPx+'px '+FONT;g.textBaseline='middle';g.textAlign='left';g.fillStyle=fill;
+    g.font='700 '+fontPx+'px '+FONT;g.textBaseline='middle';g.textAlign='left';g.fillStyle=fillLight;
     plateLines.forEach(function(t,i){g.fillText(t,0,-lineH+i*lineH);});
     g.restore();
   }
   function drawTube(){
-    var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#c4c4c4',0); /* the cutter leaves a matte floor */
+    var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#d8d8d8',0);   /* the floor is matte */
+    var al=tubeAlbedo.getContext('2d');al.fillStyle='#ffffff';al.fillRect(0,0,TW/4,TH/4);plateText(al,'#3a3a3a',0.6,0.25); /* the floor in shadow */
     var h=tubeBump.getContext('2d');h.fillStyle='#000';h.fillRect(0,0,TW,TH);plateText(h,'#fff',roll.cut*PPX/652);
-    /* polish waviness first: a smooth field of tiny tilts (hand-polished steel is never a perfect cylinder) */
     var n=tubeNormal.getContext('2d');n.fillStyle='rgb(128,128,255)';n.fillRect(0,0,TW,TH);
     var WS=512,wc=document.createElement('canvas');wc.width=WS;wc.height=WS;var wg=wc.getContext('2d');
     var wd=wg.createImageData(WS,WS),W8=wd.data,A=roll.wave;
-    function wave(u,v){ /* u around (0..1), v along (0..1) → tilt (nx, ny) */
+    function wave(u,v){
       var nx=A*(Math.sin(6.283*(2.3*v+0.7*u))+0.6*Math.sin(6.283*(5.1*v-1.3*u+0.3))+0.35*Math.sin(6.283*(9.7*v+2.1*u+0.8))+0.5*Math.sin(6.283*(1.37*v-0.41*u+0.61)+2.1*Math.sin(6.283*0.9*v)));
       var ny=A*(0.8*Math.sin(6.283*(1.7*u+3.2*v+1.1))+0.5*Math.sin(6.283*(4.3*u-2.2*v))+0.4*Math.sin(6.283*(0.8*u+1.9*v+0.2)+1.7*Math.sin(6.283*1.3*u)));
       return [nx,ny];
@@ -531,10 +540,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var by1=Math.ceil(TH-0.42*PPY+8),by0=Math.max(0,Math.floor(by1-4.2*PPY));
     var bw=bx1-bx0,bh=by1-by0;
     var hd=h.getImageData(bx0,by0,bw,bh).data,nd=n.createImageData(bw,bh),N=nd.data,S=roll.relief;
-    function Hf(x,y){x=clamp(x,0,bw-1);y=clamp(y,0,bh-1);return hd[(y*bw+x)*4]/255;}
+    function H(x,y){x=clamp(x,0,bw-1);y=clamp(y,0,bh-1);return hd[(y*bw+x)*4]/255;}
     for(var y=0;y<bh;y++)for(var x=0;x<bw;x++){
-      var dx=(Hf(x+1,y-1)+2*Hf(x+1,y)+Hf(x+1,y+1))-(Hf(x-1,y-1)+2*Hf(x-1,y)+Hf(x-1,y+1));
-      var dy=(Hf(x-1,y+1)+2*Hf(x,y+1)+Hf(x+1,y+1))-(Hf(x-1,y-1)+2*Hf(x,y-1)+Hf(x+1,y-1));
+      var dx=(H(x+1,y-1)+2*H(x+1,y)+H(x+1,y+1))-(H(x-1,y-1)+2*H(x-1,y)+H(x-1,y+1));
+      var dy=(H(x-1,y+1)+2*H(x,y+1)+H(x+1,y+1))-(H(x-1,y-1)+2*H(x,y-1)+H(x+1,y-1));
       var wv=wave((bx0+x)/TW,1-(by0+y)/TH);
       var nx=dx*S+wv[0],ny=-dy*S+wv[1],nz=1,len=Math.hypot(nx,ny,nz);
       var i=(y*bw+x)*4;N[i]=Math.round((nx/len*0.5+0.5)*255);N[i+1]=Math.round((ny/len*0.5+0.5)*255);N[i+2]=Math.round((nz/len*0.5+0.5)*255);N[i+3]=255;
@@ -542,48 +551,47 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     n.putImageData(nd,bx0,by0);
   }
   drawTube();
-  var tubeRoughTex=new THREE.CanvasTexture(tubeRough),tubeNormalTex=new THREE.CanvasTexture(tubeNormal);
-  [tubeRoughTex,tubeNormalTex].forEach(function(t){t.wrapS=THREE.RepeatWrapping;t.offset.x=0.5;t.anisotropy=8;});
-  steel.roughnessMap=tubeRoughTex;steel.normalMap=tubeNormalTex;steel.normalScale=new THREE.Vector2(roll.depth,roll.depth);steel.needsUpdate=true;
+  var tubeRoughTex=new THREE.CanvasTexture(tubeRough),tubeNormalTex=new THREE.CanvasTexture(tubeNormal),tubeAlbedoTex=new THREE.CanvasTexture(tubeAlbedo);
+  tubeAlbedoTex.colorSpace=THREE.SRGBColorSpace;
+  [tubeRoughTex,tubeNormalTex,tubeAlbedoTex].forEach(function(t){t.wrapS=THREE.RepeatWrapping;t.offset.x=0.5;t.anisotropy=8;});
+  steel.roughnessMap=tubeRoughTex;steel.normalMap=tubeNormalTex;steel.map=tubeAlbedoTex;steel.normalScale=new THREE.Vector2(roll.depth,roll.depth);steel.needsUpdate=true;
 
   /* ── assembly ─────────────────────────────────────────────────── */
   var group=new THREE.Group();scene.add(group);
   var tube=new THREE.Mesh(tubeGeo(),steel);tube.rotation.z=-Math.PI/2;tube.position.x=TUBE0;tube.castShadow=true;group.add(tube);
-  var ringL=new THREE.Mesh(ringGeo(TR),steel);ringL.rotation.z=-Math.PI/2;ringL.position.x=XL+TP+GAP;ringL.castShadow=true;group.add(ringL);
-  var ringR=new THREE.Mesh(ringGeo(TR),steel);ringR.rotation.z=-Math.PI/2;ringR.position.x=TUBE1;ringR.castShadow=true;group.add(ringR);
+  var ringL=new THREE.Mesh(ringGeo(TR),plateSteel);ringL.rotation.z=-Math.PI/2;ringL.position.x=XL+CAPL+GAP;ringL.castShadow=true;group.add(ringL);
+  var ringR=new THREE.Mesh(ringGeo(TR),plateSteel);ringR.rotation.z=-Math.PI/2;ringR.position.x=TUBE1;ringR.castShadow=true;group.add(ringR);
   /* gaskets in the two seams — the right one is the seal you break */
-  var gasketGeo=new THREE.CylinderGeometry(RF-0.06,RF-0.06,GAP+0.004,160,1,false);
-  var gasketL=new THREE.Mesh(gasketGeo,sealMat);gasketL.rotation.z=-Math.PI/2;gasketL.position.x=XL+TP+GAP/2;group.add(gasketL);
-  var gasketR=new THREE.Mesh(gasketGeo,sealMat);gasketR.rotation.z=-Math.PI/2;gasketR.position.x=TUBE1+TR+GAP/2;group.add(gasketR);
+  var gasketGeo=new THREE.TorusGeometry(CAPR-0.03,GAP/2+0.012,12,160); /* an o-ring in the seam, a hair proud of the cap */
+  var gasketL=new THREE.Mesh(gasketGeo,sealMat);gasketL.rotation.y=Math.PI/2;gasketL.position.x=XL+CAPL+GAP/2;group.add(gasketL);
+  var gasketR=new THREE.Mesh(gasketGeo,sealMat);gasketR.rotation.y=Math.PI/2;gasketR.position.x=TUBE1+TR+GAP/2;group.add(gasketR);
   /* the mouth behind the lid */
-  var bore=new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,0.9),new THREE.Vector2(0,0.9)],96),boreMat);
-  bore.rotation.z=-Math.PI/2;bore.position.x=TUBE1+TR-0.9;group.add(bore);
-  var boreCap=new THREE.Mesh(new THREE.CylinderGeometry(RF-0.05,RF-0.05,0.01,160),boreMat);boreCap.rotation.z=-Math.PI/2;boreCap.position.x=TUBE1+TR+GAP;group.add(boreCap);
-  var hexGeo=new THREE.CylinderGeometry(RH*1.12,RH*1.12,HH,6);
-  var washerGeo=new THREE.CylinderGeometry(RH*1.45,RH*1.45,0.018,40);
-  var shankGeo=new THREE.CylinderGeometry(0.052,0.052,SHANK,20);
+  var bore=new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,2.4),new THREE.Vector2(0,2.4)],96),boreMat);
+  bore.rotation.z=-Math.PI/2;bore.position.x=TUBE1+TR-2.4;group.add(bore); /* the mouth goes deep and dark */
+  var boreCap=new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,0.01,160),boreMat);boreCap.rotation.z=-Math.PI/2;boreCap.position.x=TUBE1+TR-0.01;group.add(boreCap); /* the dark mouth, only seen with the cap off */
+  /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
+  var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,24);
+  var sockGeo=new THREE.CylinderGeometry(SR*0.55,SR*0.55,0.02,6);
   var rndA=(function(){var q=91;return function(){q=(q*1664525+1013904223)>>>0;return q/4294967296;};})();
-  function boltRing(parent,faceX,dir){ /* hex bolts standing on a plate face, heads outward */
-    var bolts=[];
+  function screwRing(parent,x){
+    var out=[];
     for(var i=0;i<NB;i++){
       var a=i/NB*Math.PI*2+Math.PI/NB;
-      var b=new THREE.Group();
-      var head=new THREE.Mesh(hexGeo,boltSteel);head.rotation.z=-Math.PI/2;head.position.x=dir*(0.018+HH/2);head.castShadow=true;b.add(head);
-      var washer=new THREE.Mesh(washerGeo,plateSteel);washer.rotation.z=-Math.PI/2;washer.position.x=dir*0.009;b.add(washer);
-      var shank=new THREE.Mesh(shankGeo,boltSteel);shank.rotation.z=-Math.PI/2;shank.position.x=-dir*SHANK/2;b.add(shank);
-      b.position.set(faceX,RB*Math.cos(a),RB*Math.sin(a));
-      b.userData.a0=rndA()*Math.PI/3;b.rotation.x=b.userData.a0; /* every bolt sits at its own angle */
-      parent.add(b);bolts.push(b);
+      var g=new THREE.Group();g.position.x=x;g.rotation.x=a;            /* local +y points outward along the radius */
+      var head=new THREE.Mesh(screwGeo,boltSteel);head.position.y=RF-SL/2+0.012;g.add(head);
+      var sock=new THREE.Mesh(sockGeo,socketMat);sock.position.y=RF+0.012;sock.rotation.y=rndA()*Math.PI/3;g.add(sock);
+      g.userData.a0=rndA()*Math.PI/3;
+      parent.add(g);out.push(g);
     }
-    return bolts;
+    return out;
   }
-  /* left plate: fixed, bolted for good */
-  var plateL=new THREE.Mesh(ringGeo(TP),plateSteel);plateL.rotation.z=-Math.PI/2;plateL.position.x=XL;plateL.castShadow=true;group.add(plateL);
-  boltRing(group,XL,-1);
-  /* right plate = the lid, with its own bolts */
+  screwRing(group,XL+CAPL+GAP+TR/2);
+  var lidScrews=screwRing(group,TUBE1+TR/2);
+  /* end caps: the left one for good, the right one is the lid */
+  var capL=new THREE.Mesh(discGeo(CAPR,CAPL),plateSteel);capL.rotation.z=-Math.PI/2;capL.position.x=XL;capL.castShadow=true;group.add(capL);
   var lid=new THREE.Group();group.add(lid);
-  var plateR=new THREE.Mesh(ringGeo(TP),plateSteel);plateR.rotation.z=-Math.PI/2;plateR.castShadow=true;lid.add(plateR);
-  var lidBolts=boltRing(lid,TP,1);
+  var capR=new THREE.Mesh(discGeo(CAPR,CAPL),plateSteel);capR.rotation.z=-Math.PI/2;capR.castShadow=true;lid.add(capR);
+  var plug=new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,TR+GAP,96),plateSteel);plug.rotation.z=-Math.PI/2;plug.position.x=-(TR+GAP)/2;lid.add(plug); /* the part inside the ring */
   lid.position.x=LID_HOME;
   /* the table the object rests on — only its shadow is visible */
   var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:roll.shadow}));
@@ -596,7 +604,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var ao=new THREE.Mesh(new THREE.PlaneGeometry(LTOT*1.15,3.0),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false,opacity:0.9}));
     ao.rotation.x=-Math.PI/2;ao.position.set(LTOT/2,-RF-0.003,0.15);ao.renderOrder=-1;group.add(ao);
   })();
-  /* key light travels with the object so its shadow always fits */
+  /* keyLight light travels with the object so its shadow always fits */
   var keyLight=new THREE.DirectionalLight(0xffffff,roll.key);
   keyLight.position.set(LTOT/2-3,9,6);keyLight.castShadow=true;
   keyLight.shadow.mapSize.set(2048,2048);keyLight.shadow.radius=10;keyLight.shadow.blurSamples=16;keyLight.shadow.bias=-0.0006;
@@ -658,7 +666,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var MOB_SLIDE=44;
   function restBox(){
     if(isMobile()){var Lm=W-36-MOB_SLIDE;return {L:Lm,left:18,top:H*0.36};}
-    var L=clamp(W*0.47,440,720);
+    var L=clamp(W*0.52,460,800);
     return {L:L,left:W/2-L/2,top:H*0.47-(L/LTOT*2*RF)/2};
   }
   function openBox(){
@@ -690,13 +698,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        rising with the pitch; once the last one is free the plate is pulled off and parked */
     var p1=clamp(cap.slide/0.72,0,1),p2=clamp((cap.slide-0.72)/0.28,0,1);
     var ORDER=[0,4,2,6,1,5,3,7];
-    lidBolts.forEach(function(b,i){
+    lidScrews.forEach(function(g,i){
       var j=ORDER.indexOf(i),st=j*0.105,du=0.26;
       var q=clamp((p1-st)/du,0,1);
       var e=q<0.5?2*q*q:1-Math.pow(-2*q+2,2)/2;           /* torque to break it, then it spins, then it slows */
-      var turns=TURNS*e;
-      b.rotation.x=b.userData.a0+turns*Math.PI*2;            /* counter-clockwise seen from the head */
-      b.position.x=TP+turns*PITCH;                            /* it rises exactly as far as the thread lets it */
+      g.rotation.y=g.userData.a0+e*Math.PI*2*6;             /* six turns about its own axis */
+      g.children.forEach(function(m,k){m.position.y=(k===0?RF-SL/2+0.012:RF+0.012)+e*SOUT;}); /* out of the ring along the radius */
     });
     var park=isMobile()?MOB_SLIDE/lastPx:(TP+0.1*LTOT);
     var pe=p2<0.5?2*p2*p2:1-Math.pow(-2*p2+2,2)/2;
@@ -760,7 +767,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var years=PROJECTS.map(function(p){return +p.year;}).filter(Boolean);
     var y0=Math.min.apply(null,years),y1=Math.max.apply(null,years),n=PROJECTS.length;
     plateLines[1]=n+' film'+(n===1?'':'s')+', '+y0+'–'+y1;
-    drawTube();tubeRoughTex.needsUpdate=true;tubeNormalTex.needsUpdate=true;needPaint();
+    drawTube();tubeRoughTex.needsUpdate=true;tubeNormalTex.needsUpdate=true;tubeAlbedoTex.needsUpdate=true;needPaint();
   }
 
   /* ── open / seal ──────────────────────────────────────────────── */
