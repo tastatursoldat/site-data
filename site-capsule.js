@@ -345,7 +345,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     fov:26,       /* lens: wider = more perspective in the reflections */
     dist:24,
     wave:0.04,    /* polish waviness: bends the reflections */
-    camMix:1.9,   /* how bright the visitor is in the steel */
+    camMix:1.2,   /* the visitor in the room light */
+    mirror:0.5,   /* the visitor on the steel */
+    warp:0.16,    /* how much the curvature bends the picture */
     cut:3.5,      /* engraving: wall width (px of blur at 652px/unit) */
     relief:20,    /* engraving: wall slope */
     depth:3.5     /* engraving: normal strength */
@@ -461,6 +463,32 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   });
   plateSteel.anisotropy=roll.aniso*0.5;plateSteel.anisotropyRotation=0;
   var boltSteel=new THREE.MeshPhysicalMaterial({color:new THREE.Color(0.62,0.62,0.63),metalness:1,roughness:0.42,envMapIntensity:0.9});
+  /* the visitor in the steel, the way the reel does it: the mirrored camera picture is laid
+     over the metal in screen space — where you look, you see yourself — and bent by the
+     surface normal so it wraps and compresses around the tube like a curved mirror */
+  var mirrorU={uCam:{value:null},uCamMix:{value:0},uRes:{value:new THREE.Vector2(1,1)},uWarp:{value:roll.warp},uCamAspect:{value:1}};
+  function mirrorSteel(mat){
+    mat.onBeforeCompile=function(sh){
+      Object.assign(sh.uniforms,mirrorU);
+      sh.fragmentShader=sh.fragmentShader
+        .replace('#include <common>','#include <common>\nuniform sampler2D uCam;uniform float uCamMix;uniform vec2 uRes;uniform float uWarp;uniform float uCamAspect;')
+        .replace('#include <opaque_fragment>',
+          '#include <opaque_fragment>\n'+
+          'if(uCamMix>0.0){\n'+
+          '  vec2 suv=gl_FragCoord.xy/uRes;\n'+
+          '  float sa=uRes.x/uRes.y;\n'+
+          '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*0.55,0.5+(suv.y-0.5)*0.75);\n'+ /* the camera frame fills the screen, centred */
+          '  cuv+=normal.xy*uWarp;\n'+                                                    /* bent by the curvature */
+          '  vec3 camc=texture2D(uCam,clamp(cuv,0.0,1.0)).rgb;\n'+
+          '  float edge=smoothstep(0.0,0.08,cuv.x)*smoothstep(1.0,0.92,cuv.x)*smoothstep(0.0,0.08,cuv.y)*smoothstep(1.0,0.92,cuv.y);\n'+
+          '  float fres=pow(1.0-max(normal.z,0.0),1.5);\n'+
+          '  vec3 refl=gl_FragColor.rgb*0.45+camc*0.9;\n'+
+          '  gl_FragColor.rgb=mix(gl_FragColor.rgb,refl,uCamMix*edge*(1.0-0.5*fres));\n'+
+          '}');
+    };
+    mat.customProgramCacheKey=function(){return 'mirror';};
+  }
+  mirrorSteel(steel);mirrorSteel(plateSteel);
   var boreMat=new THREE.MeshStandardMaterial({color:0x3a3a3c,metalness:0.8,roughness:0.6,side:THREE.DoubleSide,envMapIntensity:0.7});
   var sealMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(sealColor),metalness:0.0,roughness:0.55,clearcoat:0.3,clearcoatRoughness:0.4,envMapIntensity:0.8}); /* the gasket */
 
@@ -592,6 +620,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       cam.video=v;cam.c=document.createElement('canvas');cam.c.width=320;cam.c.height=240;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
       cam.tex=new THREE.CanvasTexture(cam.c);cam.tex.colorSpace=THREE.SRGBColorSpace;
       camPlane.material.map=cam.tex;camPlane.material.needsUpdate=true;camPlane.visible=true;
+      mirrorU.uCam.value=cam.tex;mirrorU.uCamAspect.value=cam.c.width/cam.c.height;mirrorU.uCamMix.value=roll.mirror;
       cam.on=true;requestAnimationFrame(camLoop);
       document.addEventListener('visibilitychange',function(){if(document.hidden)stream.getTracks().forEach(function(t){t.enabled=false;});else stream.getTracks().forEach(function(t){t.enabled=true;});});
     }).catch(function(){ /* no camera, or not allowed: the room stays as it is */ });
@@ -604,12 +633,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(now-cam.last<83||cam.video.readyState<2)return;
     cam.last=now;
     var g=cam.g,w=cam.c.width,h=cam.c.height;
-    g.save();g.filter='contrast(150%) brightness(88%) saturate(53%)';g.translate(w,0);g.scale(-1,1);g.drawImage(cam.video,0,0,w,h);g.restore();
+    g.save();g.filter='contrast(150%) brightness(88%) saturate(53%) blur(0.8px)';g.translate(w,0);g.scale(-1,1);g.drawImage(cam.video,0,0,w,h);g.restore();
     var d=g.getImageData(0,0,w,h).data,diff=0,n=0;
     if(cam.prev){for(var i=0;i<d.length;i+=16){diff+=Math.abs(d[i]-cam.prev[i]);n++;}diff/=n;}else diff=999;
     cam.prev=d;
-    if(diff<1.5)return;                  /* nothing moved: the steel keeps its picture */
-    cam.tex.needsUpdate=true;renderEnv();paint();
+    cam.tex.needsUpdate=true;
+    if(diff>=1.5)renderEnv();            /* the room is re-lit only when something moved */
+    paint();
   }
   setTimeout(startCamera,900);
 
@@ -867,6 +897,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function sizeField(){
     W=innerWidth;H=innerHeight;
     if(GL)renderer.setSize(W,H,false);
+    mirrorU.uRes.value.set(W*DPR,H*DPR);
     camera.aspect=W/H;camera.updateProjectionMatrix();
     /* crossing the phone breakpoint while open (a rotation): the two layouts keep the
        index in different places — close at once and stand it up again in the new one */
