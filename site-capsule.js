@@ -351,10 +351,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     cyl:1,
     rx:0,ry:0,     /* a preset turn (unused on the site) */
     warp:0.12,    /* how much the curvature bends the picture */
-    lens:1.5,     /* 0.5x feel: the camera frame maps smaller on the metal */
+    lens:0.75,     /* 0.5x feel: the camera frame maps smaller on the metal */
     envGain:0.9,  /* how bright the photographed studio is in the metal */
-    cut:3.5,      /* engraving: wall width (px of blur at 652px/unit) */
-    relief:20,    /* engraving: wall slope */
+    cut:1.5,      /* engraving: wall width (px of blur at 652px/unit) */
+    relief:44,    /* engraving: wall slope */
     depth:3.5     /* engraving: normal strength */
   };
   var sealColor=bwDeal?'#141416':theme.key;
@@ -500,7 +500,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
           '  vec2 suv=gl_FragCoord.xy/uRes;\n'+
           '  float sa=uRes.x/uRes.y;\n'+
           '  vec3 rf=reflect(-normalize(vViewPosition),nonPerturbedNormal);\n'+ /* the smooth surface normal: the 8-bit normal map would terrace the picture */ /* where this point of the metal looks: the curve squeezes the picture toward the edges */
-          '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*uZoom+rf.x*uCyl*0.2,0.5+mix((suv.y-0.5)*uZoom*1.15,rf.y*0.5,uCyl));\n'+
+          '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*uZoom+rf.x*uCyl*0.2,0.5+mix((suv.y-0.5)*uZoom*1.15,rf.y*uZoom/3.0,uCyl));\n'+
           '  cuv+=(normal.xy-nonPerturbedNormal.xy)*uWarp;\n'+ /* only the cut of the letters bends it */
           '  vec3 camc=vec3(0.0);\n'+
           '  for(int i=-5;i<=5;i++)for(int j=-2;j<=2;j++){camc+=texture2D(uCam,clamp(cuv+vec2(float(i)*uTexel.x*1.6,float(j)*uTexel.y*0.5),0.0,1.0)).rgb;}\n'+ /* long along the brushing, short across it */
@@ -524,19 +524,20 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var tubeBump=document.createElement('canvas');tubeBump.width=TW;tubeBump.height=TH;
   var tubeNormal=document.createElement('canvas');tubeNormal.width=TW;tubeNormal.height=TH;
   var plateLines=['sealed in zürich by michel elsasser','…','open when found'];
-  function plateText(g,fillLight,blur,scale){
+  function plateText(g,fillLight,blur,scale,stroke,lw){
     scale=scale||1;
     var fontPx=Math.round(0.19*PPX*scale),lineH=fontPx*1.55;
     g.save();g.translate(TW/2*scale,(TH-0.42*PPY)*scale);
     g.rotate(-Math.PI/2);g.scale(PPY/PPX,1);
     if(blur)g.filter='blur('+blur+'px)';
     g.font='700 '+fontPx+'px '+FONT;g.textBaseline='middle';g.textAlign='left';g.fillStyle=fillLight;
+    if(stroke){g.strokeStyle=stroke;g.lineWidth=lw;g.lineJoin='round';plateLines.forEach(function(t,i){g.strokeText(t,0,-lineH+i*lineH);});}
     plateLines.forEach(function(t,i){g.fillText(t,0,-lineH+i*lineH);});
     g.restore();
   }
   function drawTube(){
     var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#7a7a7a',0);   /* the cut floor: the same metal, a touch smoother, nothing more */
-    var h=tubeBump.getContext('2d');h.fillStyle='#000';h.fillRect(0,0,TW,TH);plateText(h,'#fff',roll.cut*PPX/652);
+    var h=tubeBump.getContext('2d');h.fillStyle='#808080';h.fillRect(0,0,TW,TH);var rimW=Math.max(2,Math.round(0.012*PPX));plateText(h,'#ffffff',0,1,'#5c5c5c',rimW*2); /* a stamp: the metal rises in a rim around the cut */
     var n=tubeNormal.getContext('2d');n.fillStyle='rgb(128,128,255)';n.fillRect(0,0,TW,TH);
     var WS=512,wc=document.createElement('canvas');wc.width=WS;wc.height=WS;var wg=wc.getContext('2d');
     var wd=wg.createImageData(WS,WS),W8=wd.data,A=roll.wave;
@@ -554,6 +555,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var bx0=Math.max(0,Math.floor(TW/2-lineH*1.8)),bx1=Math.min(TW,Math.ceil(TW/2+lineH*1.8));
     var by1=Math.ceil(TH-0.42*PPY+8),by0=Math.max(0,Math.floor(by1-4.2*PPY));
     var bw=bx1-bx0,bh=by1-by0;
+    var hb=h.getImageData(bx0,by0,bw,bh);softBlur(hb.data,bw,bh,Math.max(1,Math.round(roll.cut*PPX/652)));h.putImageData(hb,bx0,by0); /* the wall of the cut, blurred by hand: the same in every browser */
     var hd=h.getImageData(bx0,by0,bw,bh).data,nd=n.createImageData(bw,bh),N=nd.data,S=roll.relief;
     function H(x,y){x=clamp(x,0,bw-1);y=clamp(y,0,bh-1);return hd[(y*bw+x)*4]/255;}
     for(var y=0;y<bh;y++)for(var x=0;x<bw;x++){
@@ -579,9 +581,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var ringL=new THREE.Mesh(ringGeo(TR),plateSteel);ringL.rotation.z=-Math.PI/2;ringL.position.x=XL+CAPL+GAP;ringL.castShadow=true;group.add(ringL);
   var ringR=new THREE.Mesh(ringGeo(TR),plateSteel);ringR.rotation.z=-Math.PI/2;ringR.position.x=TUBE1;ringR.castShadow=true;group.add(ringR);
   /* the tube's end walls close the bores: with the cap off you look at steel, not into a hole */
-  var endWallGeo=new THREE.CylinderGeometry(0.9,0.9,0.02,160);
-  var endWallL=new THREE.Mesh(endWallGeo,capSteel);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.01;group.add(endWallL);
-  var endWallR=new THREE.Mesh(endWallGeo,capSteel);endWallR.rotation.z=-Math.PI/2;endWallR.position.x=TUBE1+0.01;group.add(endWallR);
+  var endWallGeo=discGeo(0.9,0.1); /* a lathe like every part: a cylinder's uv would leave it flat */
+  var endWallL=new THREE.Mesh(endWallGeo,capSteel);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;group.add(endWallL);
+  var endWallR=new THREE.Mesh(endWallGeo,capSteel);endWallR.rotation.z=-Math.PI/2;endWallR.position.x=TUBE1-0.08;group.add(endWallR);
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
   var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,24);
   var sockGeo=new THREE.CylinderGeometry(SR*0.55,SR*0.55,0.02,6);
@@ -650,8 +652,6 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function startCamera(){
     if(!GL||cam.on||Q.get('cam')==='0'||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
     navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false}).then(function(stream){
-      try{var tr=stream.getVideoTracks()[0],cp=tr.getCapabilities?tr.getCapabilities():null;
-        if(cp&&cp.zoom&&cp.zoom.min<1)tr.applyConstraints({advanced:[{zoom:cp.zoom.min}]}).catch(function(){});}catch(err){}
       var v=document.createElement('video');v.srcObject=stream;v.muted=true;v.playsInline=true;
       v.play().catch(function(){});
       cam.video=v;cam.c=document.createElement('canvas');cam.c.width=256;cam.c.height=256;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
