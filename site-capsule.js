@@ -300,6 +300,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '</div>'+
     '<div id="me-tc" aria-hidden="true"></div>';
   document.body.appendChild(app);
+  /* the loader's veil hid Cargo's own content until now: the site is mounted, lift it */
+  (function(){var v=document.getElementById('me-veil');if(v)v.parentNode.removeChild(v);})();
 
   var listEl=app.querySelector('#me-list');
   var tcEl=app.querySelector('#me-tc');
