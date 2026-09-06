@@ -43,6 +43,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     // capsule landing — the object stays on the paper under the open index
     '#me-dial{position:absolute;inset:0;}'+
     '#me-field{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default;outline:none;}'+
+    '#me-field{transition:opacity 480ms ease;}#me-app.open #me-field{opacity:0.55;}'+ /* opened, the object steps back so the index reads through it */
     '#me-field.hot{cursor:pointer;}'+
     '#me-field{touch-action:none;}#me-field.turning{cursor:grabbing;}'+
     /* the finder's line, written on the paper under the object */
@@ -134,6 +135,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     // parked capsule; only the list and the panel take events
     '#me-browse{position:absolute;inset:0;display:none;pointer-events:none;}'+
     '#me-app.browse #me-browse{display:block;}'+
+    '#me-app.open #me-browse{z-index:6;}'+ /* the words lie on top of the metal */
     '#me-list,#me-prev{pointer-events:auto;}'+
     '#me-list{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:84%;'+
       'font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
@@ -166,7 +168,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       '#me-list{display:grid;grid-template-columns:repeat(5,max-content);column-gap:2em;'+
         'left:clamp(20px,4vw,64px);width:auto;transform:translateY(-50%);}'+
       /* open: the list starts under the stamp, the panel aligns to the list head */
-      '#me-app.open #me-list{top:var(--me-list-top,50%);transform:none;}'+
+      '#me-app.open #me-list{top:50%;transform:translateY(-50%);}'+ /* the index in the middle of the page, over the object */
       '#me-app.open #me-prev{top:var(--me-list-top,50%);transform:none;}'+
       '.me-row{display:contents;}'+
       /* content-sized columns never need an ellipsis — and a swapped glyph
@@ -195,7 +197,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       '#me-app.browse #me-prev.on{display:block;}'+
     '}'+
     '@media (min-width:701px) and (max-width:1049px){'+
-      '#me-app.open #me-list{top:var(--me-list-top,50%);left:clamp(20px,4vw,64px);width:calc(100% - 2*clamp(20px,4vw,64px));transform:none;}'+
+      '#me-app.open #me-list{top:50%;left:clamp(20px,4vw,64px);width:calc(100% - 2*clamp(20px,4vw,64px));transform:translateY(-50%);}'+
     '}'+
     // player
     '#me-player{position:fixed;inset:0;background:#EFEFEC;z-index:2147483600;display:none;}'+
@@ -377,7 +379,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     renderer.toneMapping=THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure=roll.exposure;
     renderer.shadowMap.enabled=true;
-    renderer.shadowMap.type=THREE.VSMShadowMap;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap; /* VSM bled light where two parts overlapped: a hole in the shadow */
   }else app.classList.add('nogl');
   var scene=new THREE.Scene();
   var camera=new THREE.PerspectiveCamera(roll.fov,1,1,400);
@@ -587,14 +589,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the tube's end walls close the bores: with the cap off you look at steel, not into a hole */
   var endWallGeo=discGeo(0.9,0.1); /* a lathe like every part: a cylinder's uv would leave it flat */
   /* the tube is a hole: a bore runs its whole length, darkening with depth, and the far end sits in the dark */
-  var holeEnd=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.1,roll.tone*0.1,roll.tone*0.1),metalness:1,roughness:0.7,envMapIntensity:0.3});
-  var endWallL=new THREE.Mesh(endWallGeo,holeEnd);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;group.add(endWallL);
+  /* the inside is machined, not polished: rough, half-diffuse metal that the key light rakes across through the opening,
+     so twisting the object moves the light inside it */
+  var holeEnd=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.5,roll.tone*0.5,roll.tone*0.51),metalness:0.45,roughness:0.78,envMapIntensity:0.8});
+  var endWallL=new THREE.Mesh(endWallGeo,holeEnd);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;endWallL.receiveShadow=true;group.add(endWallL);
   var boreGeo=new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,TUBE1-TUBE0)],96);
   (function(){var n=boreGeo.attributes.position.count,col=new Float32Array(n*3),half=n/2;
-    for(var i=0;i<n;i++){var v=i<half?0.06:1.0;col[i*3]=v;col[i*3+1]=v;col[i*3+2]=v;}
+    for(var i=0;i<n;i++){var v=i<half?0.28:1.0;col[i*3]=v;col[i*3+1]=v;col[i*3+2]=v;}
     boreGeo.setAttribute('color',new THREE.BufferAttribute(col,3));})();
-  var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.9,roll.tone*0.9,roll.tone*0.9),metalness:1,roughness:0.55,envMapIntensity:0.5,side:THREE.BackSide,vertexColors:true});
-  var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;group.add(bore);
+  var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.62,roll.tone*0.62,roll.tone*0.63),metalness:0.45,roughness:0.82,envMapIntensity:0.7,side:THREE.BackSide,vertexColors:true});
+  var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
   var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,24);
   var sockGeo=new THREE.CylinderGeometry(SR*0.55,SR*0.55,0.02,6);
@@ -679,7 +683,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* keyLight light travels with the object so its shadow always fits */
   var keyLight=new THREE.DirectionalLight(0xffffff,roll.key);
   keyLight.position.set(-3,9,6);keyLight.castShadow=true;
-  keyLight.shadow.mapSize.set(2048,2048);keyLight.shadow.radius=10;keyLight.shadow.blurSamples=16;keyLight.shadow.bias=-0.0006;
+  keyLight.shadow.mapSize.set(2048,2048);keyLight.shadow.radius=4;keyLight.shadow.bias=-0.00015;keyLight.shadow.normalBias=0.02;
   keyLight.shadow.camera.left=-7;keyLight.shadow.camera.right=7;keyLight.shadow.camera.top=6;keyLight.shadow.camera.bottom=-6;keyLight.shadow.camera.near=1;keyLight.shadow.camera.far=40;
   var keyTarget=new THREE.Object3D();keyTarget.position.set(0,0,0);stage.add(keyTarget);keyLight.target=keyTarget;stage.add(keyLight);
   var fillLight=new THREE.DirectionalLight(0xffffff,0.35);fillLight.position.set(-6,2,8);stage.add(fillLight);
@@ -811,9 +815,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function placeStamp(){
     if(!lastBox||!GL)return;
     var x=Math.round(lastBox.left),y=Math.round(lastBox.top+lastBox.h+24);
+    if(app.classList.contains('browse')&&listEl.offsetParent){var lr=listEl.getBoundingClientRect();x=Math.round(lr.left);y=Math.round(lr.bottom+24);} /* opened: the date sits under the index */
     stampEl.style.transform='translate('+x+'px,'+y+'px)';
     /* the fading rows of a seal stay put — they do not ride down with the returning object */
-    if(cap.state!=='sealing')app.style.setProperty('--me-list-top',Math.round(y+15*1.55+40)+'px');
+    if(cap.state!=='sealing')app.style.setProperty('--me-list-top',Math.round(listEl.getBoundingClientRect().top-app.getBoundingClientRect().top)+'px');
   }
   function hitCapsule(x,y){
     if(!lastBox||!GL)return false;
