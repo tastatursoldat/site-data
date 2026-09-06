@@ -350,6 +350,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     mirror:0.28,   /* the visitor on the metal, soft */
     rx:0,ry:0,     /* a preset turn (unused on the site) */
     warp:0.12,    /* how much the curvature bends the picture */
+    lens:1.5,     /* 0.5x feel: the camera frame maps smaller on the metal */
     cut:3.5,      /* engraving: wall width (px of blur at 652px/unit) */
     relief:20,    /* engraving: wall slope */
     depth:3.5     /* engraving: normal strength */
@@ -405,7 +406,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     disc(1.4,-4,8,-6,0,Math.PI/2,new THREE.Color(3.0,3.0,2.9));                 /* small hard light above-behind */
     disc(2.6,6,-1,10,Math.PI,0,new THREE.Color(1.1,1.1,1.15));                  /* a low round light in front */
     /* the visitor's side of the room: the camera feed, where the camera stands */
-    camPlane=new THREE.Mesh(new THREE.PlaneGeometry(27.2,20.4),new THREE.MeshBasicMaterial({color:new THREE.Color(roll.camMix,roll.camMix,roll.camMix),toneMapped:false}));
+    camPlane=new THREE.Mesh(new THREE.PlaneGeometry(15,11.25),new THREE.MeshBasicMaterial({color:new THREE.Color(roll.camMix,roll.camMix,roll.camMix),toneMapped:false}));
     camPlane.position.set(0,0.5,13.6);camPlane.rotation.y=Math.PI;camPlane.visible=false;room.add(camPlane);
     return room;
   }
@@ -480,21 +481,21 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the visitor in the steel, the way the reel does it: the mirrored camera picture is laid
      over the metal in screen space — where you look, you see yourself — and bent by the
      surface normal so it wraps and compresses around the tube like a curved mirror */
-  var mirrorU={uCam:{value:null},uCamMix:{value:0},uRes:{value:new THREE.Vector2(1,1)},uWarp:{value:roll.warp},uCamAspect:{value:1}};
+  var mirrorU={uCam:{value:null},uCamMix:{value:0},uRes:{value:new THREE.Vector2(1,1)},uWarp:{value:roll.warp},uCamAspect:{value:1},uZoom:{value:roll.lens}};
   function mirrorSteel(mat){
     mat.onBeforeCompile=function(sh){
       Object.assign(sh.uniforms,mirrorU);
       sh.fragmentShader=sh.fragmentShader
-        .replace('#include <common>','#include <common>\nuniform sampler2D uCam;uniform float uCamMix;uniform vec2 uRes;uniform float uWarp;uniform float uCamAspect;')
+        .replace('#include <common>','#include <common>\nuniform sampler2D uCam;uniform float uCamMix;uniform vec2 uRes;uniform float uWarp;uniform float uCamAspect;uniform float uZoom;')
         .replace('#include <opaque_fragment>',
           '#include <opaque_fragment>\n'+
           'if(uCamMix>0.0){\n'+
           '  vec2 suv=gl_FragCoord.xy/uRes;\n'+
           '  float sa=uRes.x/uRes.y;\n'+
-          '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*0.55,0.5+(suv.y-0.5)*0.75);\n'+
+          '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*uZoom,0.5+(suv.y-0.5)*uZoom*1.15);\n'+
           '  cuv+=normal.xy*uWarp;\n'+
           '  vec3 camc=texture2D(uCam,clamp(cuv,0.0,1.0)).rgb;\n'+
-          '  float edge=smoothstep(0.0,0.08,cuv.x)*smoothstep(1.0,0.92,cuv.x)*smoothstep(0.0,0.08,cuv.y)*smoothstep(1.0,0.92,cuv.y);\n'+
+          '  float edge=smoothstep(-0.05,0.05,cuv.x)*smoothstep(1.05,0.95,cuv.x)*smoothstep(-0.05,0.05,cuv.y)*smoothstep(1.05,0.95,cuv.y);\n'+
           '  float fres=pow(1.0-max(normal.z,0.0),1.5);\n'+
           '  vec3 refl=gl_FragColor.rgb*0.45+camc*0.9;\n'+
           '  gl_FragColor.rgb=mix(gl_FragColor.rgb,refl,uCamMix*edge*(1.0-0.5*fres));\n'+
@@ -511,7 +512,6 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var tubeRough=document.createElement('canvas');tubeRough.width=TW;tubeRough.height=TH;
   var tubeBump=document.createElement('canvas');tubeBump.width=TW;tubeBump.height=TH;
   var tubeNormal=document.createElement('canvas');tubeNormal.width=TW;tubeNormal.height=TH;
-  var tubeAlbedo=document.createElement('canvas');tubeAlbedo.width=TW/4;tubeAlbedo.height=TH/4;
   var plateLines=['sealed in zürich by michel elsasser','…','open when found'];
   function plateText(g,fillLight,blur,scale){
     scale=scale||1;
@@ -524,8 +524,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     g.restore();
   }
   function drawTube(){
-    var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#d8d8d8',0);   /* the floor is matte */
-    var al=tubeAlbedo.getContext('2d');al.fillStyle='#ffffff';al.fillRect(0,0,TW/4,TH/4);plateText(al,'#3a3a3a',0.6,0.25); /* the floor in shadow */
+    var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#3a3a3a',0);   /* the cut floor: bare metal, smoother than the brushed skin */
     var h=tubeBump.getContext('2d');h.fillStyle='#000';h.fillRect(0,0,TW,TH);plateText(h,'#fff',roll.cut*PPX/652);
     var n=tubeNormal.getContext('2d');n.fillStyle='rgb(128,128,255)';n.fillRect(0,0,TW,TH);
     var WS=512,wc=document.createElement('canvas');wc.width=WS;wc.height=WS;var wg=wc.getContext('2d');
@@ -556,10 +555,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     n.putImageData(nd,bx0,by0);
   }
   drawTube();
-  var tubeRoughTex=new THREE.CanvasTexture(tubeRough),tubeNormalTex=new THREE.CanvasTexture(tubeNormal),tubeAlbedoTex=new THREE.CanvasTexture(tubeAlbedo);
-  tubeAlbedoTex.colorSpace=THREE.SRGBColorSpace;
-  [tubeRoughTex,tubeNormalTex,tubeAlbedoTex].forEach(function(t){t.wrapS=THREE.RepeatWrapping;t.offset.x=0.5;t.anisotropy=8;});
-  steel.roughnessMap=tubeRoughTex;steel.normalMap=tubeNormalTex;steel.map=tubeAlbedoTex;steel.normalScale=new THREE.Vector2(roll.depth,roll.depth);steel.needsUpdate=true;
+  var tubeRoughTex=new THREE.CanvasTexture(tubeRough),tubeNormalTex=new THREE.CanvasTexture(tubeNormal);
+  [tubeRoughTex,tubeNormalTex].forEach(function(t){t.wrapS=THREE.RepeatWrapping;t.offset.x=0.5;t.anisotropy=8;});
+  steel.roughnessMap=tubeRoughTex;steel.normalMap=tubeNormalTex;steel.normalScale=new THREE.Vector2(roll.depth,roll.depth);steel.needsUpdate=true;
 
   /* ── assembly ─────────────────────────────────────────────────── */
   var group=new THREE.Group();scene.add(group);
@@ -638,6 +636,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function startCamera(){
     if(!GL||cam.on||Q.get('cam')==='0'||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
     navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:320},height:{ideal:240}},audio:false}).then(function(stream){
+      try{var tr=stream.getVideoTracks()[0],cp=tr.getCapabilities?tr.getCapabilities():null;
+        if(cp&&cp.zoom&&cp.zoom.min<1)tr.applyConstraints({advanced:[{zoom:cp.zoom.min}]}).catch(function(){});}catch(err){}
       var v=document.createElement('video');v.srcObject=stream;v.muted=true;v.playsInline=true;
       v.play().catch(function(){});
       cam.video=v;cam.c=document.createElement('canvas');cam.c.width=320;cam.c.height=240;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
@@ -784,7 +784,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var years=PROJECTS.map(function(p){return +p.year;}).filter(Boolean);
     var y0=Math.min.apply(null,years),y1=Math.max.apply(null,years),n=PROJECTS.length;
     plateLines[1]=n+' film'+(n===1?'':'s')+', '+y0+'–'+y1;
-    drawTube();tubeRoughTex.needsUpdate=true;tubeNormalTex.needsUpdate=true;tubeAlbedoTex.needsUpdate=true;needPaint();
+    drawTube();tubeRoughTex.needsUpdate=true;tubeNormalTex.needsUpdate=true;needPaint();
   }
 
   /* ── open / seal ──────────────────────────────────────────────── */
