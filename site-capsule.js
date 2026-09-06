@@ -351,6 +351,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     rx:0,ry:0,     /* a preset turn (unused on the site) */
     warp:0.12,    /* how much the curvature bends the picture */
     lens:1.5,     /* 0.5x feel: the camera frame maps smaller on the metal */
+    envGain:0.9,  /* how bright the photographed studio is in the metal */
     cut:3.5,      /* engraving: wall width (px of blur at 652px/unit) */
     relief:20,    /* engraving: wall slope */
     depth:3.5     /* engraving: normal strength */
@@ -392,8 +393,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       var m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:c,side:THREE.DoubleSide}));
       m.position.set(x,y,z);m.rotation.set(rx,ry,0);room.add(m);return m;
     }
-    var walls=new THREE.Mesh(new THREE.BoxGeometry(30,20,30),new THREE.MeshBasicMaterial({color:new THREE.Color(0.22,0.22,0.23),side:THREE.BackSide}));
-    room.add(walls);
+    /* the walls: a real studio, photographed all round (an equirectangular panorama that ships
+       next to this file), sitting inside a sphere; the softboxes below add the crisp highlights */
+    var wallMat=new THREE.MeshBasicMaterial({color:new THREE.Color(roll.envGain,roll.envGain,roll.envGain),side:THREE.BackSide});
+    var walls=new THREE.Mesh(new THREE.SphereGeometry(14.5,64,32),wallMat);walls.scale.x=-1;room.add(walls);
+    try{var envLoader=new THREE.TextureLoader();envLoader.load(new URL('env-studio.jpg',import.meta.url).href,function(t){t.colorSpace=THREE.SRGBColorSpace;wallMat.map=t;wallMat.needsUpdate=true;renderEnv();needPaint();});}catch(err){}
     panel(30,30,0,-10,0,Math.PI/2,0,new THREE.Color(0.8,0.8,0.79));             /* floor: the paper */
     panel(10,6,0,9.9,1,Math.PI/2,0,new THREE.Color(1.5,1.5,1.45));              /* key softbox above */
     panel(12,4,0,3,-14,0,0,new THREE.Color(1.4,1.4,1.45));                      /* rim strip behind */
