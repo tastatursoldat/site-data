@@ -476,11 +476,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     envMapIntensity:1.0
   });
   steel.anisotropy=roll.aniso;steel.anisotropyRotation=Math.PI/2;
-  var plateSteel=new THREE.MeshPhysicalMaterial({ /* rings and caps: machined, a little more matte, turned marks */
-    color:new THREE.Color(roll.tone*0.7,roll.tone*0.7,roll.tone*0.71),metalness:1,roughness:roll.rough+0.12,envMapIntensity:0.75
-  });
-  plateSteel.anisotropy=0.6;plateSteel.anisotropyRotation=0;
-  var boltSteel=new THREE.MeshPhysicalMaterial({color:new THREE.Color(0.5,0.5,0.51),metalness:1,roughness:0.5,envMapIntensity:0.8});
+  /* every other part is the same metal as the tube: same tone, same roughness, same brushing
+     along the axis (the grain scaled to each part's length), same anisotropy */
+  function sameMetal(){
+    var mt=new THREE.MeshPhysicalMaterial({color:steel.color.clone(),metalness:1,roughness:roll.rough,envMapIntensity:1.0});
+    mt.anisotropy=roll.aniso;mt.anisotropyRotation=Math.PI/2;return mt;
+  }
+  var plateSteel=sameMetal(),capSteel=sameMetal(),boltSteel=sameMetal();
   var socketMat=new THREE.MeshStandardMaterial({color:0x111213,metalness:0.6,roughness:0.85});
   /* the visitor in the steel, the way the reel does it: the mirrored camera picture is laid
      over the metal in screen space — where you look, you see yourself — and bent by the
@@ -499,8 +501,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
           '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*uZoom,0.5+(suv.y-0.5)*uZoom*1.15);\n'+
           '  cuv+=normal.xy*uWarp;\n'+
           '  vec3 camc=vec3(0.0);\n'+
-          '  for(int i=-4;i<=4;i++)for(int j=-1;j<=1;j++){camc+=texture2D(uCam,clamp(cuv+vec2(float(i)*uTexel.x*2.5,float(j)*uTexel.y*2.0),0.0,1.0)).rgb;}\n'+ /* long along the brushing, short across it */
-          '  camc/=27.0;\n'+
+          '  for(int i=-5;i<=5;i++)for(int j=-2;j<=2;j++){camc+=texture2D(uCam,clamp(cuv+vec2(float(i)*uTexel.x*3.0,float(j)*uTexel.y*1.6),0.0,1.0)).rgb;}\n'+ /* long along the brushing, short across it */
+          '  camc/=55.0;\n'+
           '  float lum=dot(camc,vec3(0.299,0.587,0.114));camc=mix(vec3(lum),camc,0.3);camc=(camc-0.5)*1.3+0.5;camc*=0.92;\n'+
           '  float edge=smoothstep(-0.05,0.05,cuv.x)*smoothstep(1.05,0.95,cuv.x)*smoothstep(-0.05,0.05,cuv.y)*smoothstep(1.05,0.95,cuv.y);\n'+
           '  float fres=pow(1.0-max(normal.z,0.0),1.5);\n'+
@@ -510,7 +512,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     };
     mat.customProgramCacheKey=function(){return 'mirror';};
   }
-  mirrorSteel(steel);mirrorSteel(plateSteel);
+  mirrorSteel(steel);mirrorSteel(plateSteel);mirrorSteel(capSteel);mirrorSteel(boltSteel);
 
   /* ── the engraving lives in the tube's own surface: a normal map (the cut), a roughness map
      (brushing, matte floor) and an albedo map (the floor of a deep cut sits in shadow) ── */
@@ -562,6 +564,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     n.putImageData(nd,bx0,by0);
   }
   drawTube();
+  var brushOnly=document.createElement('canvas');brushOnly.width=1024;brushOnly.height=1024;brush(brushOnly.getContext('2d'),1024,1024,PPX/4,PPY/4,29);
+  function brushFor(len){var t=new THREE.CanvasTexture(brushOnly);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;t.repeat.set(1,Math.max(0.02,len/(TUBE1-TUBE0)));t.anisotropy=8;return t;}
+  plateSteel.roughnessMap=brushFor(TR);capSteel.roughnessMap=brushFor(CAPL);boltSteel.roughnessMap=brushFor(SL);
   var tubeRoughTex=new THREE.CanvasTexture(tubeRough),tubeNormalTex=new THREE.CanvasTexture(tubeNormal);
   [tubeRoughTex,tubeNormalTex].forEach(function(t){t.wrapS=THREE.RepeatWrapping;t.offset.x=0.5;t.anisotropy=8;});
   steel.roughnessMap=tubeRoughTex;steel.normalMap=tubeNormalTex;steel.normalScale=new THREE.Vector2(roll.depth,roll.depth);steel.needsUpdate=true;
@@ -573,8 +578,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var ringR=new THREE.Mesh(ringGeo(TR),plateSteel);ringR.rotation.z=-Math.PI/2;ringR.position.x=TUBE1;ringR.castShadow=true;group.add(ringR);
   /* the tube's end walls close the bores: with the cap off you look at steel, not into a hole */
   var endWallGeo=new THREE.CylinderGeometry(0.9,0.9,0.02,160);
-  var endWallL=new THREE.Mesh(endWallGeo,plateSteel);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.01;group.add(endWallL);
-  var endWallR=new THREE.Mesh(endWallGeo,plateSteel);endWallR.rotation.z=-Math.PI/2;endWallR.position.x=TUBE1+0.01;group.add(endWallR);
+  var endWallL=new THREE.Mesh(endWallGeo,capSteel);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.01;group.add(endWallL);
+  var endWallR=new THREE.Mesh(endWallGeo,capSteel);endWallR.rotation.z=-Math.PI/2;endWallR.position.x=TUBE1+0.01;group.add(endWallR);
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
   var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,24);
   var sockGeo=new THREE.CylinderGeometry(SR*0.55,SR*0.55,0.02,6);
@@ -594,10 +599,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   screwRing(group,XL+CAPL+GAP+TR/2);
   var lidScrews=screwRing(group,TUBE1+TR/2);
   /* end caps: the left one for good, the right one is the lid */
-  var capL=new THREE.Mesh(discGeo(CAPR,CAPL),plateSteel);capL.rotation.z=-Math.PI/2;capL.position.x=XL;capL.castShadow=true;group.add(capL);
+  var capL=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);capL.rotation.z=-Math.PI/2;capL.position.x=XL;capL.castShadow=true;group.add(capL);
   var lid=new THREE.Group();group.add(lid);
-  var capR=new THREE.Mesh(discGeo(CAPR,CAPL),plateSteel);capR.rotation.z=-Math.PI/2;capR.castShadow=true;lid.add(capR);
-  var plug=new THREE.Mesh(new THREE.CylinderGeometry(0.895,0.895,TR+GAP,96),plateSteel);plug.rotation.z=-Math.PI/2;plug.position.x=-(TR+GAP)/2;lid.add(plug); /* the part inside the ring */
+  var capR=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);capR.rotation.z=-Math.PI/2;capR.castShadow=true;lid.add(capR);
+  var plug=new THREE.Mesh(new THREE.CylinderGeometry(0.895,0.895,TR+GAP,96),capSteel);plug.rotation.z=-Math.PI/2;plug.position.x=-(TR+GAP)/2;lid.add(plug); /* the part inside the ring */
   /* the threaded holes the screws sat in, around the plug */
   var holeGeo=new THREE.CylinderGeometry(SR*0.8,SR*0.8,0.16,20);
   for(var hi=0;hi<NB;hi++){
@@ -670,7 +675,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var g=cam.g,w=cam.c.width,h=cam.c.height;
     g.save();g.translate(w,0);g.scale(-1,1);g.drawImage(cam.video,0,0,w,h);g.restore();
     var im=g.getImageData(0,0,w,h),d=im.data;
-    softBlur(d,w,h,3);softBlur(d,w,h,3);g.putImageData(im,0,0); /* two box passes ≈ a gaussian, no canvas filter needed */
+    softBlur(d,w,h,4);softBlur(d,w,h,4);softBlur(d,w,h,3);g.putImageData(im,0,0); /* two box passes ≈ a gaussian, no canvas filter needed */
     var diff=0,n=0;
     if(cam.prev){for(var i=0;i<d.length;i+=16){diff+=Math.abs(d[i]-cam.prev[i]);n++;}diff/=n;}else diff=999;
     cam.prev=d;
