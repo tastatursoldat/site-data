@@ -246,7 +246,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       '#me-col{display:block;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:64px 18px 60px;box-sizing:border-box;'+
         'opacity:0;pointer-events:none;transition:opacity 120ms ease;}'+
       '#me-app.open #me-col{opacity:1;pointer-events:auto;transition:opacity 200ms ease 140ms;}'+
-      '#me-col .shot{position:relative;overflow:hidden;margin:0 -18px;}'+
+      '#me-col .shot{position:relative;overflow:visible;margin:0 -18px;}'+
+      '#me-col .plate,#me-col #me-browse{position:relative;z-index:1;}'+ /* the words lie over the picture's overhang */
       '#me-col .shot img{position:absolute;left:0;display:block;}'+
       '#me-col .plate{font:700 15px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin-top:8px;}'+
       '#me-col .shot{cursor:pointer;}'+
@@ -970,11 +971,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     place();renderer.render(scene,camera);
     var url=renderer.domElement.toDataURL('image/png');
     var shot=document.createElement('div');shot.className='shot';
-    var b=lastBox,pad=14;
+    var b=lastBox,pad=14,topPad=Math.round(b.h*0.45),botPad=Math.round(b.h*0.75);
     colEl.style.paddingTop=Math.round(Math.max(64,b.top-pad))+'px'; /* the object does not move up: the column starts where it stood */
-    shot.style.height=Math.round(b.h+pad*2)+'px';
+    shot.style.height=Math.round(b.h+pad*2)+'px'; /* the slot keeps the tube's height so the date stays where it is… */
     var img=document.createElement('img');img.src=url;img.alt='';
     img.style.width=W+'px';img.style.height=H+'px';img.style.top=Math.round(-(b.top-pad))+'px';
+    /* …while the picture shows past the slot: rings, screws and the shadow are never cut off */
+    img.style.clipPath='inset('+Math.max(0,Math.round(b.top-topPad))+'px 0 '+Math.max(0,Math.round(H-(b.top+b.h+botPad)))+'px 0)';
     shot.appendChild(img);colEl.appendChild(shot);
     shot.setAttribute('role','button');shot.setAttribute('aria-label','time capsule — close');shot.addEventListener('click',function(){sealCapsule();}); /* a tap on the object seals it again */
     }
