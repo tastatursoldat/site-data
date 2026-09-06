@@ -449,7 +449,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     return new THREE.LatheGeometry(p,160);
   }
   function tubeGeo(){
-    var p=[new THREE.Vector2(0,0),new THREE.Vector2(R,0),new THREE.Vector2(R,TUBE1-TUBE0),new THREE.Vector2(0,TUBE1-TUBE0)];
+    var p=[new THREE.Vector2(R,0),new THREE.Vector2(R,TUBE1-TUBE0)]; /* an open tube: no end discs, the bore is a hole */
     var g=new THREE.LatheGeometry(p,192);
     var pos=g.attributes.position,uv=g.attributes.uv;
     for(var i=0;i<pos.count;i++)uv.setY(i,clamp(pos.getY(i)/(TUBE1-TUBE0),0,1));
@@ -530,22 +530,73 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     g.save();g.translate(TW/2*scale,(TH-0.42*PPY)*scale);
     g.rotate(-Math.PI/2);g.scale(PPY/PPX,1);
     if(blur)g.filter='blur('+blur+'px)';
-    g.font='700 '+fontPx+'px '+FONT;g.textBaseline='middle';g.textAlign='left';g.fillStyle=fillLight;
+    g.font='400 '+fontPx+'px '+FONT;g.textBaseline='middle';g.textAlign='left';g.fillStyle=fillLight;
     if(stroke){g.strokeStyle=stroke;g.lineWidth=lw;g.lineJoin='round';plateLines.forEach(function(t,i){g.strokeText(t,0,-lineH+i*lineH);});}
     plateLines.forEach(function(t,i){g.fillText(t,0,-lineH+i*lineH);});
     g.restore();
+  }
+  function wave(u,v){ /* polish waviness, shared by both engraved faces */
+    var A=roll.wave;
+    var nx=A*(Math.sin(6.283*(2.3*v+0.7*u))+0.6*Math.sin(6.283*(5.1*v-1.3*u+0.3))+0.35*Math.sin(6.283*(9.7*v+2.1*u+0.8))+0.5*Math.sin(6.283*(1.37*v-0.41*u+0.61)+2.1*Math.sin(6.283*0.9*v)));
+    var ny=A*(0.8*Math.sin(6.283*(1.7*u+3.2*v+1.1))+0.5*Math.sin(6.283*(4.3*u-2.2*v))+0.4*Math.sin(6.283*(0.8*u+1.9*v+0.2)+1.7*Math.sin(6.283*1.3*u)));
+    return [nx,ny];
+  }
+  function panelLines(){ /* the station list, low to high on the dial; the playing one marked */
+    var ids=(typeof SONG_IDS!=='undefined'&&SONG_IDS&&SONG_IDS.length)?SONG_IDS.slice():[];
+    if(!ids.length)return ['radio'];
+    ids.sort(function(a,b){return hzFor(a)-hzFor(b);});
+    var cur='';try{cur=currentVid();}catch(e){}
+    var on=(typeof radioPlaying!=='undefined')&&radioPlaying;
+    return ['radio'].concat(ids.map(function(id){return (on&&id===cur?'● ':'   ')+fmtMhz(mhzFor(ids,id))+'   '+(titleFor(id)||'');}));
+  }
+  function sobelBox(h,n,bx0,by0,bw,bh){ /* height field → normals inside one box, the waviness under it */
+  var hd=h.getImageData(bx0,by0,bw,bh).data,nd=n.createImageData(bw,bh),N=nd.data,S=roll.relief;
+  function H(x,y){x=clamp(x,0,bw-1);y=clamp(y,0,bh-1);return hd[(y*bw+x)*4]/255;}
+  for(var y=0;y<bh;y++)for(var x=0;x<bw;x++){
+    var dx=(H(x+1,y-1)+2*H(x+1,y)+H(x+1,y+1))-(H(x-1,y-1)+2*H(x-1,y)+H(x-1,y+1));
+    var dy=(H(x-1,y+1)+2*H(x,y+1)+H(x+1,y+1))-(H(x-1,y-1)+2*H(x,y-1)+H(x+1,y-1));
+    var wv=wave((bx0+x)/TW,1-(by0+y)/TH);
+    var nx=dx*S+wv[0],ny=-dy*S+wv[1],nz=1,len=Math.hypot(nx,ny,nz);
+    var i=(y*bw+x)*4;N[i]=Math.round((nx/len*0.5+0.5)*255);N[i+1]=Math.round((ny/len*0.5+0.5)*255);N[i+2]=Math.round((nz/len*0.5+0.5)*255);N[i+3]=255;
+  }
+  n.putImageData(nd,bx0,by0);
+  }
+  /* ── the radio panel: on the back of the tube, the station list is engraved the same way,
+     the playing station marked. redrawn whenever the radio changes station ── */
+  var panelBoxes=null,panelRoughKeep=null;
+  function panelText(g,dx,fill){
+    var lines=panelLines(),fontPx=Math.round(0.11*PPX),lineH=fontPx*1.6,n=lines.length;
+    /* seen from the back, the surface is turned around: the text runs from the lid end and is rotated 180° */
+    g.save();g.translate(dx,0.6*PPY);g.rotate(Math.PI/2);g.scale(PPY/PPX,1);
+    g.font='400 '+fontPx+'px '+FONT;g.textBaseline='middle';g.textAlign='left';g.fillStyle=fill;
+    lines.forEach(function(t,i){g.fillText(t,0,(i-(n-1)/2)*lineH);});
+    g.restore();
+  }
+  function drawPanel(first){
+    var r=tubeRough.getContext('2d'),h=tubeBump.getContext('2d'),n=tubeNormal.getContext('2d');
+    var lines=panelLines(),fontPx=Math.round(0.11*PPX),lineH=fontPx*1.6;
+    var half=Math.ceil(lines.length/2*lineH*(PPX/PPY)+lineH*0.6); /* across the tube, canvas px */
+    var by0=Math.max(0,Math.floor(0.6*PPY-8)),by1=Math.min(TH,Math.ceil(by0+3.4*PPY)),bh=by1-by0;
+    var boxes=[[0,by0,Math.min(TW,half),bh],[Math.max(0,TW-half),by0,Math.min(TW,half),bh]];
+    if(first){panelBoxes=boxes;panelRoughKeep=boxes.map(function(b){return r.getImageData(b[0],b[1],b[2],b[3]);});}
+    else{boxes=panelBoxes;boxes.forEach(function(b,i){r.putImageData(panelRoughKeep[i],b[0],b[1]);});}
+    boxes.forEach(function(b){h.fillStyle='#808080';h.fillRect(b[0],b[1],b[2],b[3]);});
+    [0,TW].forEach(function(dx){panelText(r,dx,'#7a7a7a');panelText(h,dx,'#ffffff');});
+    boxes.forEach(function(b){
+      var hb=h.getImageData(b[0],b[1],b[2],b[3]);softBlur(hb.data,b[2],b[3],Math.max(1,Math.round(roll.cut*PPX/652)));h.putImageData(hb,b[0],b[1]);
+      sobelBox(h,n,b[0],b[1],b[2],b[3]);
+    });
+  }
+  function redrawPanel(){
+    if(!panelBoxes)return;
+    drawPanel(false);tubeRoughTex.needsUpdate=true;tubeNormalTex.needsUpdate=true;needPaint();
   }
   function drawTube(){
     var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#7a7a7a',0);   /* the cut floor: the same metal, a touch smoother, nothing more */
     var h=tubeBump.getContext('2d');h.fillStyle='#808080';h.fillRect(0,0,TW,TH);plateText(h,'#ffffff',0,1); /* a clean cut: no rim, the letters keep their width */
     var n=tubeNormal.getContext('2d');n.fillStyle='rgb(128,128,255)';n.fillRect(0,0,TW,TH);
     var WS=512,wc=document.createElement('canvas');wc.width=WS;wc.height=WS;var wg=wc.getContext('2d');
-    var wd=wg.createImageData(WS,WS),W8=wd.data,A=roll.wave;
-    function wave(u,v){
-      var nx=A*(Math.sin(6.283*(2.3*v+0.7*u))+0.6*Math.sin(6.283*(5.1*v-1.3*u+0.3))+0.35*Math.sin(6.283*(9.7*v+2.1*u+0.8))+0.5*Math.sin(6.283*(1.37*v-0.41*u+0.61)+2.1*Math.sin(6.283*0.9*v)));
-      var ny=A*(0.8*Math.sin(6.283*(1.7*u+3.2*v+1.1))+0.5*Math.sin(6.283*(4.3*u-2.2*v))+0.4*Math.sin(6.283*(0.8*u+1.9*v+0.2)+1.7*Math.sin(6.283*1.3*u)));
-      return [nx,ny];
-    }
+    var wd=wg.createImageData(WS,WS),W8=wd.data;
     for(var wy=0;wy<WS;wy++)for(var wx=0;wx<WS;wx++){
       var t=wave(wx/WS,1-wy/WS),wl=Math.hypot(t[0],t[1],1),wi=(wy*WS+wx)*4;
       W8[wi]=Math.round((t[0]/wl*0.5+0.5)*255);W8[wi+1]=Math.round((t[1]/wl*0.5+0.5)*255);W8[wi+2]=Math.round((1/wl*0.5+0.5)*255);W8[wi+3]=255;
@@ -556,16 +607,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var by1=Math.ceil(TH-0.42*PPY+8),by0=Math.max(0,Math.floor(by1-4.2*PPY));
     var bw=bx1-bx0,bh=by1-by0;
     var hb=h.getImageData(bx0,by0,bw,bh);softBlur(hb.data,bw,bh,Math.max(1,Math.round(roll.cut*PPX/652)));h.putImageData(hb,bx0,by0); /* the wall of the cut, blurred by hand: the same in every browser */
-    var hd=h.getImageData(bx0,by0,bw,bh).data,nd=n.createImageData(bw,bh),N=nd.data,S=roll.relief;
-    function H(x,y){x=clamp(x,0,bw-1);y=clamp(y,0,bh-1);return hd[(y*bw+x)*4]/255;}
-    for(var y=0;y<bh;y++)for(var x=0;x<bw;x++){
-      var dx=(H(x+1,y-1)+2*H(x+1,y)+H(x+1,y+1))-(H(x-1,y-1)+2*H(x-1,y)+H(x-1,y+1));
-      var dy=(H(x-1,y+1)+2*H(x,y+1)+H(x+1,y+1))-(H(x-1,y-1)+2*H(x,y-1)+H(x+1,y-1));
-      var wv=wave((bx0+x)/TW,1-(by0+y)/TH);
-      var nx=dx*S+wv[0],ny=-dy*S+wv[1],nz=1,len=Math.hypot(nx,ny,nz);
-      var i=(y*bw+x)*4;N[i]=Math.round((nx/len*0.5+0.5)*255);N[i+1]=Math.round((ny/len*0.5+0.5)*255);N[i+2]=Math.round((nz/len*0.5+0.5)*255);N[i+3]=255;
-    }
-    n.putImageData(nd,bx0,by0);
+    sobelBox(h,n,bx0,by0,bw,bh);
+    drawPanel(true);
   }
   drawTube();
   var brushOnly=document.createElement('canvas');brushOnly.width=1024;brushOnly.height=1024;brush(brushOnly.getContext('2d'),1024,1024,PPX/4,PPY/4,29);
@@ -582,8 +625,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var ringR=new THREE.Mesh(ringGeo(TR),plateSteel);ringR.rotation.z=-Math.PI/2;ringR.position.x=TUBE1;ringR.castShadow=true;group.add(ringR);
   /* the tube's end walls close the bores: with the cap off you look at steel, not into a hole */
   var endWallGeo=discGeo(0.9,0.1); /* a lathe like every part: a cylinder's uv would leave it flat */
-  var endWallL=new THREE.Mesh(endWallGeo,capSteel);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;group.add(endWallL);
-  var endWallR=new THREE.Mesh(endWallGeo,capSteel);endWallR.rotation.z=-Math.PI/2;endWallR.position.x=TUBE1-0.08;group.add(endWallR);
+  /* the tube is a hole: a bore runs its whole length, darkening with depth, and the far end sits in the dark */
+  var holeEnd=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.1,roll.tone*0.1,roll.tone*0.1),metalness:1,roughness:0.7,envMapIntensity:0.3});
+  var endWallL=new THREE.Mesh(endWallGeo,holeEnd);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;group.add(endWallL);
+  var boreGeo=new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,TUBE1-TUBE0)],96);
+  (function(){var n=boreGeo.attributes.position.count,col=new Float32Array(n*3),half=n/2;
+    for(var i=0;i<n;i++){var v=i<half?0.06:1.0;col[i*3]=v;col[i*3+1]=v;col[i*3+2]=v;}
+    boreGeo.setAttribute('color',new THREE.BufferAttribute(col,3));})();
+  var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.9,roll.tone*0.9,roll.tone*0.9),metalness:1,roughness:0.55,envMapIntensity:0.5,side:THREE.BackSide,vertexColors:true});
+  var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;group.add(bore);
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
   var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,24);
   var sockGeo=new THREE.CylinderGeometry(SR*0.55,SR*0.55,0.02,6);
@@ -619,13 +669,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var stage=new THREE.Group();scene.add(stage);
   var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:roll.shadow}));
   floor.rotation.x=-Math.PI/2;floor.position.set(0,-RF-0.3,0);floor.receiveShadow=true;stage.add(floor);
+  var aoMesh;
   (function(){
     var c=document.createElement('canvas');c.width=512;c.height=128;var g=c.getContext('2d');
     var grd=g.createRadialGradient(256,64,0,256,64,64);grd.addColorStop(0,'rgba(0,0,0,0.55)');grd.addColorStop(0.5,'rgba(0,0,0,0.25)');grd.addColorStop(1,'rgba(0,0,0,0)');
     g.save();g.fillStyle=grd;g.translate(256,64);g.scale(4,1);g.translate(-256,-64);g.fillRect(0,0,512,128);g.restore();
     var t=new THREE.CanvasTexture(c);
-    var ao=new THREE.Mesh(new THREE.PlaneGeometry(LTOT*1.15,3.0),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false,opacity:0.9}));
-    ao.rotation.x=-Math.PI/2;ao.position.set(0,-RF-0.298,0.15);ao.renderOrder=-1;stage.add(ao);
+    aoMesh=new THREE.Mesh(new THREE.PlaneGeometry(LTOT*1.15,3.0),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false,opacity:0.9}));
+    aoMesh.rotation.x=-Math.PI/2;aoMesh.position.set(0,-RF-0.298,0.15);aoMesh.renderOrder=-1;stage.add(aoMesh);
   })();
   /* keyLight light travels with the object so its shadow always fits */
   var keyLight=new THREE.DirectionalLight(0xffffff,roll.key);
@@ -734,7 +785,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     applyRot();
     vC.set((LTOT/2)*s,0,0).applyQuaternion(group.quaternion);
     group.position.set(centre.x-vC.x,centre.y-vC.y,-vC.z);
-    stage.position.set(centre.x,centre.y,0);stage.scale.setScalar(s);
+    /* tilted, the object stands on its lower end: the floor drops away so nothing sinks through it,
+       and the contact shadow gathers under that end */
+    vC.set(1,0,0).applyQuaternion(group.quaternion);
+    var ay=Math.abs(vC.y),ac=Math.sqrt(Math.max(0,1-ay*ay));
+    var low=Math.max((LTOT/2-CAPL-GAP)*ay+RF*ac,(LTOT/2)*ay+CAPR*ac),drop=Math.max(0,low-RF);
+    var st=ay<0.25?(ay/0.25)*(ay/0.25)*(3-2*ay/0.25):1,sx=1-0.65*(ay<0.5?(ay/0.5)*(ay/0.5)*(3-2*ay/0.5):1);
+    aoMesh.position.x=-(vC.y<0?-1:1)*(LTOT/2-CAPL)*vC.x*st;aoMesh.scale.x=sx;
+    stage.position.set(centre.x,centre.y-drop*s,0);stage.scale.setScalar(s);
     lastBox={left:b.left,top:b.top,w:b.L,h:Hpx};lastPx=ppu*s; /* screen px per object unit */
     /* the unbolting: a mechanic's star order, each bolt seven turns out on its thread,
        rising with the pitch; once the last one is free the plate is pulled off and parked */
@@ -1019,6 +1077,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* full title always readable — marquee back and forth when wider than the label */
     if(t===lastTitle) return;
     lastTitle=t;
+    try{redrawPanel();}catch(e){} /* the back of the capsule follows the dial */
     musicIn.textContent=t;
     /* a playing title takes the radio word's place in the corner */
     app.classList.toggle('titled',!!t&&radioPlaying);
@@ -1173,7 +1232,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       /* radio.json IS the station list — the playlist only stands in when it
          is empty or unreachable. tuning is a single-video load either way */
       var rids=Object.keys(RADIO_META);if(rids.length)SONG_IDS=rids;
-      buildBand();})
+      buildBand();try{redrawPanel();}catch(e){}})
     .catch(function(){buildBand();});
   function hzFor(id){
     /* each track's number is its measured average audio frequency (spectral centroid, Hz) */
