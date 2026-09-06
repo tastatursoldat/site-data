@@ -537,7 +537,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   function drawTube(){
     var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#7a7a7a',0);   /* the cut floor: the same metal, a touch smoother, nothing more */
-    var h=tubeBump.getContext('2d');h.fillStyle='#808080';h.fillRect(0,0,TW,TH);var rimW=Math.max(2,Math.round(0.012*PPX));plateText(h,'#ffffff',0,1,'#666666',rimW*2); /* a stamp: the metal rises in a rim around the cut */
+    var h=tubeBump.getContext('2d');h.fillStyle='#808080';h.fillRect(0,0,TW,TH);plateText(h,'#ffffff',0,1); /* a clean cut: no rim, the letters keep their width */
     var n=tubeNormal.getContext('2d');n.fillStyle='rgb(128,128,255)';n.fillRect(0,0,TW,TH);
     var WS=512,wc=document.createElement('canvas');wc.width=WS;wc.height=WS;var wg=wc.getContext('2d');
     var wd=wg.createImageData(WS,WS),W8=wd.data,A=roll.wave;
