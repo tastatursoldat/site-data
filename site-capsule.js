@@ -485,12 +485,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the visitor in the steel, the way the reel does it: the mirrored camera picture is laid
      over the metal in screen space — where you look, you see yourself — and bent by the
      surface normal so it wraps and compresses around the tube like a curved mirror */
-  var mirrorU={uCam:{value:null},uCamMix:{value:0},uRes:{value:new THREE.Vector2(1,1)},uWarp:{value:roll.warp},uCamAspect:{value:1},uZoom:{value:roll.lens}};
+  var mirrorU={uCam:{value:null},uCamMix:{value:0},uRes:{value:new THREE.Vector2(1,1)},uWarp:{value:roll.warp},uCamAspect:{value:1},uZoom:{value:roll.lens},uTexel:{value:new THREE.Vector2(1/128,1/96)}};
   function mirrorSteel(mat){
     mat.onBeforeCompile=function(sh){
       Object.assign(sh.uniforms,mirrorU);
       sh.fragmentShader=sh.fragmentShader
-        .replace('#include <common>','#include <common>\nuniform sampler2D uCam;uniform float uCamMix;uniform vec2 uRes;uniform float uWarp;uniform float uCamAspect;uniform float uZoom;')
+        .replace('#include <common>','#include <common>\nuniform sampler2D uCam;uniform float uCamMix;uniform vec2 uRes;uniform float uWarp;uniform float uCamAspect;uniform float uZoom;uniform vec2 uTexel;')
         .replace('#include <opaque_fragment>',
           '#include <opaque_fragment>\n'+
           'if(uCamMix>0.0){\n'+
@@ -498,7 +498,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
           '  float sa=uRes.x/uRes.y;\n'+
           '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*uZoom,0.5+(suv.y-0.5)*uZoom*1.15);\n'+
           '  cuv+=normal.xy*uWarp;\n'+
-          '  vec3 camc=texture2D(uCam,clamp(cuv,0.0,1.0)).rgb;\n'+
+          '  vec3 camc=vec3(0.0);\n'+
+          '  for(int i=-4;i<=4;i++)for(int j=-1;j<=1;j++){camc+=texture2D(uCam,clamp(cuv+vec2(float(i)*uTexel.x*2.5,float(j)*uTexel.y*2.0),0.0,1.0)).rgb;}\n'+ /* long along the brushing, short across it */
+          '  camc/=27.0;\n'+
+          '  float lum=dot(camc,vec3(0.299,0.587,0.114));camc=mix(vec3(lum),camc,0.3);camc=(camc-0.5)*1.3+0.5;camc*=0.92;\n'+
           '  float edge=smoothstep(-0.05,0.05,cuv.x)*smoothstep(1.05,0.95,cuv.x)*smoothstep(-0.05,0.05,cuv.y)*smoothstep(1.05,0.95,cuv.y);\n'+
           '  float fres=pow(1.0-max(normal.z,0.0),1.5);\n'+
           '  vec3 refl=gl_FragColor.rgb*0.45+camc*0.9;\n'+
@@ -644,13 +647,18 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
         if(cp&&cp.zoom&&cp.zoom.min<1)tr.applyConstraints({advanced:[{zoom:cp.zoom.min}]}).catch(function(){});}catch(err){}
       var v=document.createElement('video');v.srcObject=stream;v.muted=true;v.playsInline=true;
       v.play().catch(function(){});
-      cam.video=v;cam.c=document.createElement('canvas');cam.c.width=96;cam.c.height=72;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
-      cam.tex=new THREE.CanvasTexture(cam.c);cam.tex.colorSpace=THREE.SRGBColorSpace;
+      cam.video=v;cam.c=document.createElement('canvas');cam.c.width=128;cam.c.height=96;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
+      cam.tex=new THREE.CanvasTexture(cam.c);cam.tex.colorSpace=THREE.SRGBColorSpace;cam.tex.minFilter=THREE.LinearFilter;cam.tex.magFilter=THREE.LinearFilter;cam.tex.generateMipmaps=false;
       camPlane.material.map=cam.tex;camPlane.material.needsUpdate=true;camPlane.visible=true;
       mirrorU.uCam.value=cam.tex;mirrorU.uCamAspect.value=cam.c.width/cam.c.height;mirrorU.uCamMix.value=roll.mirror;
       cam.on=true;requestAnimationFrame(camLoop);
       document.addEventListener('visibilitychange',function(){if(document.hidden)stream.getTracks().forEach(function(t){t.enabled=false;});else stream.getTracks().forEach(function(t){t.enabled=true;});});
     }).catch(function(){ /* no camera, or not allowed: the room stays as it is */ });
+  }
+  function softBlur(d,w,h,r){ /* separable box blur on rgba bytes, radius r */
+    var tmp=new Uint8ClampedArray(d.length),k=2*r+1;
+    for(var y=0;y<h;y++)for(var x=0;x<w;x++){var i=(y*w+x)*4,R=0,G=0,B=0;for(var o=-r;o<=r;o++){var xx=Math.min(w-1,Math.max(0,x+o)),j=(y*w+xx)*4;R+=d[j];G+=d[j+1];B+=d[j+2];}tmp[i]=R/k;tmp[i+1]=G/k;tmp[i+2]=B/k;tmp[i+3]=255;}
+    for(var y2=0;y2<h;y2++)for(var x2=0;x2<w;x2++){var i2=(y2*w+x2)*4,R2=0,G2=0,B2=0;for(var o2=-r;o2<=r;o2++){var yy=Math.min(h-1,Math.max(0,y2+o2)),j2=(yy*w+x2)*4;R2+=tmp[j2];G2+=tmp[j2+1];B2+=tmp[j2+2];}d[i2]=R2/k;d[i2+1]=G2/k;d[i2+2]=B2/k;d[i2+3]=255;}
   }
   function camLoop(now){
     if(!cam.on)return;
@@ -660,8 +668,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(now-cam.last<83||cam.video.readyState<2)return;
     cam.last=now;
     var g=cam.g,w=cam.c.width,h=cam.c.height;
-    g.save();g.filter='contrast(135%) brightness(92%) saturate(30%) blur(2.5px)';g.translate(w,0);g.scale(-1,1);g.drawImage(cam.video,0,0,w,h);g.restore();
-    var d=g.getImageData(0,0,w,h).data,diff=0,n=0;
+    g.save();g.translate(w,0);g.scale(-1,1);g.drawImage(cam.video,0,0,w,h);g.restore();
+    var im=g.getImageData(0,0,w,h),d=im.data;
+    softBlur(d,w,h,3);softBlur(d,w,h,3);g.putImageData(im,0,0); /* two box passes ≈ a gaussian, no canvas filter needed */
+    var diff=0,n=0;
     if(cam.prev){for(var i=0;i<d.length;i+=16){diff+=Math.abs(d[i]-cam.prev[i]);n++;}diff/=n;}else diff=999;
     cam.prev=d;
     cam.tex.needsUpdate=true;
