@@ -248,7 +248,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       '#me-app.open #me-col{opacity:1;pointer-events:auto;transition:opacity 200ms ease 140ms;}'+
       '#me-col .shot{position:relative;overflow:hidden;margin:0 -18px;}'+
       '#me-col .shot img{position:absolute;left:0;display:block;}'+
-      '#me-col .plate{font:700 15px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin-top:8px;}'+
+      '#me-col .plate{font:700 15px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin-top:8px;display:flex;justify-content:space-between;align-items:baseline;gap:1em;}'+
+      '#me-col .plate button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-appearance:none;appearance:none;}'+
+      '#me-col .shot{cursor:pointer;}'+
       '#me-app.browse #me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
       '#me-app.open #me-browse{position:static;display:block;height:auto;overflow:visible;}'+
@@ -806,8 +808,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function placeStamp(){
     if(!lastBox||!GL)return;
     var x=Math.round(lastBox.left),y=Math.round(lastBox.top+lastBox.h+24);
-    /* opened, the date sits under the index and then stays put — turning the object never moves it (a resize resets it) */
-    if(app.classList.contains('browse')&&listEl.offsetParent&&!stampFixed){var lr=listEl.getBoundingClientRect();stampFixed={x:Math.round(lr.left),y:Math.round(lr.bottom+24)};}
+    /* the date takes its place under the object the moment the opening starts and then stays put —
+       opening, turning or the index never move it (a resize resets it) */
+    if((cap.state==='opening'||app.classList.contains('open')||stampEl.classList.contains('kept'))&&!stampFixed)stampFixed={x:x,y:y};
     if(stampFixed){x=stampFixed.x;y=stampFixed.y;}
     if(!(stampEl.classList.contains('kept')||app.classList.contains('open')||cap.state==='opening'))stampFixed=null;
     stampEl.style.transform='translate('+x+'px,'+y+'px)';
@@ -890,13 +893,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     }
     if(isMobile()){
       tween('loosen',0,120);
-      tween('slide',1,1700);
+      tween('slide',1,780); /* quick on the phone: the titles must not wait */
       later(function(){
         buildColumn();
         app.classList.add('open');stampEl.classList.add('kept');
         dealRows();
         cap.state='open';
-      },1700);
+      },800);
       return;
     }
     var k=openedOnce?0.45:1;
@@ -969,12 +972,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var url=renderer.domElement.toDataURL('image/png');
     var shot=document.createElement('div');shot.className='shot';
     var b=lastBox,pad=14;
+    colEl.style.paddingTop=Math.round(Math.max(64,b.top-pad))+'px'; /* the object does not move up: the column starts where it stood */
     shot.style.height=Math.round(b.h+pad*2)+'px';
     var img=document.createElement('img');img.src=url;img.alt='';
     img.style.width=W+'px';img.style.height=H+'px';img.style.top=Math.round(-(b.top-pad))+'px';
     shot.appendChild(img);colEl.appendChild(shot);
+    shot.setAttribute('role','button');shot.setAttribute('aria-label','time capsule — close');shot.addEventListener('click',function(){sealCapsule();}); /* a tap on the object seals it again */
     }
-    var p=document.createElement('div');p.className='plate';p.textContent=stampEl.textContent;
+    var p=document.createElement('div');p.className='plate';
+    var d=document.createElement('span');d.textContent=stampEl.textContent;p.appendChild(d);
+    var cl=document.createElement('button');cl.className='txt';cl.textContent='close';cl.setAttribute('aria-label','close the time capsule');cl.addEventListener('click',function(){sealCapsule();});p.appendChild(cl);
     colEl.appendChild(p);
     colEl.appendChild(browseEl);
   }
