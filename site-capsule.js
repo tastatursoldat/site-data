@@ -353,8 +353,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     warp:0.12,    /* how much the curvature bends the picture */
     lens:0.75,     /* 0.5x feel: the camera frame maps smaller on the metal */
     envGain:0.9,  /* how bright the photographed studio is in the metal */
-    cut:1.5,      /* engraving: wall width (px of blur at 652px/unit) */
-    relief:44,    /* engraving: wall slope */
+    cut:3,      /* engraving: wall width (px of blur at 652px/unit) */
+    relief:64,    /* engraving: wall slope */
     depth:3.5     /* engraving: normal strength */
   };
   var sealColor=bwDeal?'#141416':theme.key;
@@ -537,7 +537,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   function drawTube(){
     var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#7a7a7a',0);   /* the cut floor: the same metal, a touch smoother, nothing more */
-    var h=tubeBump.getContext('2d');h.fillStyle='#808080';h.fillRect(0,0,TW,TH);var rimW=Math.max(2,Math.round(0.012*PPX));plateText(h,'#ffffff',0,1,'#5c5c5c',rimW*2); /* a stamp: the metal rises in a rim around the cut */
+    var h=tubeBump.getContext('2d');h.fillStyle='#808080';h.fillRect(0,0,TW,TH);var rimW=Math.max(2,Math.round(0.012*PPX));plateText(h,'#ffffff',0,1,'#666666',rimW*2); /* a stamp: the metal rises in a rim around the cut */
     var n=tubeNormal.getContext('2d');n.fillStyle='rgb(128,128,255)';n.fillRect(0,0,TW,TH);
     var WS=512,wc=document.createElement('canvas');wc.width=WS;wc.height=WS;var wg=wc.getContext('2d');
     var wd=wg.createImageData(WS,WS),W8=wd.data,A=roll.wave;
