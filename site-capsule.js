@@ -337,7 +337,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function canHover(){return matchMedia('(hover:hover) and (pointer:fine)').matches&&!isMobile();}
   var roll={
     exposure:0.8,
-    rough:0.5,    /* brushed aluminium: the room is a soft blur on it */
+    rough:0.45,    /* brushed aluminium: the room is a soft blur on it */
     aniso:0.7,
     tone:0.82,
     key:1.6,
@@ -602,7 +602,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var capL=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);capL.rotation.z=-Math.PI/2;capL.position.x=XL;capL.castShadow=true;group.add(capL);
   var lid=new THREE.Group();group.add(lid);
   var capR=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);capR.rotation.z=-Math.PI/2;capR.castShadow=true;lid.add(capR);
-  var plug=new THREE.Mesh(new THREE.CylinderGeometry(0.895,0.895,TR+GAP,96),capSteel);plug.rotation.z=-Math.PI/2;plug.position.x=-(TR+GAP)/2;lid.add(plug); /* the part inside the ring */
+  var plug=new THREE.Mesh(discGeo(0.895,TR+GAP),capSteel);plug.rotation.z=-Math.PI/2;plug.position.x=-(TR+GAP);lid.add(plug); /* the part inside the ring */
   /* the threaded holes the screws sat in, around the plug */
   var holeGeo=new THREE.CylinderGeometry(SR*0.8,SR*0.8,0.16,20);
   for(var hi=0;hi<NB;hi++){
