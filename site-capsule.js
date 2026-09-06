@@ -248,8 +248,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       '#me-app.open #me-col{opacity:1;pointer-events:auto;transition:opacity 200ms ease 140ms;}'+
       '#me-col .shot{position:relative;overflow:hidden;margin:0 -18px;}'+
       '#me-col .shot img{position:absolute;left:0;display:block;}'+
-      '#me-col .plate{font:700 15px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin-top:8px;display:flex;justify-content:space-between;align-items:baseline;gap:1em;}'+
-      '#me-col .plate button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-appearance:none;appearance:none;}'+
+      '#me-col .plate{font:700 15px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin-top:8px;}'+
       '#me-col .shot{cursor:pointer;}'+
       '#me-app.browse #me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
@@ -979,9 +978,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     shot.appendChild(img);colEl.appendChild(shot);
     shot.setAttribute('role','button');shot.setAttribute('aria-label','time capsule — close');shot.addEventListener('click',function(){sealCapsule();}); /* a tap on the object seals it again */
     }
-    var p=document.createElement('div');p.className='plate';
-    var d=document.createElement('span');d.textContent=stampEl.textContent;p.appendChild(d);
-    var cl=document.createElement('button');cl.className='txt';cl.textContent='close';cl.setAttribute('aria-label','close the time capsule');cl.addEventListener('click',function(){sealCapsule();});p.appendChild(cl);
+    var p=document.createElement('div');p.className='plate';p.textContent=stampEl.textContent;
     colEl.appendChild(p);
     colEl.appendChild(browseEl);
   }
