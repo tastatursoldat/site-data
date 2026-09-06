@@ -889,7 +889,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the finder's line: written once per visit, then kept */
     if(!stampEl.textContent)stampEl.textContent=stampText(new Date());
     if(!GL||instant){ /* nothing to unbolt: the index simply stands */
-      cap.slide=1;cap.move=1;cap.loosen=0;
+      cap.slide=1;cap.move=0;cap.loosen=0;
       if(isMobile())buildColumn();
       app.classList.add('open');stampEl.classList.add('kept');dealRows();cap.state='open';
       paint();
@@ -910,7 +910,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var k=openedOnce?0.45:1;
     tween('loosen',0,120);
     tween('slide',1,1700*k);                                  /* eight bolts out, then the plate off */
-    later(function(){tween('move',1,420*k);},1500*k);        /* the open object travels */
+    /* the open object stays where it is: the index lays over it */
     later(function(){app.classList.add('open');stampEl.classList.add('kept');},1640*k);
     later(function(){
       dealRows();
