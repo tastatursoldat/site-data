@@ -169,7 +169,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
         'left:clamp(20px,4vw,64px);width:auto;transform:translateY(-50%);}'+
       /* open: the list starts under the stamp, the panel aligns to the list head */
       '#me-app.open #me-list{top:50%;transform:translateY(-50%);}'+ /* the index in the middle of the page, over the object */
-      '#me-app.open #me-prev{top:var(--me-list-top,50%);transform:none;}'+
+      '#me-app.open #me-prev{top:50%;transform:translateY(-50%);}'+ /* the film sits in the middle of the page */
       '.me-row{display:contents;}'+
       /* content-sized columns never need an ellipsis — and a swapped glyph
          must never produce one */
@@ -671,19 +671,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var stage=new THREE.Group();scene.add(stage);
   var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:roll.shadow}));
   floor.rotation.x=-Math.PI/2;floor.position.set(0,-RF-0.3,0);floor.receiveShadow=true;stage.add(floor);
-  var aoMesh;
-  (function(){
-    var c=document.createElement('canvas');c.width=512;c.height=128;var g=c.getContext('2d');
-    var grd=g.createRadialGradient(256,64,0,256,64,64);grd.addColorStop(0,'rgba(0,0,0,0.55)');grd.addColorStop(0.5,'rgba(0,0,0,0.25)');grd.addColorStop(1,'rgba(0,0,0,0)');
-    g.save();g.fillStyle=grd;g.translate(256,64);g.scale(4,1);g.translate(-256,-64);g.fillRect(0,0,512,128);g.restore();
-    var t=new THREE.CanvasTexture(c);
-    aoMesh=new THREE.Mesh(new THREE.PlaneGeometry(LTOT*1.15,3.0),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false,opacity:0.9}));
-    aoMesh.rotation.x=-Math.PI/2;aoMesh.position.set(0,-RF-0.298,0.15);aoMesh.renderOrder=-1;stage.add(aoMesh);
-  })();
+  /* one shadow only: the key light's. no painted contact blob under the object */
   /* keyLight light travels with the object so its shadow always fits */
   var keyLight=new THREE.DirectionalLight(0xffffff,roll.key);
   keyLight.position.set(-3,9,6);keyLight.castShadow=true;
-  keyLight.shadow.mapSize.set(2048,2048);keyLight.shadow.radius=4;keyLight.shadow.bias=-0.00015;keyLight.shadow.normalBias=0.02;
+  keyLight.shadow.mapSize.set(1536,1536);keyLight.shadow.radius=4;keyLight.shadow.bias=-0.00015;keyLight.shadow.normalBias=0.02;
   keyLight.shadow.camera.left=-7;keyLight.shadow.camera.right=7;keyLight.shadow.camera.top=6;keyLight.shadow.camera.bottom=-6;keyLight.shadow.camera.near=1;keyLight.shadow.camera.far=40;
   var keyTarget=new THREE.Object3D();keyTarget.position.set(0,0,0);stage.add(keyTarget);keyLight.target=keyTarget;stage.add(keyLight);
   var fillLight=new THREE.DirectionalLight(0xffffff,0.35);fillLight.position.set(-6,2,8);stage.add(fillLight);
@@ -788,12 +780,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     vC.set((LTOT/2)*s,0,0).applyQuaternion(group.quaternion);
     group.position.set(centre.x-vC.x,centre.y-vC.y,-vC.z);
     /* tilted, the object stands on its lower end: the floor drops away so nothing sinks through it,
-       and the contact shadow gathers under that end */
+       */
     vC.set(1,0,0).applyQuaternion(group.quaternion);
     var ay=Math.abs(vC.y),ac=Math.sqrt(Math.max(0,1-ay*ay));
     var low=Math.max((LTOT/2-CAPL-GAP)*ay+RF*ac,(LTOT/2)*ay+CAPR*ac),drop=Math.max(0,low-RF);
-    var st=ay<0.25?(ay/0.25)*(ay/0.25)*(3-2*ay/0.25):1,sx=1-0.65*(ay<0.5?(ay/0.5)*(ay/0.5)*(3-2*ay/0.5):1);
-    aoMesh.position.x=-(vC.y<0?-1:1)*(LTOT/2-CAPL)*vC.x*st;aoMesh.scale.x=sx;
     stage.position.set(centre.x,centre.y-drop*s,0);stage.scale.setScalar(s);
     lastBox={left:b.left,top:b.top,w:b.L,h:Hpx};lastPx=ppu*s; /* screen px per object unit */
     /* the unbolting: a mechanic's star order, each bolt seven turns out on its thread,
@@ -812,13 +802,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     lid.position.x=LID_HOME+cap.loosen*4/lastPx+pe*park;
     placeStamp();
   }
+  var stampFixed=null;
   function placeStamp(){
     if(!lastBox||!GL)return;
     var x=Math.round(lastBox.left),y=Math.round(lastBox.top+lastBox.h+24);
-    if(app.classList.contains('browse')&&listEl.offsetParent){var lr=listEl.getBoundingClientRect();x=Math.round(lr.left);y=Math.round(lr.bottom+24);} /* opened: the date sits under the index */
+    /* opened, the date sits under the index and then stays put — turning the object never moves it (a resize resets it) */
+    if(app.classList.contains('browse')&&listEl.offsetParent&&!stampFixed){var lr=listEl.getBoundingClientRect();stampFixed={x:Math.round(lr.left),y:Math.round(lr.bottom+24)};}
+    if(stampFixed){x=stampFixed.x;y=stampFixed.y;}
+    if(!(stampEl.classList.contains('kept')||app.classList.contains('open')||cap.state==='opening'))stampFixed=null;
     stampEl.style.transform='translate('+x+'px,'+y+'px)';
-    /* the fading rows of a seal stay put — they do not ride down with the returning object */
-    if(cap.state!=='sealing')app.style.setProperty('--me-list-top',Math.round(listEl.getBoundingClientRect().top-app.getBoundingClientRect().top)+'px');
   }
   function hitCapsule(x,y){
     if(!lastBox||!GL)return false;
@@ -1051,7 +1043,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     paint();
     if(app.classList.contains('browse'))sizePreview();
   }
-  addEventListener('resize',sizeField);
+  addEventListener('resize',function(){stampFixed=null;sizeField();});
   /* preview iframes settle late — re-measure once after load */
   setTimeout(function(){if(innerWidth!==W||innerHeight!==H)sizeField();},400);
 
@@ -1647,8 +1639,6 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var h=w*r,maxH=innerHeight*0.72;
     /* under the open capsule the panel starts at the list head and must
        end above the bottom edge — the same cap the list works under */
-    var listTop=parseFloat(getComputedStyle(app).getPropertyValue('--me-list-top'))||0;
-    if(app.classList.contains('open')&&listTop)maxH=Math.max(120,innerHeight-listTop-48);
     if(h>maxH){h=maxH;w=h/r;}
     prevEl.style.width=w+'px';prevEl.style.height=h+'px';
   }
