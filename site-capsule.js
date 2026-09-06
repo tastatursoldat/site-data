@@ -524,7 +524,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     g.restore();
   }
   function drawTube(){
-    var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#3a3a3a',0);   /* the cut floor: bare metal, smoother than the brushed skin */
+    var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#7a7a7a',0);   /* the cut floor: the same metal, a touch smoother, nothing more */
     var h=tubeBump.getContext('2d');h.fillStyle='#000';h.fillRect(0,0,TW,TH);plateText(h,'#fff',roll.cut*PPX/652);
     var n=tubeNormal.getContext('2d');n.fillStyle='rgb(128,128,255)';n.fillRect(0,0,TW,TH);
     var WS=512,wc=document.createElement('canvas');wc.width=WS;wc.height=WS;var wg=wc.getContext('2d');
@@ -640,7 +640,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
         if(cp&&cp.zoom&&cp.zoom.min<1)tr.applyConstraints({advanced:[{zoom:cp.zoom.min}]}).catch(function(){});}catch(err){}
       var v=document.createElement('video');v.srcObject=stream;v.muted=true;v.playsInline=true;
       v.play().catch(function(){});
-      cam.video=v;cam.c=document.createElement('canvas');cam.c.width=320;cam.c.height=240;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
+      cam.video=v;cam.c=document.createElement('canvas');cam.c.width=96;cam.c.height=72;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
       cam.tex=new THREE.CanvasTexture(cam.c);cam.tex.colorSpace=THREE.SRGBColorSpace;
       camPlane.material.map=cam.tex;camPlane.material.needsUpdate=true;camPlane.visible=true;
       mirrorU.uCam.value=cam.tex;mirrorU.uCamAspect.value=cam.c.width/cam.c.height;mirrorU.uCamMix.value=roll.mirror;
@@ -656,7 +656,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(now-cam.last<83||cam.video.readyState<2)return;
     cam.last=now;
     var g=cam.g,w=cam.c.width,h=cam.c.height;
-    g.save();g.filter='contrast(140%) brightness(90%) saturate(55%) blur(4px)';g.translate(w,0);g.scale(-1,1);g.drawImage(cam.video,0,0,w,h);g.restore();
+    g.save();g.filter='contrast(135%) brightness(92%) saturate(30%) blur(2.5px)';g.translate(w,0);g.scale(-1,1);g.drawImage(cam.video,0,0,w,h);g.restore();
     var d=g.getImageData(0,0,w,h).data,diff=0,n=0;
     if(cam.prev){for(var i=0;i<d.length;i+=16){diff+=Math.abs(d[i]-cam.prev[i]);n++;}diff/=n;}else diff=999;
     cam.prev=d;
