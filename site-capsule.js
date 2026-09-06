@@ -541,14 +541,6 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var ny=A*(0.8*Math.sin(6.283*(1.7*u+3.2*v+1.1))+0.5*Math.sin(6.283*(4.3*u-2.2*v))+0.4*Math.sin(6.283*(0.8*u+1.9*v+0.2)+1.7*Math.sin(6.283*1.3*u)));
     return [nx,ny];
   }
-  function panelLines(){ /* the station list, low to high on the dial; the playing one marked */
-    var ids=(typeof SONG_IDS!=='undefined'&&SONG_IDS&&SONG_IDS.length)?SONG_IDS.slice():[];
-    if(!ids.length)return ['radio'];
-    ids.sort(function(a,b){return hzFor(a)-hzFor(b);});
-    var cur='';try{cur=currentVid();}catch(e){}
-    var on=(typeof radioPlaying!=='undefined')&&radioPlaying;
-    return ['radio'].concat(ids.map(function(id){return (on&&id===cur?'● ':'   ')+fmtMhz(mhzFor(ids,id))+'   '+(titleFor(id)||'');}));
-  }
   function sobelBox(h,n,bx0,by0,bw,bh){ /* height field → normals inside one box, the waviness under it */
   var hd=h.getImageData(bx0,by0,bw,bh).data,nd=n.createImageData(bw,bh),N=nd.data,S=roll.relief;
   function H(x,y){x=clamp(x,0,bw-1);y=clamp(y,0,bh-1);return hd[(y*bw+x)*4]/255;}
@@ -560,36 +552,6 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var i=(y*bw+x)*4;N[i]=Math.round((nx/len*0.5+0.5)*255);N[i+1]=Math.round((ny/len*0.5+0.5)*255);N[i+2]=Math.round((nz/len*0.5+0.5)*255);N[i+3]=255;
   }
   n.putImageData(nd,bx0,by0);
-  }
-  /* ── the radio panel: on the back of the tube, the station list is engraved the same way,
-     the playing station marked. redrawn whenever the radio changes station ── */
-  var panelBoxes=null,panelRoughKeep=null;
-  function panelText(g,dx,fill){
-    var lines=panelLines(),fontPx=Math.round(0.11*PPX),lineH=fontPx*1.6,n=lines.length;
-    /* seen from the back, the surface is turned around: the text runs from the lid end and is rotated 180° */
-    g.save();g.translate(dx,0.6*PPY);g.rotate(Math.PI/2);g.scale(PPY/PPX,1);
-    g.font='400 '+fontPx+'px '+FONT;g.textBaseline='middle';g.textAlign='left';g.fillStyle=fill;
-    lines.forEach(function(t,i){g.fillText(t,0,(i-(n-1)/2)*lineH);});
-    g.restore();
-  }
-  function drawPanel(first){
-    var r=tubeRough.getContext('2d'),h=tubeBump.getContext('2d'),n=tubeNormal.getContext('2d');
-    var lines=panelLines(),fontPx=Math.round(0.11*PPX),lineH=fontPx*1.6;
-    var half=Math.ceil(lines.length/2*lineH*(PPX/PPY)+lineH*0.6); /* across the tube, canvas px */
-    var by0=Math.max(0,Math.floor(0.6*PPY-8)),by1=Math.min(TH,Math.ceil(by0+3.4*PPY)),bh=by1-by0;
-    var boxes=[[0,by0,Math.min(TW,half),bh],[Math.max(0,TW-half),by0,Math.min(TW,half),bh]];
-    if(first){panelBoxes=boxes;panelRoughKeep=boxes.map(function(b){return r.getImageData(b[0],b[1],b[2],b[3]);});}
-    else{boxes=panelBoxes;boxes.forEach(function(b,i){r.putImageData(panelRoughKeep[i],b[0],b[1]);});}
-    boxes.forEach(function(b){h.fillStyle='#808080';h.fillRect(b[0],b[1],b[2],b[3]);});
-    [0,TW].forEach(function(dx){panelText(r,dx,'#7a7a7a');panelText(h,dx,'#ffffff');});
-    boxes.forEach(function(b){
-      var hb=h.getImageData(b[0],b[1],b[2],b[3]);softBlur(hb.data,b[2],b[3],Math.max(1,Math.round(roll.cut*PPX/652)));h.putImageData(hb,b[0],b[1]);
-      sobelBox(h,n,b[0],b[1],b[2],b[3]);
-    });
-  }
-  function redrawPanel(){
-    if(!panelBoxes)return;
-    drawPanel(false);tubeRoughTex.needsUpdate=true;tubeNormalTex.needsUpdate=true;needPaint();
   }
   function drawTube(){
     var r=tubeRough.getContext('2d');brush(r,TW,TH,PPX,PPY,17);plateText(r,'#7a7a7a',0);   /* the cut floor: the same metal, a touch smoother, nothing more */
@@ -608,7 +570,6 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var bw=bx1-bx0,bh=by1-by0;
     var hb=h.getImageData(bx0,by0,bw,bh);softBlur(hb.data,bw,bh,Math.max(1,Math.round(roll.cut*PPX/652)));h.putImageData(hb,bx0,by0); /* the wall of the cut, blurred by hand: the same in every browser */
     sobelBox(h,n,bx0,by0,bw,bh);
-    drawPanel(true);
   }
   drawTube();
   var brushOnly=document.createElement('canvas');brushOnly.width=1024;brushOnly.height=1024;brush(brushOnly.getContext('2d'),1024,1024,PPX/4,PPY/4,29);
@@ -664,6 +625,43 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var hole=new THREE.Mesh(holeGeo,socketMat);hole.position.y=0.895-0.06;hg.add(hole);lid.add(hg);
   }
   lid.position.x=LID_HOME;
+  /* ── the radio screen: a small set-in display on the back of the tube, a Pip-Boy of sorts — dark
+     glass in a metal bezel that shows only the title playing, in the theme's colour. dark when off ── */
+  var screenCanvas=document.createElement('canvas');screenCanvas.width=1024;screenCanvas.height=448;
+  var screenTex=new THREE.CanvasTexture(screenCanvas);screenTex.colorSpace=THREE.SRGBColorSpace;screenTex.anisotropy=8;
+  var screenMat=new THREE.MeshPhysicalMaterial({color:0x040405,metalness:0,roughness:0.2,clearcoat:1,clearcoatRoughness:0.06,emissive:new THREE.Color(1,1,1),emissiveMap:screenTex,emissiveIntensity:1.0,envMapIntensity:0.5});
+  function setScreen(title){
+    var g=screenCanvas.getContext('2d'),W2=screenCanvas.width,H2=screenCanvas.height,t=(title||'').replace(/\s+/g,' ').trim();
+    g.fillStyle='#000';g.fillRect(0,0,W2,H2);
+    if(t){
+      var col=theme.key,size=150,lines=[t],pad=140;
+      for(;;){
+        g.font='400 '+size+'px '+FONT;
+        if(g.measureText(t).width<=W2-pad){lines=[t];break;}
+        var words=t.split(' '),best=null;
+        for(var i=1;i<words.length;i++){var a=words.slice(0,i).join(' '),b=words.slice(i).join(' '),m=Math.max(g.measureText(a).width,g.measureText(b).width);if(!best||m<best.m)best={a:a,b:b,m:m};}
+        if(best&&best.m<=W2-pad&&size*2.3<=H2-40){lines=[best.a,best.b];break;}
+        size-=8;if(size<52){lines=best?[best.a,best.b]:[t];break;}
+      }
+      g.textAlign='center';g.textBaseline='middle';g.fillStyle=col;g.shadowColor=col;g.shadowBlur=30;
+      var lh=size*1.15,y0=H2/2-(lines.length-1)*lh/2;
+      lines.forEach(function(l,i){g.fillText(l,W2/2,y0+i*lh);g.fillText(l,W2/2,y0+i*lh);});
+      g.shadowBlur=0;g.fillStyle='rgba(0,0,0,0.2)';for(var y=0;y<H2;y+=4)g.fillRect(0,y,W2,2); /* the faint lines of a small screen */
+    }
+    screenTex.needsUpdate=true;needPaint();
+  }
+  var PW=1.0,PH=0.5,PR=0.06,PI=0.07; /* the bezel: outer size, corner radius, frame width */
+  function roundRect(sh,x,y,w,h,r){sh.moveTo(x+r,y);sh.lineTo(x+w-r,y);sh.quadraticCurveTo(x+w,y,x+w,y+r);sh.lineTo(x+w,y+h-r);sh.quadraticCurveTo(x+w,y+h,x+w-r,y+h);sh.lineTo(x+r,y+h);sh.quadraticCurveTo(x,y+h,x,y+h-r);sh.lineTo(x,y+r);sh.quadraticCurveTo(x,y,x+r,y);}
+  var frameShape=new THREE.Shape();roundRect(frameShape,-PW/2,-PH/2,PW,PH,PR);
+  var holePath=new THREE.Path();roundRect(holePath,-PW/2+PI,-PH/2+PI,PW-2*PI,PH-2*PI,PR*0.5);frameShape.holes.push(holePath);
+  var frameGeo=new THREE.ExtrudeGeometry(frameShape,{depth:0.06,bevelEnabled:true,bevelThickness:0.012,bevelSize:0.012,bevelSegments:3,curveSegments:12});
+  var bezelMat=sameMetal();mirrorSteel(bezelMat);
+  var panel=new THREE.Group();
+  var bezel=new THREE.Mesh(frameGeo,bezelMat);bezel.castShadow=true;panel.add(bezel);
+  var screen=new THREE.Mesh(new THREE.PlaneGeometry(PW-2*PI+0.02,PH-2*PI+0.02),screenMat);screen.position.z=0.04;panel.add(screen);
+  panel.position.set((TUBE0+TUBE1)/2,0,-(R-0.02));panel.rotation.y=Math.PI; /* on the back, its face outward, the glass just above the skin */
+  group.add(panel);
+  setScreen('');
   /* the table the object rests on — only its shadow is visible. floor, contact shadow and
      lights live on a stage that never turns, so turning the capsule moves the light on it */
   var stage=new THREE.Group();scene.add(stage);
@@ -1077,7 +1075,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* full title always readable — marquee back and forth when wider than the label */
     if(t===lastTitle) return;
     lastTitle=t;
-    try{redrawPanel();}catch(e){} /* the back of the capsule follows the dial */
+    try{setScreen(radioPlaying?t:'');}catch(e){} /* the screen on the back follows the dial */
     musicIn.textContent=t;
     /* a playing title takes the radio word's place in the corner */
     app.classList.toggle('titled',!!t&&radioPlaying);
@@ -1232,7 +1230,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       /* radio.json IS the station list — the playlist only stands in when it
          is empty or unreachable. tuning is a single-video load either way */
       var rids=Object.keys(RADIO_META);if(rids.length)SONG_IDS=rids;
-      buildBand();try{redrawPanel();}catch(e){}})
+      buildBand();})
     .catch(function(){buildBand();});
   function hzFor(id){
     /* each track's number is its measured average audio frequency (spectral centroid, Hz) */
@@ -1502,6 +1500,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     setStatic(0); /* the hiss dies with the music */
     if(!radioPlaying) return;
     radioPlaying=false;
+    try{setScreen('');}catch(e){} /* the screen goes dark */
     radioBtn.classList.remove('playing');
     app.classList.remove('radio-on');
     if(ytReady){try{ytPlayer.pauseVideo();}catch(e){}}
