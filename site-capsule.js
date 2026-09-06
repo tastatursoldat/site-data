@@ -347,7 +347,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     dist:19,
     wave:0.015,    /* polish waviness: bends the reflections */
     camMix:1.2,   /* the visitor in the room light */
-    mirror:0.28,   /* the visitor on the metal, soft */
+    mirror:0.48,   /* the visitor on the metal, soft */
     rx:0,ry:0,     /* a preset turn (unused on the site) */
     warp:0.12,    /* how much the curvature bends the picture */
     lens:1.5,     /* 0.5x feel: the camera frame maps smaller on the metal */
@@ -487,7 +487,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the visitor in the steel, the way the reel does it: the mirrored camera picture is laid
      over the metal in screen space — where you look, you see yourself — and bent by the
      surface normal so it wraps and compresses around the tube like a curved mirror */
-  var mirrorU={uCam:{value:null},uCamMix:{value:0},uRes:{value:new THREE.Vector2(1,1)},uWarp:{value:roll.warp},uCamAspect:{value:1},uZoom:{value:roll.lens},uTexel:{value:new THREE.Vector2(1/128,1/96)}};
+  var mirrorU={uCam:{value:null},uCamMix:{value:0},uRes:{value:new THREE.Vector2(1,1)},uWarp:{value:roll.warp},uCamAspect:{value:1},uZoom:{value:roll.lens},uTexel:{value:new THREE.Vector2(1/256,1/192)}};
   function mirrorSteel(mat){
     mat.onBeforeCompile=function(sh){
       Object.assign(sh.uniforms,mirrorU);
@@ -501,9 +501,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
           '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*uZoom,0.5+(suv.y-0.5)*uZoom*1.15);\n'+
           '  cuv+=normal.xy*uWarp;\n'+
           '  vec3 camc=vec3(0.0);\n'+
-          '  for(int i=-5;i<=5;i++)for(int j=-2;j<=2;j++){camc+=texture2D(uCam,clamp(cuv+vec2(float(i)*uTexel.x*3.0,float(j)*uTexel.y*1.6),0.0,1.0)).rgb;}\n'+ /* long along the brushing, short across it */
-          '  camc/=55.0;\n'+
-          '  float lum=dot(camc,vec3(0.299,0.587,0.114));camc=mix(vec3(lum),camc,0.3);camc=(camc-0.5)*1.3+0.5;camc*=0.92;\n'+
+          '  for(int i=-5;i<=5;i++)for(int j=-1;j<=1;j++){camc+=texture2D(uCam,clamp(cuv+vec2(float(i)*uTexel.x*1.6,float(j)*uTexel.y*1.0),0.0,1.0)).rgb;}\n'+ /* long along the brushing, short across it */
+          '  camc/=33.0;\n'+
+          '  float lum=dot(camc,vec3(0.299,0.587,0.114));camc=mix(vec3(lum),camc,0.45);camc=(camc-0.5)*1.45+0.5;camc*=0.86;\n'+
           '  float edge=smoothstep(-0.05,0.05,cuv.x)*smoothstep(1.05,0.95,cuv.x)*smoothstep(-0.05,0.05,cuv.y)*smoothstep(1.05,0.95,cuv.y);\n'+
           '  float fres=pow(1.0-max(normal.z,0.0),1.5);\n'+
           '  vec3 refl=gl_FragColor.rgb*0.45+camc*0.9;\n'+
@@ -647,12 +647,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var cam={on:false,video:null,c:null,g:null,prev:null,tex:null,last:0};
   function startCamera(){
     if(!GL||cam.on||Q.get('cam')==='0'||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
-    navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:320},height:{ideal:240}},audio:false}).then(function(stream){
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false}).then(function(stream){
       try{var tr=stream.getVideoTracks()[0],cp=tr.getCapabilities?tr.getCapabilities():null;
         if(cp&&cp.zoom&&cp.zoom.min<1)tr.applyConstraints({advanced:[{zoom:cp.zoom.min}]}).catch(function(){});}catch(err){}
       var v=document.createElement('video');v.srcObject=stream;v.muted=true;v.playsInline=true;
       v.play().catch(function(){});
-      cam.video=v;cam.c=document.createElement('canvas');cam.c.width=128;cam.c.height=96;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
+      cam.video=v;cam.c=document.createElement('canvas');cam.c.width=256;cam.c.height=192;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
       cam.tex=new THREE.CanvasTexture(cam.c);cam.tex.colorSpace=THREE.SRGBColorSpace;cam.tex.minFilter=THREE.LinearFilter;cam.tex.magFilter=THREE.LinearFilter;cam.tex.generateMipmaps=false;
       camPlane.material.map=cam.tex;camPlane.material.needsUpdate=true;camPlane.visible=true;
       mirrorU.uCam.value=cam.tex;mirrorU.uCamAspect.value=cam.c.width/cam.c.height;mirrorU.uCamMix.value=roll.mirror;
@@ -675,7 +675,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var g=cam.g,w=cam.c.width,h=cam.c.height;
     g.save();g.translate(w,0);g.scale(-1,1);g.drawImage(cam.video,0,0,w,h);g.restore();
     var im=g.getImageData(0,0,w,h),d=im.data;
-    softBlur(d,w,h,4);softBlur(d,w,h,4);softBlur(d,w,h,3);g.putImageData(im,0,0); /* two box passes ≈ a gaussian, no canvas filter needed */
+    softBlur(d,w,h,2);g.putImageData(im,0,0); /* two box passes ≈ a gaussian, no canvas filter needed */
     var diff=0,n=0;
     if(cam.prev){for(var i=0;i<d.length;i+=16){diff+=Math.abs(d[i]-cam.prev[i]);n++;}diff/=n;}else diff=999;
     cam.prev=d;
