@@ -258,12 +258,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     // mobile: compact desktop-style list, full-screen About
     /* the about page breathes in: fade + 0.98 scale, centred (a modal has no
        trigger to grow from). exit runs faster than enter */
-    '#me-about-screen{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;'+
+    '#me-about-screen{cursor:pointer;position:fixed;inset:0;background:rgba(239,239,236,0.78);z-index:2147483700;'+
       'padding:max(76px,env(safe-area-inset-top)) 7vw 44px;box-sizing:border-box;overflow-y:auto;display:flex;'+
-      'opacity:1;transform:scale(1);'+
+      'opacity:1;'+
       'transition:opacity 200ms ease,transform 200ms cubic-bezier(0.23,1,0.32,1);}'+
-    '@starting-style{#me-about-screen{opacity:0;transform:scale(0.98);}}'+
-    '#me-about-screen.closing{opacity:0;transform:scale(0.98);'+
+    '@starting-style{#me-about-screen{opacity:0;}}'+
+    '#me-about-screen.closing{opacity:0;'+
       'transition:opacity 140ms ease,transform 140ms cubic-bezier(0.23,1,0.32,1);}'+
     /* close sits exactly where the words sit, in exactly their voice */
     '#me-about-close{position:fixed;top:18px;right:19px;'+
@@ -1933,17 +1933,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function openAboutScreen(){
     if(document.getElementById('me-about-screen')) return;
     var ov=document.createElement('div'); ov.id='me-about-screen';
-    ov.innerHTML='<button id="me-about-close">close</button>'+
-      '<div class="ab-brand">'+esc(brandEl.textContent)+'</div>'+
-      '<div class="txt">'+buildAboutHTML()+'</div>';
-    document.body.appendChild(ov);
-    /* exit faster than enter: 140ms out via .closing, then gone */
+    ov.innerHTML='<div class="txt">'+buildAboutHTML()+'</div>';
+    document.body.appendChild(ov);app.classList.add('noting');
+    /* it lies over the page and a click anywhere puts it away, exactly like the note */
     function closeAbout(){
-      ov.classList.add('closing');
-      setTimeout(function(){ov.remove();},150);
+      ov.classList.add('closing');app.classList.remove('noting');
+      setTimeout(function(){if(ov.parentNode)ov.remove();},150);
     }
-    ov.querySelector('#me-about-close').addEventListener('click', closeAbout);
-    ov.querySelector('.ab-brand').addEventListener('click', closeAbout);
+    ov.addEventListener('click', function(e){ if(e.target.tagName!=='A') closeAbout(); });
   }
 
   // ── player ──────────────────────────────────────────────────────
@@ -1987,8 +1984,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        the radio ignores it; otherwise the capsule seals — even mid-unbolting */
     var about=document.getElementById('me-about-screen');
     if(document.getElementById('me-note')){closeNote();return;}
+    if(about){about.classList.add('closing');app.classList.remove('noting');setTimeout(function(){if(about.parentNode)about.remove();},150);return;}
     if(pl.classList.contains('show'))closePlayer();
-    else if(about)return;
     else if(fieldMode==='radio')return;
     else if(cap.state==='open'||cap.state==='opening')sealCapsule();
   });
