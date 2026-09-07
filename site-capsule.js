@@ -43,8 +43,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     "greetings, a whale, thunder, a kiss, a heartbeat.\n"+
     "Our best behaviour, our best angle.\n\n"+
     "This is the rest of the picture. Not worse. Truer.\n\n"+
-    "A bed, lit blue, that nobody came back to.\n"+
-    "A body going into cold water on purpose.\n"+
+    "Traffic lights changing for no one.\n"+
+    "A tide going out over black rocks.\n"+
     "And the stars, on a summer night,\n"+
     "the same ones you have.\n\n"+
     "I picked up a camera for one reason:\n"+
