@@ -43,10 +43,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     "greetings, a whale, thunder, a kiss, a heartbeat.\n"+
     "Our best behaviour, our best angle.\n\n"+
     "This is the rest of the picture. Not worse. Truer.\n\n"+
-    "A plastic bottle on an empty beach.\n"+
-    "Concrete that outlived the idea behind it.\n"+
-    "A body going into cold water on purpose.\n"+
     "A bed, lit blue, that nobody came back to.\n"+
+    "A body going into cold water on purpose.\n"+
     "And the stars, on a summer night,\n"+
     "the same ones you have.\n\n"+
     "I picked up a camera for one reason:\n"+
@@ -56,8 +54,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     "planted under plastic trees,\n"+
     "which is where we keep nature now.\n\n"+
     "I am not trying to be remembered.\n"+
-    "I am trying to keep going a little longer,\n"+
-    "not as a person but as the work.\n\n"+
+    "I am trying to keep going a little longer.\n\n"+
     "Open when found.";
   var FONT='"Helvetica Neue",Helvetica,Arial,sans-serif';
 
@@ -269,7 +266,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       'padding:6vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:25em;font:400 clamp(15px,1.45vw,19px)/1.45 '+SERIF+';color:#111;}'+
+    '#me-note .n{margin:auto;max-width:25em;font:400 clamp(15px,1.5vw,20px)/1.45 '+SERIF+';color:#111;}'+
     '#me-note .n p{margin:0 0 0.62em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
