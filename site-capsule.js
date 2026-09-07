@@ -9,6 +9,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     s.src='https://player.vimeo.com/api/player.js';
     s.onload=boot; document.head.appendChild(s);
   } else { boot(); }
+  /* the page must never show its own content: veil it the moment this file runs,
+     lift it when the site is mounted (the loader snippet veils the moments before) */
+  (function(){try{var v=document.createElement('style');v.id='me-veil2';
+    v.textContent='html{background:#EFEFEC}body>*{visibility:hidden}';
+    (document.head||document.documentElement).appendChild(v);}catch(e){}})();
   function boot(){
 (function(){
   var existingVp=document.querySelector('meta[name="viewport"]');
@@ -263,8 +268,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-about-screen .ab-brand{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
-    '#me-note{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;display:flex;overflow:auto;-webkit-overflow-scrolling:touch;'+
+    /* the note lies over the page: everything behind it drops to a quarter, nothing is replaced */
+    '#me-note{position:fixed;inset:0;background:transparent;z-index:2147483700;display:flex;overflow:auto;-webkit-overflow-scrolling:touch;'+
       'padding:6vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
+    '#me-app.noting #me-field,#me-app.noting #me-browse,#me-app.noting #me-stamp,'+
+      '#me-app.noting #me-ctrl,#me-app.noting #me-corner,#me-app.noting #me-col{opacity:0.25;}'+
+    '#me-field,#me-browse,#me-stamp,#me-ctrl,#me-corner,#me-col{transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
     '#me-note .n{margin:auto;max-width:25em;font:400 clamp(15px,1.5vw,20px)/1.45 '+SERIF+';color:#0a0a0a;-webkit-text-stroke:0.32px currentColor;}'+
@@ -338,7 +347,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '<div id="me-tc" aria-hidden="true"></div>';
   document.body.appendChild(app);
   /* the loader's veil hid Cargo's own content until now: the site is mounted, lift it */
-  (function(){var v=document.getElementById('me-veil');if(v)v.parentNode.removeChild(v);})();
+  (function(){['me-veil','me-veil2'].forEach(function(id){var v=document.getElementById(id);if(v)v.parentNode.removeChild(v);});})();
 
   var listEl=app.querySelector('#me-list');
   var tcEl=app.querySelector('#me-tc');
@@ -1894,13 +1903,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   function closeNote(){
     var ov=document.getElementById('me-note');if(!ov)return;
-    ov.classList.add('closing');setTimeout(function(){if(ov.parentNode)ov.remove();},150);
+    ov.classList.add('closing');app.classList.remove('noting');setTimeout(function(){if(ov.parentNode)ov.remove();},150);
   }
   function openNote(){
     if(document.getElementById('me-note'))return;
     var ov=document.createElement('div');ov.id='me-note';
-    ov.innerHTML='<div class="nb">'+esc(brandEl.textContent)+'</div><div class="n">'+noteText().split('\n\n').map(function(t){return '<p>'+esc(t)+'</p>';}).join('')+'</div>';
-    document.body.appendChild(ov);
+    ov.innerHTML='<div class="n">'+noteText().split('\n\n').map(function(t){return '<p>'+esc(t)+'</p>';}).join('')+'</div>';
+    document.body.appendChild(ov);app.classList.add('noting');
     ov.addEventListener('click',closeNote); /* anywhere: the note is not a page, it is a breath */
   }
   function openAboutScreen(){
