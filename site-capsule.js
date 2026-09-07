@@ -77,7 +77,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     // capsule landing — the object stays on the paper under the open index
     '#me-dial{position:absolute;inset:0;}'+
     '#me-field{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default;outline:none;}'+
-    '#me-field{transition:opacity 480ms ease;}#me-app.open #me-field{opacity:0.55;}'+ /* opened, the object steps back so the index reads through it */
+    '#me-field{transition:opacity 480ms ease;}#me-app.open #me-field{opacity:0.25;}'+ /* opened, the object steps back so the index reads through it */
     '#me-field.hot{cursor:pointer;}'+
     '#me-field{touch-action:none;}#me-field.turning{cursor:grabbing;}'+
     /* the finder's line, written on the paper under the object */
