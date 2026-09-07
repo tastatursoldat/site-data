@@ -41,14 +41,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     "You might not even be from here.\n\n"+
     "Once we sent a gold record into the dark:\n"+
     "greetings, a whale, thunder, a kiss, a heartbeat.\n"+
-    "We were on our best behaviour.\n\n"+
-    "This is not that. Inside is how it was,\n"+
-    "not how we looked when we knew we were watched.\n\n"+
-    "How badly we ate. Loudly, with our hands,\n"+
-    "grease on the chin, talking with our mouths full.\n"+
-    "And how we stood outside on a summer night\n"+
-    "and went quiet, all of us, every time,\n"+
-    "under the same stars you have.\n\n"+
+    "Our best behaviour, our best angle.\n\n"+
+    "This is the rest of the picture. Not worse. Truer.\n\n"+
+    "A plastic bottle on an empty beach.\n"+
+    "Concrete that outlived the idea behind it.\n"+
+    "A body going into cold water on purpose.\n"+
+    "A bed, lit blue, that nobody came back to.\n"+
+    "And the stars, on a summer night,\n"+
+    "the same ones you have.\n\n"+
     "I picked up a camera for one reason:\n"+
     "to see the world, and to get some of us down\n"+
     "before we became something else.\n\n"+
