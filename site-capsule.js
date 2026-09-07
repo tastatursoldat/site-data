@@ -1217,7 +1217,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
                   if(dur&&dur>60)ytPlayer.seekTo((Date.now()/1000)%(dur-20)+8,true);
                 }catch(e){}
               }
-              if(muteHold&&!pendingSeek){muteHold=false;rampMusic(lawVol,350);}
+              if(muteHold&&!pendingSeek){muteHold=false;quietHandover=false;tuneAudio();rampMusic(lawVol,350);}
             /* cued, paused or unstarted while the set is on: a new station never starts itself
                in Safari, so it is told to play here, carrying the visitor's own activation */
             if(radioPlaying&&(ev.data===5||ev.data===2||ev.data===-1)){try{ytPlayer.unMute();ytPlayer.playVideo();}catch(e){}}
@@ -1232,7 +1232,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
                 var order=Object.keys(bandTicks).sort(function(a,b){return bandTicks[a].x-bandTicks[b].x;});
                 if(order.length>1){
                   var at=order.indexOf(cur), nxt=order[(at+1+order.length)%order.length];
-                  if(nxt&&nxt!==cur){ bandId=nxt; tuneLoad(nxt); parkDial(nxt); }
+                  if(nxt&&nxt!==cur){ bandId=nxt; tuneLoad(nxt); parkDial(nxt); handover(); }
                   else { ytPlayer.seekTo(0,true); ytPlayer.playVideo(); }
                 } else { ytPlayer.seekTo(0,true); ytPlayer.playVideo(); }
               }catch(e){}
@@ -1293,6 +1293,32 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      once the new signal is actually sitting mid-song. the onset ramp chases
      the live law value, so a moving hand stays in charge */
   var muteHold=false,lawVol=0,volRAF=null,rampUntil=0;
+  var quietHandover=false,handTimer=null,unmuteArmed=false;
+  function armUnmute(){
+    if(unmuteArmed)return;unmuteArmed=true;
+    var evs=['pointerdown','keydown','touchstart','wheel'];
+    var lift=function(){
+      unmuteArmed=false;evs.forEach(function(ev){window.removeEventListener(ev,lift,true);});
+      try{ytPlayer.unMute();ytPlayer.playVideo();}catch(e){}
+      quietHandover=false;tuneAudio();
+    };
+    evs.forEach(function(ev){window.addEventListener(ev,lift,true);});
+  }
+  function handover(){
+    /* the visitor asked for none of this, so the browser may refuse to start it. it is asked
+       plainly a few times, then started silently and lifted at the next touch — never hiss */
+    var tries=0;quietHandover=true;setStatic(0);
+    clearInterval(handTimer);
+    handTimer=setInterval(function(){
+      if(!radioPlaying){clearInterval(handTimer);quietHandover=false;return;}
+      var st=-9;try{st=ytPlayer.getPlayerState();}catch(e){}
+      if(st===1){clearInterval(handTimer);return;}
+      tries++;
+      try{ytPlayer.playVideo();}catch(e){}
+      if(tries===3){try{ytPlayer.mute();ytPlayer.playVideo();}catch(e){}armUnmute();}
+      if(tries>8)clearInterval(handTimer);
+    },400);
+  }
   function setMusicVol(v){
     lawVol=v;
     if(muteHold){try{ytPlayer.setVolume(0);}catch(e){}return;}
@@ -1494,7 +1520,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       var pp=bandTicks[cur]?proxAt(bandTicks[cur].x):0;
       var v=pp*pp;
       setMusicVol(v);
-      setStatic(1-(muteHold?0:v));
+      setStatic(quietHandover?0:(1-(muteHold?0:v)));
       /* the nearer station takes over — loaded under the hold, so the
          handover happens in silence beneath the hiss */
       if(pn>0.35&&st.id!==cur&&st.id!==tuneQueuedId){
