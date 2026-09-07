@@ -89,8 +89,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the radio needs the paper: object and stamp leave it entirely */
     '#me-app.radio-mode #me-dial,#me-app.radio-mode #me-stamp{display:none;}'+
     '#me-app.nogl #me-dial,#me-app.nogl #me-stamp{display:none;}'+
-    '#me-brand{position:fixed;top:1.15rem;left:1.2rem;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
-    '#me-ctrl{position:fixed;top:1.15rem;right:1.2rem;z-index:10;display:flex;gap:1.1rem;align-items:center;}'+
+    '#me-brand{position:fixed;top:18px;left:19px;z-index:10;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
+    '#me-ctrl{position:fixed;top:18px;right:19px;z-index:10;display:flex;gap:18px;align-items:center;}'+
     '#me-ctrl button,#me-corner button{font:inherit;border:0;background:none;cursor:pointer;padding:0;}'+
     '#me-ctrl .txt,#me-corner .txt{font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '#me-ctrl .icon,#me-corner .icon{color:#0a0a0a;display:flex;align-items:center;}'+
@@ -116,7 +116,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        while a song plays — the pause glyph and the title in its place.
        nothing pops from nothing: pause+title rise in, the word fades;
        exit runs faster than enter */
-    '#me-corner{position:fixed;right:1.2rem;bottom:1.05rem;z-index:10;display:flex;gap:.8rem;align-items:center;}'+
+    '#me-corner{position:fixed;right:19px;bottom:17px;z-index:10;display:flex;gap:13px;align-items:center;}'+
     '#me-corner #me-stop{display:flex;opacity:0;transform:translateY(6px);pointer-events:none;'+
       'transition:opacity 120ms ease,transform 120ms cubic-bezier(0.23,1,0.32,1);}'+
     '#me-app.radio-on #me-stop{opacity:1;transform:none;pointer-events:auto;'+
@@ -133,7 +133,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-music.scroll .in{animation:me-marq 6s ease-in-out infinite alternate;}'+
     '@keyframes me-marq{from{transform:translateX(0);}to{transform:translateX(var(--me-shift,0px));}}'+
     /* the hover title moved to the free bottom-left corner */
-    '#me-tc{position:fixed;left:1.2rem;bottom:1.05rem;z-index:10;font:700 15px/1.55 '+FONT+';'+
+    '#me-tc{position:fixed;left:19px;bottom:17px;z-index:10;font:700 15px/1.55 '+FONT+';'+
       'font-variant-numeric:tabular-nums;color:#0a0a0a;pointer-events:none;min-height:1em;}'+
     // radio dial — a receiver wheel seen head-on: the needle is fixed dead
     // centre and the scale itself slides underneath as you scrub
@@ -151,7 +151,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       'font-variant-numeric:tabular-nums;white-space:nowrap;}'+
     '#me-band .g-label.am{top:142px;font-size:10px;}'+
     /* the band designations are printed on the glass, not the wheel */
-    '#me-band .g-unit{position:absolute;left:1.2rem;font-size:10px;color:#bdbdbd;letter-spacing:1px;}'+
+    '#me-band .g-unit{position:absolute;left:19px;font-size:10px;color:#bdbdbd;letter-spacing:1px;}'+
     '#me-band .station{position:absolute;top:88px;height:26px;width:2px;transform:translateX(-50%);}'+
     '#me-band .station i{position:absolute;left:0;top:0;width:2px;height:26px;background:#c2c2be;'+
       'transition:background .25s ease;}'+
@@ -266,13 +266,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-about-screen.closing{opacity:0;transform:scale(0.98);'+
       'transition:opacity 140ms ease,transform 140ms cubic-bezier(0.23,1,0.32,1);}'+
     /* close sits exactly where the words sit, in exactly their voice */
-    '#me-about-close{position:fixed;top:1.15rem;right:1.2rem;'+
+    '#me-about-close{position:fixed;top:18px;right:19px;'+
       'background:none;border:0;padding:0;font:700 15px/1.55 '+FONT+';cursor:pointer;color:#0a0a0a;}'+
     /* the about page speaks in the note's voice: the same serif, the same weight */
-    '#me-about-screen .txt{margin-top:60px;max-width:34em;font:400 clamp(15px,1.5vw,20px)/1.45 '+SERIF+';'+
-      'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.32px currentColor;}'+
+    '#me-about-screen .txt{margin-top:60px;max-width:44em;font:400 15px/1.55 '+SERIF+';'+
+      'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
-    '#me-about-screen .ab-brand{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
+    '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
     /* the note lies over the page: everything behind it drops to a quarter, nothing is replaced */
@@ -283,11 +283,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-field,#me-browse,#me-stamp,#me-ctrl,#me-corner,#me-col{transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:25em;font:400 clamp(15px,1.5vw,20px)/1.45 '+SERIF+';color:#0a0a0a;-webkit-text-stroke:0.32px currentColor;}'+
+    '#me-note .n{margin:auto;max-width:34em;font:400 15px/1.55 '+SERIF+';color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
     '#me-note .n p{margin:0 0 0.62em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
-    '#me-note .nb{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
-    '@media (max-width:700px){#me-note{padding:76px 24px 44px;}#me-note .n{font-size:15px;line-height:1.55;}}'+
+    '#me-note .nb{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
+    '@media (max-width:700px){#me-note{padding:76px 24px 44px;}}'+
     /* phones: the open capsule is a scrolling column — a snapshot of the
        object, the stamp, then the index. the live object and the hover word
        leave while the column is up */
