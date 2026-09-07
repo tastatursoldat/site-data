@@ -43,8 +43,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     "greetings, a whale, thunder, a kiss, a heartbeat.\n"+
     "Our best behaviour, our best angle.\n\n"+
     "This is the rest of the picture. Not worse. Truer.\n\n"+
-    "An empty bottle the sea gave back.\n"+
-    "Concrete that outlived the idea behind it.\n"+
+    "An empty bottle the sea keeps sending back.\n"+
+    "Concrete lit all night for nobody.\n"+
     "And the stars, on a summer night,\n"+
     "the same ones you have.\n\n"+
     "I picked up a camera for one reason:\n"+
