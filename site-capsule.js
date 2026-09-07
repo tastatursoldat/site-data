@@ -39,22 +39,25 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     "That is the only thing I know about you.\n"+
     "You might be a person.\n"+
     "You might not even be from here.\n\n"+
-    "So I am doing what people have always done\n"+
-    "when they cannot reach across:\n"+
-    "sealing it, marking it, leaving it in the ground.\n\n"+
-    "Inside is how it was. Not the good parts.\n"+
-    "How it was.\n\n"+
+    "Once we sent a gold record into the dark:\n"+
+    "greetings, a whale, thunder, a kiss, a heartbeat.\n"+
+    "We were on our best behaviour.\n\n"+
+    "This is not that. Inside is how it was,\n"+
+    "not how we looked when we knew we were watched.\n\n"+
     "How badly we ate. Loudly, with our hands,\n"+
     "grease on the chin, talking with our mouths full.\n"+
     "And how we stood outside on a summer night\n"+
     "and went quiet, all of us, every time,\n"+
     "under the same stars you have.\n\n"+
-    "Both are true. I would not want you\n"+
-    "to get only one.\n\n"+
+    "I picked up a camera for one reason:\n"+
+    "to see the world, and to get some of us down\n"+
+    "before we became something else.\n\n"+
+    "So it goes in a steel tube,\n"+
+    "planted under plastic trees,\n"+
+    "which is where we keep nature now.\n\n"+
     "I am not trying to be remembered.\n"+
-    "I am trying to keep going a little longer.\n"+
-    "Not as a person. As light I pointed at something\n"+
-    "while it was still happening.\n\n"+
+    "I am trying to keep going a little longer,\n"+
+    "not as a person but as the work.\n\n"+
     "Open when found.";
   var FONT='"Helvetica Neue",Helvetica,Arial,sans-serif';
 
@@ -263,14 +266,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
     '#me-note{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;display:flex;overflow:auto;-webkit-overflow-scrolling:touch;'+
-      'padding:7vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
+      'padding:6vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:24em;font:400 clamp(15px,1.6vw,21px)/1.5 '+SERIF+';color:#111;}'+
+    '#me-note .n{margin:auto;max-width:25em;font:400 clamp(15px,1.45vw,19px)/1.45 '+SERIF+';color:#111;}'+
     '#me-note .n p{margin:0 0 0.62em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
-    '@media (max-width:700px){#me-note{padding:76px 24px 44px;}#me-note .n{font-size:16px;line-height:1.55;}}'+
+    '@media (max-width:700px){#me-note{padding:76px 24px 44px;}#me-note .n{font-size:15px;line-height:1.55;}}'+
     /* phones: the open capsule is a scrolling column — a snapshot of the
        object, the stamp, then the index. the live object and the hover word
        leave while the column is up */
