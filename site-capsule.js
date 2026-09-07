@@ -13,7 +13,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      lift it when the site is mounted (the loader snippet veils the moments before) */
   (function(){try{var v=document.createElement('style');v.id='me-veil2';
     v.textContent='html{background:#EFEFEC}body>*{visibility:hidden}';
-    (document.head||document.documentElement).appendChild(v);}catch(e){}})();
+    (document.head||document.documentElement).appendChild(v);
+    /* a veil that cannot strand the page: it lifts itself if the site has not mounted in 2.5s */
+    setTimeout(function(){['me-veil','me-veil2'].forEach(function(id){var e=document.getElementById(id);if(e&&e.parentNode)e.parentNode.removeChild(e);});},2500);
+  }catch(e){}})();
   function boot(){
 (function(){
   var existingVp=document.querySelector('meta[name="viewport"]');
