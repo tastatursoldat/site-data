@@ -1218,6 +1218,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
                 }catch(e){}
               }
               if(muteHold&&!pendingSeek){muteHold=false;rampMusic(lawVol,350);}
+            /* cued, paused or unstarted while the set is on: a new station never starts itself
+               in Safari, so it is told to play here, carrying the visitor's own activation */
+            if(radioPlaying&&(ev.data===5||ev.data===2||ev.data===-1)){try{ytPlayer.unMute();ytPlayer.playVideo();}catch(e){}}
             }
             /* a station never plays another station's song: at the end of the
                video the broadcast simply loops */
@@ -1506,6 +1509,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     bFreq.textContent=fmtMhz(mhzAt(dialNx));
   }
   bandEl.addEventListener('pointerdown',function(ev){
+    try{ if(radioPlaying&&ytPlayer&&ytPlayer.playVideo){ ytPlayer.unMute(); ytPlayer.playVideo(); } }catch(e){}
     if(!bandCal)return;
     ensureStatic();
     armRadio(); /* touching the dial switches the set on — hiss and all */
@@ -1544,6 +1548,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
         wheelV*=Math.exp(-dt/200);
         tuneAudio();
         wheelRAF=requestAnimationFrame(coast);
+      }else{
+        /* a set with a good mechanism settles onto a station: the hiss belongs to the turning,
+           not to where the needle comes to rest */
+        var st=nearestStation(dialNx);
+        if(st){bandId=st.id;parkDial(st.id);}
       }
     });
   }
@@ -1569,7 +1578,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function stopRadio(){
     setStatic(0); /* the hiss dies with the music */
     if(!radioPlaying) return;
-    radioPlaying=false;
+    radioPlaying=false;clearInterval(startGuard);
     try{setScreen('');}catch(e){} /* the screen goes dark */
     radioBtn.classList.remove('playing');
     app.classList.remove('radio-on');
@@ -1612,6 +1621,33 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     updateModeClass();updateBrand();
     openCapsule();
   }
+  var startGuard=null;
+  function guardPlayback(){
+    clearInterval(startGuard);
+    startGuard=setInterval(function(){
+      if(!radioPlaying||fieldMode!=='radio'){clearInterval(startGuard);return;}
+      var st=-9;try{st=ytPlayer.getPlayerState();}catch(e){return;}
+      /* unstarted, cued or paused while the set is on: nudge it, carrying the visitor's activation */
+      if(st===-1||st===5||st===2){try{ytPlayer.unMute();ytPlayer.playVideo();}catch(e){}}
+    },900);
+  }
+  var silentWatch=null;
+  function watchForSilence(){
+    clearTimeout(silentWatch);
+    silentWatch=setTimeout(function(){
+      if(!radioPlaying||fieldMode!=='radio')return;
+      var cur=currentVid(), vol=0;
+      try{ vol=ytPlayer.getVolume(); }catch(e){}
+      if(cur&&(vol<5||muteHold)){
+        /* the needle never landed, or the hold never lifted: put it on the station that is
+           already playing, so a song is heard instead of the hiss between stations */
+        muteHold=false;
+        if(bandTicks[cur])parkDial(cur);
+        try{ ytPlayer.unMute(); ytPlayer.playVideo(); }catch(e){}
+        rampMusic(1,350); setStatic(0);
+      }
+    },2600);
+  }
   function goRadio(){
     sealNow(); /* the band needs the paper clear at once — no choreography */
     fieldMode='radio';
@@ -1619,7 +1655,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(ytReady)startPlayback();
     radioBtn.setAttribute('aria-pressed','true');
     updateModeClass();
-    paintDial();tuneAudio();
+    paintDial();tuneAudio();watchForSilence();guardPlayback();
     updateBrand();
   }
   app.querySelector('#me-btnview').addEventListener('click', function(e){
@@ -1627,10 +1663,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(cap.state==='open'||cap.state==='opening')sealCapsule();else goFilm();
   });
   radioBtn.addEventListener('click', function(){
+    /* the click itself wakes the player: Safari only grants sound to playback that a
+       visitor started, and every later step is asynchronous and no longer counts */
+    try{ if(ytPlayer&&ytPlayer.playVideo){ ytPlayer.unMute(); ytPlayer.playVideo(); } }catch(e){}
     if(currentView()==='radio')goDial();else goRadio();
   });
   /* the title stands where the radio word stood — it answers the same way */
   musicEl.addEventListener('click', function(){
+    /* the click itself wakes the player: Safari only grants sound to playback that a
+       visitor started, and every later step is asynchronous and no longer counts */
+    try{ if(ytPlayer&&ytPlayer.playVideo){ ytPlayer.unMute(); ytPlayer.playVideo(); } }catch(e){}
     if(currentView()==='radio')goDial();else goRadio();
   });
   app.querySelector('#me-btnabout').addEventListener('click', function(){ openAboutScreen(); });
