@@ -1232,7 +1232,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
                 var order=Object.keys(bandTicks).sort(function(a,b){return bandTicks[a].x-bandTicks[b].x;});
                 if(order.length>1){
                   var at=order.indexOf(cur), nxt=order[(at+1+order.length)%order.length];
-                  if(nxt&&nxt!==cur){ bandId=nxt; tuneLoad(nxt); parkDial(nxt); handover(); }
+                  if(nxt&&nxt!==cur){
+                    /* the needle is about to sit on the new station, and the takeover that
+                       normally follows would reload it mid-broadcast: it is told this one is
+                       already handled, so the song keeps its own beginning */
+                    clearTimeout(tuneLoadTimer); tuneQueuedId=nxt;
+                    bandId=nxt; tuneLoad(nxt,true); parkDial(nxt); handover();
+                  }
                   else { ytPlayer.seekTo(0,true); ytPlayer.playVideo(); }
                 } else { ytPlayer.seekTo(0,true); ytPlayer.playVideo(); }
               }catch(e){}
@@ -1481,10 +1487,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var v='';try{var d=ytPlayer.getVideoData();v=(d&&d.video_id)||'';}catch(e){}
     return v;
   }
-  function tuneLoad(id){
-    /* single-video load: a station can only ever play its own song, and the
-       broadcast-time seek lands mid-song before the hold releases */
-    pendingSeek=id;
+  function tuneLoad(id,fromStart){
+    /* single-video load: a station can only ever play its own song. tuning into one lands
+       mid-broadcast, the way a real set does; a song handed to you when the last one ended
+       starts at its beginning, because nothing was missed */
+    pendingSeek=fromStart?null:id;
     muteHold=true;
     cancelAnimationFrame(volRAF);
     try{ytPlayer.setVolume(0);}catch(e){}
