@@ -268,7 +268,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* close sits exactly where the words sit, in exactly their voice */
     '#me-about-close{position:fixed;top:1.15rem;right:1.2rem;'+
       'background:none;border:0;padding:0;font:700 15px/1.55 '+FONT+';cursor:pointer;color:#0a0a0a;}'+
-    '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
+    /* the about page speaks in the note's voice: the same serif, the same weight */
+    '#me-about-screen .txt{margin-top:60px;max-width:34em;font:400 clamp(15px,1.5vw,20px)/1.45 '+SERIF+';'+
+      'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.32px currentColor;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
@@ -869,9 +871,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function placeStamp(){
     if(!lastBox||!GL)return;
     var x=Math.round(lastBox.left),y=Math.round(lastBox.top+lastBox.h+24);
-    /* the date takes its place under the object the moment the opening starts and then stays put —
-       opening, turning or the index never move it (a resize resets it) */
-    if((cap.state==='opening'||app.classList.contains('open')||stampEl.classList.contains('kept'))&&!stampFixed)stampFixed={x:x,y:y};
+    /* opened, the date belongs to the index: it takes the list's left edge once the rows are laid
+       out, then stays exactly there — turning the object never moves it (a resize resets it) */
+    if(!stampFixed&&app.classList.contains('browse')&&listEl.offsetParent){
+      var lr=listEl.getBoundingClientRect(),ar=app.getBoundingClientRect();
+      stampFixed={x:Math.round(lr.left-ar.left),y:Math.round(lr.bottom-ar.top+28)};
+    }
     if(stampFixed){x=stampFixed.x;y=stampFixed.y;}
     if(!(stampEl.classList.contains('kept')||app.classList.contains('open')||cap.state==='opening'))stampFixed=null;
     stampEl.style.transform='translate('+x+'px,'+y+'px)';
