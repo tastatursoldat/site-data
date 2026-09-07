@@ -267,7 +267,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       'padding:6vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:25em;font:400 clamp(15px,1.5vw,20px)/1.45 '+SERIF+';color:#111;}'+
+    '#me-note .n{margin:auto;max-width:25em;font:400 clamp(15px,1.5vw,20px)/1.45 '+SERIF+';color:#0a0a0a;-webkit-text-stroke:0.32px currentColor;}'+
     '#me-note .n p{margin:0 0 0.62em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
