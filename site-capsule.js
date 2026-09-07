@@ -1224,7 +1224,19 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
             }
             /* a station never plays another station's song: at the end of the
                video the broadcast simply loops */
-            if(ev&&ev.data===0){try{ytPlayer.seekTo(0,true);ytPlayer.playVideo();}catch(e){}}
+            /* the song has run out: the set moves along the scale to the next station,
+               taking the needle with it, rather than playing the same broadcast again */
+            if(ev&&ev.data===0){
+              try{
+                var cur=currentVid();
+                var order=Object.keys(bandTicks).sort(function(a,b){return bandTicks[a].x-bandTicks[b].x;});
+                if(order.length>1){
+                  var at=order.indexOf(cur), nxt=order[(at+1+order.length)%order.length];
+                  if(nxt&&nxt!==cur){ bandId=nxt; tuneLoad(nxt); parkDial(nxt); }
+                  else { ytPlayer.seekTo(0,true); ytPlayer.playVideo(); }
+                } else { ytPlayer.seekTo(0,true); ytPlayer.playVideo(); }
+              }catch(e){}
+            }
             if(!ytJumped&&radioPlaying)startPlayback();
             updateTitle();
           }
@@ -1549,10 +1561,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
         tuneAudio();
         wheelRAF=requestAnimationFrame(coast);
       }else{
-        /* a set with a good mechanism settles onto a station: the hiss belongs to the turning,
-           not to where the needle comes to rest */
+        /* the faintest detent: a needle that has all but landed is drawn the last hair in,
+           and anywhere else it is left exactly where it stopped */
         var st=nearestStation(dialNx);
-        if(st){bandId=st.id;parkDial(st.id);}
+        if(st&&st.d<tuneZone()*0.22){bandId=st.id;parkDial(st.id);}
       }
     });
   }
