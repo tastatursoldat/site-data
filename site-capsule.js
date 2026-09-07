@@ -259,7 +259,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the about page breathes in: fade + 0.98 scale, centred (a modal has no
        trigger to grow from). exit runs faster than enter */
     '#me-about-screen{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;'+
-      'padding:max(24px,env(safe-area-inset-top)) 24px 40px;box-sizing:border-box;overflow-y:auto;'+
+      'padding:max(76px,env(safe-area-inset-top)) 7vw 44px;box-sizing:border-box;overflow-y:auto;display:flex;'+
       'opacity:1;transform:scale(1);'+
       'transition:opacity 200ms ease,transform 200ms cubic-bezier(0.23,1,0.32,1);}'+
     '@starting-style{#me-about-screen{opacity:0;transform:scale(0.98);}}'+
@@ -269,7 +269,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-about-close{position:fixed;top:18px;right:19px;'+
       'background:none;border:0;padding:0;font:700 15px/1.55 '+FONT+';cursor:pointer;color:#0a0a0a;}'+
     /* the about page speaks in the note's voice: the same serif, the same weight */
-    '#me-about-screen .txt{margin-top:60px;max-width:44em;font:400 15px/1.55 '+SERIF+';'+
+    '#me-about-screen .txt{margin:auto;max-width:34em;font:400 15px/1.55 '+SERIF+';'+
       'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
@@ -1635,8 +1635,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   });
   app.querySelector('#me-btnabout').addEventListener('click', function(){ openAboutScreen(); });
   app.querySelector('#me-stop').addEventListener('click', stopRadio);
-  brandEl.addEventListener('click', function(){ /* the mark always says why; the object itself opens and closes */
+  brandEl.addEventListener('click', function(){ /* the mark closes whatever is open, then says why */
     if(fieldMode==='radio'){goDial();return;}
+    if(cap.state==='open'||cap.state==='opening')sealCapsule();
     openNote();
   });
 
