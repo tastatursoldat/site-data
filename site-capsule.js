@@ -31,6 +31,26 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     "Self-taught, I developed a monochrome, minimal discipline – structure, muted palettes, and open space.\n\n"+
     "I started in fashion, writing and directing campaigns before moving into film. I work across "+
     "commercials, music videos, and films.\nUncluttered frames. Documentary or scripted.";
+  /* the note behind the mark: what a capsule is, and why a film is one too */
+  var SERIF='"Times New Roman",Times,serif';
+  var NOTE_TEXT =
+    "A time capsule is the longest exposure there is.\n\n"+
+    "The shutter opens on the day you seal it,\n"+
+    "and closes in a hand that is not yours.\n\n"+
+    "That is my work too, only faster:\n"+
+    "stand in front of something that is happening,\n"+
+    "take a little of its light,\n"+
+    "hide it somewhere it can survive being over.\n\n"+
+    "Film does not survive politely. Left alone\n"+
+    "it turns to vinegar and dust.\n"+
+    "Every archive is a room holding its breath.\n\n"+
+    "So: {n} films, Z\u00fcrich, a steel tube,\n"+
+    "and no message inside.\n"+
+    "A message expects an answer,\n"+
+    "and I will not be there to read one.\n\n"+
+    "Only the light, the date,\n"+
+    "and the one instruction I have never managed to improve:\n\n"+
+    "open when found.";
   var FONT='"Helvetica Neue",Helvetica,Arial,sans-serif';
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -235,6 +255,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-about-screen .txt{margin-top:60px;font:400 16px/1.6 '+FONT+';white-space:pre-line;color:#111;}'+
     '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
+    /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
+       set large and narrow, the way a poem is set on paper */
+    '#me-note{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;display:flex;overflow:auto;-webkit-overflow-scrolling:touch;'+
+      'padding:9vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
+    '@starting-style{#me-note{opacity:0;}}'+
+    '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
+    '#me-note .n{margin:auto;max-width:24em;white-space:pre-line;font:400 clamp(16px,1.75vw,23px)/1.5 '+SERIF+';color:#111;}'+
+    '#me-note .nb{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
+    '@media (max-width:700px){#me-note{padding:80px 24px 48px;}#me-note .n{font-size:17px;line-height:1.55;}}'+
     /* phones: the open capsule is a scrolling column — a snapshot of the
        object, the stamp, then the index. the live object and the hover word
        leave while the column is up */
@@ -1571,9 +1600,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   });
   app.querySelector('#me-btnabout').addEventListener('click', function(){ openAboutScreen(); });
   app.querySelector('#me-stop').addEventListener('click', stopRadio);
-  brandEl.addEventListener('click', function(){ /* the mark always leads home */
+  brandEl.addEventListener('click', function(){ /* the mark leads home; at home it says why */
     if(fieldMode==='radio')goDial();
     else if(cap.state!=='sealed')sealCapsule();
+    else openNote();
   });
 
   // ── data + render list ──────────────────────────────────────────
@@ -1849,6 +1879,22 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(p && p.film) openPlayer(p);
   });
 
+  /* ── the note ─────────────────────────────────────────────────── */
+  function noteText(){
+    var n=(typeof PROJECTS!=='undefined'&&PROJECTS&&PROJECTS.length)?PROJECTS.length:0;
+    return NOTE_TEXT.replace('{n}',n||'ten'); /* the count is the list itself, so the line stays true */
+  }
+  function closeNote(){
+    var ov=document.getElementById('me-note');if(!ov)return;
+    ov.classList.add('closing');setTimeout(function(){if(ov.parentNode)ov.remove();},150);
+  }
+  function openNote(){
+    if(document.getElementById('me-note'))return;
+    var ov=document.createElement('div');ov.id='me-note';
+    ov.innerHTML='<div class="nb">'+esc(brandEl.textContent)+'</div><div class="n">'+esc(noteText())+'</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click',closeNote); /* anywhere: the note is not a page, it is a breath */
+  }
   function openAboutScreen(){
     if(document.getElementById('me-about-screen')) return;
     var ov=document.createElement('div'); ov.id='me-about-screen';
@@ -1905,6 +1951,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        swallows it (escape never closed about there, and it must not seal the capsule underneath);
        the radio ignores it; otherwise the capsule seals — even mid-unbolting */
     var about=document.getElementById('me-about-screen');
+    if(document.getElementById('me-note')){closeNote();return;}
     if(pl.classList.contains('show'))closePlayer();
     else if(about)return;
     else if(fieldMode==='radio')return;
