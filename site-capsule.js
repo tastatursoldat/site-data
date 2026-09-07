@@ -9,13 +9,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     s.src='https://player.vimeo.com/api/player.js';
     s.onload=boot; document.head.appendChild(s);
   } else { boot(); }
-  /* the page must never show its own content: veil it the moment this file runs,
-     lift it when the site is mounted (the loader snippet veils the moments before) */
-  (function(){try{var v=document.createElement('style');v.id='me-veil2';
-    v.textContent='html{background:#EFEFEC}body>*{visibility:hidden}';
-    (document.head||document.documentElement).appendChild(v);
-    /* a veil that cannot strand the page: it lifts itself if the site has not mounted in 2.5s */
-    setTimeout(function(){['me-veil','me-veil2'].forEach(function(id){var e=document.getElementById(id);if(e&&e.parentNode)e.parentNode.removeChild(e);});},2500);
+  /* the page must never show its own content: a sheet of paper is laid over it the moment this
+     file runs, and taken away when the capsule is on screen. it also lifts itself after 3s, so a
+     failure can never leave a blank page */
+  (function(){try{
+    ['me-veil','me-veil2'].forEach(function(id){var e=document.getElementById(id);if(e&&e.parentNode)e.parentNode.removeChild(e);});
+    var g=document.createElement('div');g.id='me-ground';
+    g.setAttribute('style','position:fixed;inset:0;background:#EFEFEC;z-index:2147483600;');
+    (document.body||document.documentElement).appendChild(g);
+    setTimeout(function(){var e=document.getElementById('me-ground');if(e&&e.parentNode)e.parentNode.removeChild(e);},3000);
   }catch(e){}})();
   function boot(){
 (function(){
@@ -272,10 +274,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
     /* the note lies over the page: everything behind it drops to a quarter, nothing is replaced */
-    '#me-note{position:fixed;inset:0;background:transparent;z-index:2147483700;display:flex;overflow:auto;-webkit-overflow-scrolling:touch;'+
+    '#me-note{position:fixed;inset:0;background:rgba(239,239,236,0.78);z-index:2147483700;display:flex;overflow:auto;-webkit-overflow-scrolling:touch;'+
       'padding:6vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
     '#me-app.noting #me-field,#me-app.noting #me-browse,#me-app.noting #me-stamp,'+
-      '#me-app.noting #me-ctrl,#me-app.noting #me-corner,#me-app.noting #me-col{opacity:0.25;}'+
+      '#me-app.noting #me-ctrl,#me-app.noting #me-corner,#me-app.noting #me-col{opacity:0.35;}'+
     '#me-field,#me-browse,#me-stamp,#me-ctrl,#me-corner,#me-col{transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
@@ -350,7 +352,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '<div id="me-tc" aria-hidden="true"></div>';
   document.body.appendChild(app);
   /* the loader's veil hid Cargo's own content until now: the site is mounted, lift it */
-  (function(){['me-veil','me-veil2'].forEach(function(id){var v=document.getElementById(id);if(v)v.parentNode.removeChild(v);});})();
+  (function(){['me-veil','me-veil2','me-ground'].forEach(function(id){var v=document.getElementById(id);if(v&&v.parentNode)v.parentNode.removeChild(v);});})();
 
   var listEl=app.querySelector('#me-list');
   var tcEl=app.querySelector('#me-tc');
@@ -787,7 +789,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(diff>=1.5)renderEnv();            /* the room is re-lit only when something moved */
     paint();
   }
-  setTimeout(startCamera,900);
+  /* the camera is asked for only once the visitor touches the page: a permission sheet on load
+     stops Safari painting, and the capsule must be on screen before anything else happens */
+  (function(){
+    var armed=false;
+    function ask(){if(armed)return;armed=true;
+      ['pointerdown','pointermove','touchstart','keydown','wheel'].forEach(function(ev){window.removeEventListener(ev,ask,true);});
+      startCamera();}
+    ['pointerdown','pointermove','touchstart','keydown','wheel'].forEach(function(ev){window.addEventListener(ev,ask,true);});
+  })();
 
   /* ── placement: a screen box → world position and scale ─────────── */
   function screenToWorld(sx,sy){
@@ -1620,10 +1630,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   });
   app.querySelector('#me-btnabout').addEventListener('click', function(){ openAboutScreen(); });
   app.querySelector('#me-stop').addEventListener('click', stopRadio);
-  brandEl.addEventListener('click', function(){ /* the mark leads home; at home it says why */
-    if(fieldMode==='radio')goDial();
-    else if(cap.state!=='sealed')sealCapsule();
-    else openNote();
+  brandEl.addEventListener('click', function(){ /* the mark always says why; the object itself opens and closes */
+    if(fieldMode==='radio'){goDial();return;}
+    openNote();
   });
 
   // ── data + render list ──────────────────────────────────────────
