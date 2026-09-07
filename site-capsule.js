@@ -34,23 +34,28 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the note behind the mark: what a capsule is, and why a film is one too */
   var SERIF='"Times New Roman",Times,serif';
   var NOTE_TEXT =
-    "A time capsule is the longest exposure there is.\n\n"+
-    "The shutter opens on the day you seal it,\n"+
-    "and closes in a hand that is not yours.\n\n"+
-    "That is my work too, only faster:\n"+
-    "stand in front of something that is happening,\n"+
-    "take a little of its light,\n"+
-    "hide it somewhere it can survive being over.\n\n"+
-    "Film does not survive politely. Left alone\n"+
-    "it turns to vinegar and dust.\n"+
-    "Every archive is a room holding its breath.\n\n"+
-    "So: {n} films, Z\u00fcrich, a steel tube,\n"+
-    "and no message inside.\n"+
-    "A message expects an answer,\n"+
-    "and I will not be there to read one.\n\n"+
-    "Only the light, the date,\n"+
-    "and the one instruction I have never managed to improve:\n\n"+
-    "open when found.";
+    "I will never meet you.\n\n"+
+    "You were born after I stopped.\n"+
+    "That is the only thing I know about you.\n"+
+    "You might be a person.\n"+
+    "You might not even be from here.\n\n"+
+    "So I am doing what people have always done\n"+
+    "when they cannot reach across:\n"+
+    "sealing it, marking it, leaving it in the ground.\n\n"+
+    "Inside is how it was. Not the good parts.\n"+
+    "How it was.\n\n"+
+    "How badly we ate. Loudly, with our hands,\n"+
+    "grease on the chin, talking with our mouths full.\n"+
+    "And how we stood outside on a summer night\n"+
+    "and went quiet, all of us, every time,\n"+
+    "under the same stars you have.\n\n"+
+    "Both are true. I would not want you\n"+
+    "to get only one.\n\n"+
+    "I am not trying to be remembered.\n"+
+    "I am trying to keep going a little longer.\n"+
+    "Not as a person. As light I pointed at something\n"+
+    "while it was still happening.\n\n"+
+    "Open when found.";
   var FONT='"Helvetica Neue",Helvetica,Arial,sans-serif';
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -258,12 +263,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
     '#me-note{position:fixed;inset:0;background:#EFEFEC;z-index:2147483700;display:flex;overflow:auto;-webkit-overflow-scrolling:touch;'+
-      'padding:9vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
+      'padding:7vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:24em;white-space:pre-line;font:400 clamp(16px,1.75vw,23px)/1.5 '+SERIF+';color:#111;}'+
+    '#me-note .n{margin:auto;max-width:24em;font:400 clamp(15px,1.6vw,21px)/1.5 '+SERIF+';color:#111;}'+
+    '#me-note .n p{margin:0 0 0.62em;white-space:pre-line;}'+
+    '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:1.15rem;left:1.2rem;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
-    '@media (max-width:700px){#me-note{padding:80px 24px 48px;}#me-note .n{font-size:17px;line-height:1.55;}}'+
+    '@media (max-width:700px){#me-note{padding:76px 24px 44px;}#me-note .n{font-size:16px;line-height:1.55;}}'+
     /* phones: the open capsule is a scrolling column — a snapshot of the
        object, the stamp, then the index. the live object and the hover word
        leave while the column is up */
@@ -1891,7 +1898,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function openNote(){
     if(document.getElementById('me-note'))return;
     var ov=document.createElement('div');ov.id='me-note';
-    ov.innerHTML='<div class="nb">'+esc(brandEl.textContent)+'</div><div class="n">'+esc(noteText())+'</div>';
+    ov.innerHTML='<div class="nb">'+esc(brandEl.textContent)+'</div><div class="n">'+noteText().split('\n\n').map(function(t){return '<p>'+esc(t)+'</p>';}).join('')+'</div>';
     document.body.appendChild(ov);
     ov.addEventListener('click',closeNote); /* anywhere: the note is not a page, it is a breath */
   }
