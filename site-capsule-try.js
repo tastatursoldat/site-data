@@ -901,7 +901,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the object does not sit on the table, it stands off it: the floor is well below, so what is
      under it is a shadow it is not touching. */
   var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:roll.shadow*0.55}));
-  floor.rotation.x=-Math.PI/2;floor.position.set(0,-3.15,0);   /* below the lowest the object can swing */floor.receiveShadow=true;stage.add(floor);
+  floor.rotation.x=-Math.PI/2;floor.position.set(0,-4.05,0);   /* clear of the object even stood on end */floor.receiveShadow=true;stage.add(floor);
   /* the key light is what the metal is lit by, and it comes in low from the left — which threw a
      long hard shadow off to one side, stuck to the object like a decal. It lights only now. The
      shadow is thrown by a second light standing almost straight overhead, at no brightness at
@@ -1306,16 +1306,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      acknowledging that someone is there. Dragging is the actual handle, and it is heavy: very
      little turn per pixel, and what weight it has comes from easing rather than from a flick,
      so it feels like turning something dense. The drift rides on top of wherever it has been
-     dragged to, so dragging is never pulled back to the middle. The wheel still rolls it about
-     its own length. */
+     dragged to, so dragging is never pulled back to the middle. Neither axis has a stop: keep
+     pulling in one direction and it keeps coming round, as many turns as you have patience for.
+     The wheel still rolls it about its own length. */
   var HOVER=Math.PI/26;                              /* about seven degrees of drift, either way */
-  var DRAG_GAIN=0.0021,DRAG_YAW=Math.PI/2,DRAG_TILT=Math.PI/4;   /* per pixel, and how far it can be taken */
+  var DRAG_GAIN=0.0021;   /* per pixel. no stop: keep pulling and it keeps coming round */
   var pose={hy:0,ht:0,dy:0,dt:0,vy:0,vt:0},following=false;
   function poseGo(){if(!following){following=true;requestAnimationFrame(followLoop);}}
   function followLoop(){
     if(!drag){                                       /* what is left of the hand that let go */
-      pose.dy=clamp(pose.dy+pose.vy,-DRAG_YAW,DRAG_YAW);
-      pose.dt=clamp(pose.dt+pose.vt,-DRAG_TILT,DRAG_TILT);
+      pose.dy+=pose.vy;pose.dt+=pose.vt;
       pose.vy*=0.90;pose.vt*=0.90;
       if(Math.abs(pose.vy)<0.00004)pose.vy=0;
       if(Math.abs(pose.vt)<0.00004)pose.vt=0;
@@ -1355,8 +1355,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
       if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
       if(!drag.moved)return;
-      pose.dy=clamp(pose.dy+dx*DRAG_GAIN,-DRAG_YAW,DRAG_YAW);
-      pose.dt=clamp(pose.dt+dy*DRAG_GAIN,-DRAG_TILT,DRAG_TILT);
+      pose.dy+=dx*DRAG_GAIN;pose.dt+=dy*DRAG_GAIN;
       pose.vy=dx*DRAG_GAIN*0.55;pose.vt=dy*DRAG_GAIN*0.55;   /* a little carry, not a spin */
       poseGo();
       return;
