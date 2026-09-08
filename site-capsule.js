@@ -1444,7 +1444,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
         ';color:#0a0a0a;background:rgba(255,255,255,0.9);padding:6px 8px;border-radius:6px;white-space:pre;';
       document.body.appendChild(dbg);
       gyro.say=function(){
-        dbg.textContent='mobile '+isMobile()+'\nask '+(typeof D.requestPermission)+
+        var src=String(import.meta.url).split('@')[1]||'';
+        dbg.textContent='build '+src.slice(0,7)+'\nmobile '+isMobile()+'\nask '+(typeof D.requestPermission)+
           '\nsaid '+(gyro.said||'—')+'\nevents '+(gyro.count||0)+'\nlive '+gyro.live;
       };
       gyro.say();setInterval(gyro.say,400);
