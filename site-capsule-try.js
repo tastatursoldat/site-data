@@ -72,7 +72,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      pixels the thing would actually have. Everything else on the site stays in helvetica. */
   var FONT_LCD='"Doto","Helvetica Neue",Helvetica,Arial,sans-serif';
   var lcdFont=document.createElement('link');lcdFont.rel='stylesheet';
-  lcdFont.href='https://fonts.googleapis.com/css2?family=Doto:ROND,wght@100,700&display=swap';
+  lcdFont.href='https://fonts.googleapis.com/css2?family=Doto:ROND,wght@100,800&display=swap';
   /* the roundness axis is pinned at the sheet, not here: a canvas font string is the old css
      shorthand and has no way to say font-variation-settings, so what it is handed has to arrive
      as one fixed instance — round dots, bold. */
@@ -280,7 +280,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the about page speaks in the note's voice: the same serif, the same weight */
     /* the note and the about page read in the screen's own face and its colour: the dot matrix
        from the panel on the back, at a size the dots can actually resolve at. */
-    '#me-about-screen .txt{margin:auto;max-width:32em;font:700 17px/1.85 '+FONT_LCD+';color:var(--me-theme);'+
+    '#me-about-screen .txt{margin:auto;max-width:32em;font:800 17px/1.85 '+FONT_LCD+';color:var(--me-theme);mix-blend-mode:multiply;'+
       'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
     '#me-about-screen .txt a{color:var(--me-theme);text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
@@ -294,7 +294,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-field,#me-browse,#me-stamp,#me-ctrl,#me-corner,#me-col{transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:32em;font:700 17px/1.85 '+FONT_LCD+';color:var(--me-theme);}'+
+    /* the exact colour, laid over the page rather than painted on it: multiplied into the paper, so
+       what darkens it is the page underneath and not a second colour. The lines multiply once for
+       themselves and once inside the block, which is the same colour twice over. */
+    '#me-note .n{margin:auto;max-width:32em;font:800 17px/1.85 '+FONT_LCD+';color:var(--me-theme);mix-blend-mode:multiply;}'+
+    '#me-note .n p{mix-blend-mode:multiply;}'+
     '#me-note .n p{margin:0 0 1.05em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
@@ -883,7 +887,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var lastScreen='';
   function lcdReady(){
     if(!document.fonts||!document.fonts.load){setScreen(lastScreen);return;}
-    document.fonts.load('700 100px "Doto"').then(function(){setScreen(lastScreen);}).catch(function(){});
+    document.fonts.load('800 100px "Doto"').then(function(){setScreen(lastScreen);}).catch(function(){});
   }
   lcdFont.addEventListener('load',lcdReady);
   setTimeout(lcdReady,1400);
@@ -894,14 +898,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(t){
       var col=theme.key,size=150,lines=[t],pad=140,LF=FONT_LCD;
       for(;;){
-        g.font='700 '+size+'px '+LF;
+        g.font='800 '+size+'px '+LF;
         if(g.measureText(t).width<=W2-pad){lines=[t];break;}
         var words=t.split(' '),best=null;
         for(var i=1;i<words.length;i++){var a=words.slice(0,i).join(' '),b=words.slice(i).join(' '),m=Math.max(g.measureText(a).width,g.measureText(b).width);if(!best||m<best.m)best={a:a,b:b,m:m};}
         if(best&&best.m<=W2-pad&&size*2.3<=H2-40){lines=[best.a,best.b];break;}
         size-=8;if(size<52){lines=best?[best.a,best.b]:[t];break;}
       }
-      g.font='700 '+size+'px '+LF;
+      g.font='800 '+size+'px '+LF;
       g.textAlign='center';g.textBaseline='middle';g.fillStyle=col;g.shadowColor=col;g.shadowBlur=30;
       var lh=size*1.15,y0=H2/2-(lines.length-1)*lh/2;
       lines.forEach(function(l,i){g.fillText(l,W2/2,y0+i*lh);g.fillText(l,W2/2,y0+i*lh);});
