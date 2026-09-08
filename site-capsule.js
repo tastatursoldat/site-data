@@ -324,7 +324,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
         'opacity:0;pointer-events:none;transition:opacity 120ms ease;}'+
       '#me-app.open #me-col{opacity:1;pointer-events:auto;transition:opacity 200ms ease 140ms;}'+
       '#me-col .plate{font:700 15px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin:0 0 6px;}'+
-      '#me-app.open #me-field{opacity:1;}'+   /* the list sits below it here, so nothing has to be seen through */
+      '#me-app.open #me-field{opacity:0.5;}'+   /* the words pass over it, so it steps back — but not as far as on a desktop */
+      '#me-col{pointer-events:none;}'+
+      '#me-app.open #me-col{pointer-events:none;}'+
+      '#me-col .plate,#me-col #me-browse{pointer-events:auto;}'+
       '#me-app.browse #me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
       '#me-app.open #me-browse{position:static;display:block;height:auto;overflow:visible;}'+
@@ -1357,12 +1360,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        scrolls is the writing. All that goes in the column is the room it occupies, and that space
        sticks to the top so a tap on the object still shuts it however far the list has moved. */
     place();renderer.render(scene,camera);   /* the column is laid out around where the object is */
-    /* the object keeps the top of the screen and the words start underneath it, so the writing
-       scrolls past without ever crossing the metal — and the object itself is left uncovered,
-       which is what shuts it again when tapped. */
+    /* the words begin below the object and pass over it as they are scrolled, the way the index
+       lies over the metal on a desktop — nothing is cut off at an edge, because there is no edge.
+       The column takes no touches of its own: what is under the finger over the object is the
+       object, which is what shuts it, and the rows themselves take the scrolling. */
     var b=lastBox;
-    colEl.style.top=Math.round(b.top+b.h+18)+'px';
-    colEl.style.paddingTop='0px';
+    colEl.style.top='';
+    colEl.style.paddingTop=Math.round(b.top+b.h+18)+'px';
     }
     var p=document.createElement('div');p.className='plate';p.textContent=stampEl.textContent;
     colEl.appendChild(p);
@@ -1385,7 +1389,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the same drag, only the object is no longer welded to the pointer: the hand sets a pose it is
      heading for and it eases there, a tenth of what is left each frame. What is let go of carries
      on into that same pose and dies out slowly, so a throw glides rather than stops dead. */
-  var aim={yaw:rot.yaw,pitch:rot.pitch,tilt:rot.tilt},spinning=false,lastDrawn=0;
+  var aim={yaw:rot.yaw,pitch:rot.pitch,tilt:rot.tilt,spin:rot.spin},spinning=false,lastDrawn=0;
   function spinLoop(){
     if(!drag){
       aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
@@ -1395,10 +1399,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     }
     rot.spin+=rot.vs;rot.vs*=0.94;if(Math.abs(rot.vs)<0.0004)rot.vs=0;
     var dy=aim.yaw-rot.yaw,dp=aim.pitch-rot.pitch,dt=aim.tilt-rot.tilt;
-    if(!rot.vy&&!rot.vx&&!rot.vs&&Math.abs(dy)<0.0003&&Math.abs(dp)<0.0003&&Math.abs(dt)<0.0003){
-      rot.yaw=aim.yaw;rot.pitch=aim.pitch;rot.tilt=aim.tilt;spinning=false;paint();return;
+    var ds=gyro.live?(aim.spin-rot.spin):0;   /* the phone holds the roll at an angle; the wheel throws it */
+    if(!rot.vy&&!rot.vx&&!rot.vs&&Math.abs(dy)<0.0003&&Math.abs(dp)<0.0003&&Math.abs(dt)<0.0003&&Math.abs(ds)<0.0003){
+      rot.yaw=aim.yaw;rot.pitch=aim.pitch;rot.tilt=aim.tilt;if(gyro.live)rot.spin=aim.spin;
+      spinning=false;paint();return;
     }
-    rot.yaw+=dy*0.105;rot.pitch+=dp*0.105;rot.tilt+=dt*0.105;   /* and it takes its time getting there */
+    rot.yaw+=dy*0.105;rot.pitch+=dp*0.105;rot.tilt+=dt*0.105;rot.spin+=ds*0.105;   /* and it takes its time getting there */
     /* a phone draws this half as often. The movement is eased over hundreds of milliseconds, so
        thirty frames of it look the same as sixty and cost half as much to make. */
     var now=nowMs();
@@ -1416,7 +1422,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      drives, so a sharp one rolls the object on its own length and it coasts to a stop.
      iOS will not report any of it until it has been asked in front of a person, so the ask goes
      on the first touch and the answer is remembered by the browser. */
-  var HOME_YAW=rot.yaw,HOME_PITCH=rot.pitch;
+  var HOME_YAW=rot.yaw,HOME_PITCH=rot.pitch,HOME_SPIN=rot.spin;
   var gyro={on:false,live:false,zero:null};
   function gyroTurn(e){
     if(e.beta==null&&e.gamma==null)return;
@@ -1430,22 +1436,21 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(gyro.last&&Math.abs(raw.b-gyro.last.b)<0.8&&Math.abs(raw.g-gyro.last.g)<0.8)return;   /* a hand is never still: under a degree is tremor */
     gyro.last=raw;
     var dg=clamp(raw.g-gyro.zero.g,-45,45),db=clamp(raw.b-gyro.zero.b,-45,45);
-    /* each tilt moved on one axis: tilting the phone left and right turns the object about its
-       upright, tipping it away and back swings its nose up and down. The flick keeps the third —
-       the length it rolls on — so no two of them share an axis any more. */
+    /* tipping the handset away and back rolls the object on its own length — the turn that brings
+       the panel on its back round to the front. Tilting it left and right turns it about its
+       upright. The nose is the flick's, below. */
     aim.yaw=HOME_YAW+dg*0.026;
-    aim.tilt=clamp(-db*0.022,-1.0,1.0);
+    aim.spin=HOME_SPIN-db*0.030;
     kickSpin();
   }
   function gyroFlick(e){
-    /* a flick does one thing: it rolls the object on its own length. Turning the phone sharply to
-       the left or right about its upright — the wrist flick you would give a tube to spin it — is
-       the only thing measured, and it is measured as turn per second rather than as an angle, so
-       a slow deliberate turn tilts it and a sharp one spins it. */
+    /* a flick swings the nose up and down. It is measured as turn per second rather than as an
+       angle, so a slow deliberate movement of the handset does nothing here and a sharp one does
+       — and where a tilt holds the object at an angle, this knocks it and lets it settle. */
     var r=e.rotationRate;if(!r)return;
     var flick=r.gamma||0;
     if(Math.abs(flick)<45)return;
-    rot.vs=clamp(rot.vs+flick*0.00040,-0.16,0.16);
+    aim.tilt=clamp(aim.tilt+flick*0.00085,-0.9,0.9);
     kickSpin();
   }
   /* Asking iOS is fussier than it looks. The call has to happen inside a gesture the browser
@@ -1505,7 +1510,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        the permission, the next one opens it. */
     function ask(){
       if(gyro.live||gyro.on||gyro.asking)return;
-      gyro.eat=true;
+      /* exactly one tap is ever spent on the permission. It still asks again on later taps — a
+         browser can answer neither yes nor no, and one that keeps answering that way was eating
+         every tap, which left the object impossible to open at all — but from the second tap on,
+         asking and opening happen together. */
+      if(!gyro.spent){gyro.spent=true;gyro.eat=true;}
       startGyro();
     }
     document.addEventListener('touchstart',ask,{capture:true,passive:true});
@@ -1552,7 +1561,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(isMobile()&&app.classList.contains('open'))return;
     e.preventDefault();
     var d=e.deltaMode===1?e.deltaY*16:(e.deltaMode===2?e.deltaY*400:e.deltaY);
-    rot.spin+=d*0.0022;rot.vs=clamp(d*0.0016,-0.09,0.09);
+    rot.spin+=d*0.0022;aim.spin=rot.spin;rot.vs=clamp(d*0.0016,-0.09,0.09);
     kickSpin();
   },{passive:false});
 
