@@ -984,15 +984,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var YAW=THREE.MathUtils.degToRad(roll.yaw);
   var BASE_YAW=-YAW+THREE.MathUtils.degToRad(roll.ry),LIMIT=Math.PI/8;   /* forty-five degrees of travel per axis */
   var AX_X=new THREE.Vector3(1,0,0),AX_Y=new THREE.Vector3(0,1,0),AX_Z=new THREE.Vector3(0,0,1);
-  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
+  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),qZ=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
   /* the pose a fresh page lands in: turned a little less than three quarters, so the far cap is
      read edge-on rather than face-on, and rolled a touch so the engraving sits above the middle
      of the barrel instead of across it. */
-  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),spin:-0.16,vy:0,vx:0,vs:0};
+  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),tilt:0,spin:-0.16,vy:0,vx:0,vs:0};
   function applyRot(){
     qY.setFromAxisAngle(AX_Y,rot.yaw);qX.setFromAxisAngle(AX_X,rot.pitch);  /* the drag, as on the live site */
-    qS.setFromAxisAngle(AX_X,rot.spin);                                     /* the wheel, about its own length */
-    qTmp.copy(qX).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
+    qZ.setFromAxisAngle(AX_Z,rot.tilt);                                     /* the phone, nose up and down */
+    qS.setFromAxisAngle(AX_X,rot.spin);                                     /* the wheel and the flick, about its own length */
+    qTmp.copy(qZ).multiply(qX).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
   }
   applyRot();
 
@@ -1378,7 +1379,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the same drag, only the object is no longer welded to the pointer: the hand sets a pose it is
      heading for and it eases there, a tenth of what is left each frame. What is let go of carries
      on into that same pose and dies out slowly, so a throw glides rather than stops dead. */
-  var aim={yaw:rot.yaw,pitch:rot.pitch},spinning=false;
+  var aim={yaw:rot.yaw,pitch:rot.pitch,tilt:rot.tilt},spinning=false;
   function spinLoop(){
     if(!drag){
       aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
@@ -1387,11 +1388,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       if(Math.abs(rot.vx)<0.00012)rot.vx=0;
     }
     rot.spin+=rot.vs;rot.vs*=0.94;if(Math.abs(rot.vs)<0.0004)rot.vs=0;
-    var dy=aim.yaw-rot.yaw,dp=aim.pitch-rot.pitch;
-    if(!rot.vy&&!rot.vx&&!rot.vs&&Math.abs(dy)<0.0003&&Math.abs(dp)<0.0003){
-      rot.yaw=aim.yaw;rot.pitch=aim.pitch;spinning=false;paint();return;
+    var dy=aim.yaw-rot.yaw,dp=aim.pitch-rot.pitch,dt=aim.tilt-rot.tilt;
+    if(!rot.vy&&!rot.vx&&!rot.vs&&Math.abs(dy)<0.0003&&Math.abs(dp)<0.0003&&Math.abs(dt)<0.0003){
+      rot.yaw=aim.yaw;rot.pitch=aim.pitch;rot.tilt=aim.tilt;spinning=false;paint();return;
     }
-    rot.yaw+=dy*0.105;rot.pitch+=dp*0.105;   /* and it takes its time getting there */
+    rot.yaw+=dy*0.105;rot.pitch+=dp*0.105;rot.tilt+=dt*0.105;   /* and it takes its time getting there */
     paint();requestAnimationFrame(spinLoop);
   }
   function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
@@ -1419,10 +1420,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(gyro.last&&Math.abs(raw.b-gyro.last.b)<0.35&&Math.abs(raw.g-gyro.last.g)<0.35)return;
     gyro.last=raw;
     var dg=clamp(raw.g-gyro.zero.g,-45,45),db=clamp(raw.b-gyro.zero.b,-45,45);
-    /* the two axes are swapped: tipping the phone away and back turns the object about its
-       upright, tilting it left and right turns it about its length. */
-    aim.yaw=HOME_YAW+db*0.026;
-    aim.pitch=clamp(HOME_PITCH-dg*0.022,-1.1,1.1);
+    /* each tilt moved on one axis: tilting the phone left and right turns the object about its
+       upright, tipping it away and back swings its nose up and down. The flick keeps the third —
+       the length it rolls on — so no two of them share an axis any more. */
+    aim.yaw=HOME_YAW+dg*0.026;
+    aim.tilt=clamp(-db*0.022,-1.0,1.0);
     kickSpin();
   }
   function gyroFlick(e){
@@ -1504,7 +1506,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(e.button!==undefined&&e.button!==0)return;
     if(!hitCapsule(e.clientX,e.clientY))return;
     drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,moved:false,id:e.pointerId,el:el};
-    rot.vy=rot.vx=0;aim.yaw=rot.yaw;aim.pitch=rot.pitch;
+    rot.vy=rot.vx=0;aim.yaw=rot.yaw;aim.pitch=rot.pitch;aim.tilt=rot.tilt;
     try{el.setPointerCapture(e.pointerId);}catch(err){}
   }
   function dragMove(e){
