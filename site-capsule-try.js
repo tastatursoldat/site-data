@@ -905,18 +905,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   keyLight.shadow.camera.left=-7;keyLight.shadow.camera.right=7;keyLight.shadow.camera.top=6;keyLight.shadow.camera.bottom=-6;keyLight.shadow.camera.near=1;keyLight.shadow.camera.far=40;
   var keyTarget=new THREE.Object3D();keyTarget.position.set(0,0,0);stage.add(keyTarget);keyLight.target=keyTarget;stage.add(keyLight);
   var fillLight=new THREE.DirectionalLight(0xffffff,0.35);fillLight.position.set(-6,2,8);stage.add(fillLight);
-  /* the view: a three-quarter turn at rest, and the pointer moves it from there */
+  /* the view: a three-quarter turn at rest, and the visitor may turn it any way by dragging */
   var YAW=THREE.MathUtils.degToRad(roll.yaw);
-  /* it rests dead level and square on: a side elevation, the engraving facing the room. The
-     three-quarter turn it used to sit at is now only somewhere the pointer can take it. */
-  var BASE_YAW=0,LIMIT=Math.PI/8;   /* forty-five degrees of travel in each axis, either side of the pose it rests in */
-  var rot={yaw:BASE_YAW,tilt:0,spin:0,vs:0};
-  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qZ=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
+  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),spin:0,vy:0,vx:0,vs:0};
+  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
   function applyRot(){
-    qY.setFromAxisAngle(new THREE.Vector3(0,1,0),rot.yaw);    /* the pointer, left and right */
-    qZ.setFromAxisAngle(new THREE.Vector3(0,0,1),rot.tilt);   /* the pointer, up and down */
-    qS.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.spin);   /* the wheel, about its own length */
-    qTmp.copy(qZ).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
+    qY.setFromAxisAngle(new THREE.Vector3(0,1,0),rot.yaw);qX.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.pitch);
+    qS.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.spin);   /* about its own length, whichever way it is turned */
+    qTmp.copy(qX).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
   }
   applyRot();
 
@@ -1034,26 +1030,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     endWallL.visible=(e==='R');endWallR.visible=(e==='L');
     needPaint();
   }
-  var MOB_SLIDE=44,fitL=0,fitW=0,fitH=0,rot0Yaw=BASE_YAW;
+  var MOB_SLIDE=44;
   function restBox(){
     if(isMobile()){var Lm=W-36-MOB_SLIDE;return {L:Lm,left:18,top:H*0.36};}
-    /* one size, held: as large as the window will take at the WORST pose the pointer can put it
-       in, not the one it happens to be in. Sizing to the current angle meant the object breathed
-       in and out as the pointer moved. Every pose inside the travel is walked once, the widest
-       silhouette across the frame and the tallest down it are taken, and the tighter of the two
-       sets a scale that then never changes — so nothing ever leaves the window, and nothing zooms. */
-    if(!fitL||fitW!==W||fitH!==H){
-      var mx=0,my=0;
-      for(var iy=0;iy<=8;iy++)for(var it=0;it<=8;it++){
-        var yw=rot0Yaw-LIMIT+2*LIMIT*iy/8,tl=-LIMIT+2*LIMIT*it/8;
-        var ax=Math.abs(Math.cos(yw)*Math.cos(tl)),ay=Math.abs(Math.cos(yw)*Math.sin(tl));
-        mx=Math.max(mx,LTOT*ax+2*CAPR*Math.sqrt(Math.max(0,1-ax*ax)));
-        my=Math.max(my,LTOT*ay+2*CAPR*Math.sqrt(Math.max(0,1-ay*ay)));
-      }
-      fitW=W;fitH=H;
-      fitL=Math.min(W*0.80*LTOT/mx,H*0.76*LTOT/my);   /* the near end is nearer the lens than the middle: the margin pays for the perspective */
-    }
-    return {L:fitL,left:W/2-fitL/2,top:H*0.5-(fitL/LTOT*2*RF)/2};
+    var L=clamp(W*0.52,460,800);
+    return {L:L,left:W/2-L/2,top:H*0.47-(L/LTOT*2*RF)/2};
   }
   function openBox(){
     var r=restBox(),top=Math.max(72,H*0.08),L=r.L;
@@ -1308,45 +1289,52 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     }else if(cap.state==='open'){setTc(h?'close':'');}
     needPaint();
   }
-  /* the object is not handled any more, it is looked at: the pointer's place in the window is
-     the pose. Left and right is the turn about the upright axis, up and down the tilt about the
-     one across the screen, each held inside forty-five degrees, and it glides to where the
-     pointer is rather than snapping. The wheel is the third axis, its own length. */
-  var aim={yaw:BASE_YAW,tilt:rot.tilt},following=false;
-  function aimAt(px,py){
-    var r=cvs.getBoundingClientRect();
-    if(!r.width||!r.height)return;
-    var nx=clamp(((px-r.left)/r.width)*2-1,-1,1),ny=clamp(((py-r.top)/r.height)*2-1,-1,1);
-    aim.yaw=BASE_YAW+nx*LIMIT;aim.tilt=ny*LIMIT;
-    if(!following){following=true;requestAnimationFrame(followLoop);}
-  }
-  function followLoop(){
-    var dy=aim.yaw-rot.yaw,dt=aim.tilt-rot.tilt;
-    if(Math.abs(dy)<0.0005&&Math.abs(dt)<0.0005){rot.yaw=aim.yaw;rot.tilt=aim.tilt;following=false;paint();return;}
-    rot.yaw+=dy*0.11;rot.tilt+=dt*0.11;
-    paint();requestAnimationFrame(followLoop);
-  }
+  /* drag turns the capsule (with a little momentum); a click that did not move opens or seals it */
+  var drag=null;
   var spinning=false;
   function spinLoop(){
-    if(Math.abs(rot.vs)<0.0004){rot.vs=0;spinning=false;return;}
-    rot.spin+=rot.vs;rot.vs*=0.94;
+    if(drag||(Math.abs(rot.vy)<0.0004&&Math.abs(rot.vx)<0.0004&&Math.abs(rot.vs)<0.0004)){rot.vy=rot.vx=rot.vs=0;spinning=false;return;}
+    rot.yaw+=rot.vy;rot.pitch=clamp(rot.pitch+rot.vx,-1.1,1.1);rot.spin+=rot.vs;
+    rot.vy*=0.93;rot.vx*=0.93;rot.vs*=0.94;
     paint();requestAnimationFrame(spinLoop);
   }
   function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
+  function dragStart(e,el){
+    if(e.button!==undefined&&e.button!==0)return;
+    if(!hitCapsule(e.clientX,e.clientY))return;
+    drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,moved:false,id:e.pointerId,el:el};
+    rot.vy=rot.vx=0;
+    try{el.setPointerCapture(e.pointerId);}catch(err){}
+  }
+  function dragMove(e){
+    if(!drag||e.pointerId!==drag.id)return;
+    var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
+    if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
+    if(!drag.moved)return;
+    rot.vy=dx*0.006;rot.vx=dy*0.006;
+    rot.yaw+=rot.vy;rot.pitch=clamp(rot.pitch+rot.vx,-1.1,1.1);
+    paint();
+  }
+  function dragEnd(e){
+    if(!drag||e.pointerId!==drag.id)return;
+    var d=drag;drag=null;cvs.classList.remove('turning');
+    try{d.el.releasePointerCapture(e.pointerId);}catch(err){}
+    if(d.moved){kickSpin();return;}
+    if(e.detail>1)return;
+    if(cap.state==='sealed')setEnd(endFromPoint(e.clientX,e.clientY));   /* a tap has no hover before it */
+    toggleCapsule();
+  }
   cvs.addEventListener('pointermove',function(e){
+    if(drag){dragMove(e);return;}
     if(!canHover())return;
-    aimAt(e.clientX,e.clientY);
     var on=hitCapsule(e.clientX,e.clientY);
     if(on)setEnd(endFromPoint(e.clientX,e.clientY));
     setHot(on);
   });
-  cvs.addEventListener('pointerleave',function(){setHot(false);});
-  cvs.addEventListener('click',function(e){
-    if(e.detail>1)return;
-    if(!hitCapsule(e.clientX,e.clientY))return;
-    if(cap.state==='sealed')setEnd(endFromPoint(e.clientX,e.clientY));   /* a tap has no hover before it */
-    toggleCapsule();
-  });
+  cvs.addEventListener('pointerleave',function(){if(!drag)setHot(false);});
+  cvs.addEventListener('pointerdown',function(e){dragStart(e,cvs);});
+  cvs.addEventListener('pointerup',dragEnd);
+  cvs.addEventListener('pointercancel',function(){drag=null;cvs.classList.remove('turning');});
   cvs.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCapsule();}});
   /* the wheel rolls it: the object turns about its own length, the way you would turn a tube
      in your hands to read the far side of it. only while the object is what is on screen. */
