@@ -941,6 +941,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function turnBy(ax,ay){        /* ax about the window's upright, ay about its level: screen axes */
     qInc.setFromAxisAngle(AX_Y,ax);qWant.premultiply(qInc);
     qInc.setFromAxisAngle(AX_X,ay);qWant.premultiply(qInc);
+    qWant.normalize();           /* thousands of these compose: without it the pose slowly stops being a rotation */
   }
   applyRot();
 
@@ -1049,7 +1050,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var a=screenOf(XL+CAPL/2),b=screenOf(XR-CAPL/2);
     var da=(px-a[0])*(px-a[0])+(py-a[1])*(py-a[1]);
     var db=(px-b[0])*(px-b[0])+(py-b[1])*(py-b[1]);
-    return da<db?'L':'R';
+    /* turned end-on, the two cap centres land almost on top of each other and the nearer of them
+       changes with every twitch of the pointer — which flipped the bore's dark end and its end
+       wall back and forth. The end only changes when the other one is clearly nearer. */
+    var now=cap.end;
+    if(now==='L'&&db*1.7<da)return 'R';
+    if(now==='R'&&da*1.7<db)return 'L';
+    return now;
   }
   function setEnd(e){
     if(cap.end===e||cap.state!=='sealed')return;
@@ -1366,7 +1373,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   });
   cvs.addEventListener('pointermove',function(e){
     if(drag&&e.pointerId===drag.id){
-      var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
+      var dx=clamp(e.clientX-drag.x,-70,70),dy=clamp(e.clientY-drag.y,-70,70);
+      drag.x=e.clientX;drag.y=e.clientY;
       if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
       if(!drag.moved)return;
       turnBy(dx*DRAG_GAIN,dy*DRAG_GAIN);
