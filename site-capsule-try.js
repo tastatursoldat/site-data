@@ -577,12 +577,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
 
   /* ── surfaces ─────────────────────────────────────────────────── */
+  /* the grain of polished stainless. it used to be drawn for a room of coloured panels; against
+     a photographed studio the same strokes read as scratches, so they are a third of the weight
+     and the smear that stretched them along the tube is off. ?brush= sets the weight. */
+  var BR=parseFloat(Q.get('brush')||'0.34');
   function brush(r,w,h,ppx,ppy,seed){ /* lines along the tube: the grain of polished stainless */
     r.fillStyle='#8c8c8c';r.fillRect(0,0,w,h);
     var rnd=(function(){var q=seed;return function(){q=(q*1664525+1013904223)>>>0;return q/4294967296;};})();
     var n=Math.round(110*(w/ppx)*(h/ppy));
     for(var i=0;i<n;i++){
-      var x=rnd()*w,len=(0.6+rnd()*5.5)*ppy,y=rnd()*h,a=0.05+rnd()*0.12,dark=rnd()<0.5;
+      var x=rnd()*w,len=(0.6+rnd()*5.5)*ppy,y=rnd()*h,a=(0.05+rnd()*0.12)*BR,dark=rnd()<0.5;
       r.strokeStyle=dark?'rgba(40,40,40,'+a+')':'rgba(230,230,230,'+a+')';r.lineWidth=(0.6+rnd()*1.2)*ppx/326;
       r.beginPath();r.moveTo(x,y);r.lineTo(x+(rnd()-0.5)*2,y+len);r.stroke();
     }
@@ -591,7 +595,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     color:new THREE.Color(roll.tone,roll.tone,roll.tone*0.99),metalness:1,roughness:roll.rough,
     envMapIntensity:1.0
   });
-  steel.anisotropy=roll.aniso;steel.anisotropyRotation=Math.PI/2;
+  steel.anisotropy=parseFloat(Q.get('aniso')||'0.18');steel.anisotropyRotation=Math.PI/2;
   /* every other part is the same metal as the tube: same tone, same roughness, same brushing
      along the axis (the grain scaled to each part's length), same anisotropy */
   function sameMetal(){
@@ -599,6 +603,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     mt.anisotropy=roll.aniso;mt.anisotropyRotation=Math.PI/2;return mt;
   }
   var plateSteel=sameMetal(),capSteel=sameMetal(),boltSteel=sameMetal();
+  /* the fittings carry no brushing any more, so there is no grain for an anisotropic highlight
+     to lie along — and on a lathe it follows the uv, which put a diagonal weave across every
+     rim seen at a glancing angle. they are plain polished metal now. */
+  plateSteel.anisotropy=0;capSteel.anisotropy=0;boltSteel.anisotropy=0;
   var socketMat=new THREE.MeshStandardMaterial({color:0x111213,metalness:0.6,roughness:0.85});
   /* the visitor in the steel, the way the reel does it: the mirrored camera picture is laid
      over the metal in screen space — where you look, you see yourself — and bent by the
