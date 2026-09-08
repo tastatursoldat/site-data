@@ -537,7 +537,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      cap. the right cap is the lid: its screws back out of the ring, then
      the cap is pulled off. */
   var R=1,D=2,LTOT=3.6*D;
-  var RF=1.28,TR=0.55,CAPL=0.5,CAPR=0.98,GAP=0.035,NB=8,FIL=0.035,SR=0.07,SL=0.16,SOUT=0.24;
+  var RF=1.28,TR=0.55,CAPL=0.5,CAPR=0.98,GAP=0.006,NB=8,FIL=0.035,SR=0.07,SL=0.16,SOUT=0.42;
   var XL=0, XR=LTOT;
   var TUBE0=XL+CAPL+GAP+TR, TUBE1=XR-CAPL-GAP-TR;    /* the tube between the rings */
   var LID_HOME=XR-CAPL;                              /* the right cap's inner face */
@@ -588,7 +588,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     for(var i=0;i<n;i++){
       var x=rnd()*w,len=(0.6+rnd()*5.5)*ppy,y=rnd()*h,a=(0.05+rnd()*0.12)*BR,dark=rnd()<0.5;
       r.strokeStyle=dark?'rgba(40,40,40,'+a+')':'rgba(230,230,230,'+a+')';r.lineWidth=(0.6+rnd()*1.2)*ppx/326;
-      r.beginPath();r.moveTo(x,y);r.lineTo(x+(rnd()-0.5)*2,y+len);r.stroke();
+      r.beginPath();r.moveTo(x,y);r.lineTo(x,y+len);r.stroke();   /* dead straight: a brushed line is */
     }
   }
   var steel=new THREE.MeshPhysicalMaterial({
@@ -606,7 +606,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the fittings carry no brushing any more, so there is no grain for an anisotropic highlight
      to lie along — and on a lathe it follows the uv, which put a diagonal weave across every
      rim seen at a glancing angle. they are plain polished metal now. */
-  plateSteel.anisotropy=0;capSteel.anisotropy=0;boltSteel.anisotropy=0;
+  plateSteel.anisotropy=0;boltSteel.anisotropy=0;   /* the caps keep theirs: it is what turns their faces */
   var socketMat=new THREE.MeshStandardMaterial({color:0x111213,metalness:0.6,roughness:0.85});
   /* the visitor in the steel, the way the reel does it: the mirrored camera picture is laid
      over the metal in screen space — where you look, you see yourself — and bent by the
@@ -663,7 +663,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      studio has structure of its own for it to bend, and at the old weight — with the brushing
      that used to cover it now down to a third — it came out as circles rolling down the tube.
      A tenth of it is what a polish actually looks like. ?wave= sets it. */
-  var WAVE=parseFloat(Q.get('wave')||'0.0018');
+  var WAVE=parseFloat(Q.get('wave')||'0');
   function wave(u,v){
     var A=WAVE;
     var nx=A*(Math.sin(6.283*(2.3*v+0.7*u))+0.6*Math.sin(6.283*(5.1*v-1.3*u+0.3))+0.35*Math.sin(6.283*(9.7*v+2.1*u+0.8))+0.5*Math.sin(6.283*(1.37*v-0.41*u+0.61)+2.1*Math.sin(6.283*0.9*v)));
@@ -739,7 +739,31 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.62,roll.tone*0.62,roll.tone*0.63),metalness:0.45,roughness:0.82,envMapIntensity:0.7,side:THREE.BackSide,vertexColors:true});
   var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
-  var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,48);
+  var HH=0.085,SHL=0.235,PITCH=0.038;                 /* head, threaded shank, and its pitch */
+  var HR=SR*0.70,HD=HH+SHL+0.02;                      /* the bore holds the whole shank */
+  var screwGeo=new THREE.CylinderGeometry(SR,SR,HH,48);
+  /* the shank stays a clean cylinder — a swept thread is a mess of polygons and reads as one.
+     The thread is cut into the surface instead: a normal map whose groove is a single helix,
+     so the ridge runs round and along exactly as a cut thread does and the silhouette stays
+     the straight line a turned shank has. */
+  var threadMap=(function(){
+    var N=256,c=document.createElement('canvas');c.width=N;c.height=N;
+    var g=c.getContext('2d'),im=g.createImageData(N,N),d=im.data,turns=SHL/PITCH;
+    for(var y=0;y<N;y++)for(var x=0;x<N;x++){
+      var u=x/N,v=y/N,ph=(v*turns-u)%1;if(ph<0)ph+=1;
+      var slope=(ph<0.5?1:-1);                       /* the two flanks of the groove */
+      var ny=slope*0.9,nx=-slope*0.9/turns,nz=1,L=Math.hypot(nx,ny,nz),i=(y*N+x)*4;
+      d[i]=Math.round((nx/L*0.5+0.5)*255);d[i+1]=Math.round((ny/L*0.5+0.5)*255);
+      d[i+2]=Math.round((nz/L*0.5+0.5)*255);d[i+3]=255;
+    }
+    g.putImageData(im,0,0);
+    var t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;
+    return t;
+  })();
+  var shankMat=boltSteel.clone();shankMat.normalMap=threadMap;shankMat.normalScale=new THREE.Vector2(0.85,0.85);
+  mirrorSteel(shankMat);
+  var shankGeo=new THREE.CylinderGeometry(SR*0.62,SR*0.62,SHL,48);
+  var TURNS=SOUT/PITCH;                               /* it comes out exactly as far as it is turned */
   /* the recess in the head: a four-pointed star, cut in rather than sunk as a hex socket */
   var sockGeo=(function(){
     var sh=new THREE.Shape(),ro=SR*0.68,ri=SR*0.115;
@@ -757,14 +781,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the tapped hole each screw came out of: an open bore in the rim with a floor at the
      bottom of it. it is a little narrower than the screw, so while the screw is home the
      hole is inside it and nothing shows; back the screw out and the hole is what is left. */
-  var HR=SR*0.92,HD=SL+0.03;
   var boreWall=new THREE.CylinderGeometry(HR,HR,HD,40,1,true);
   var boreFloor=new THREE.CircleGeometry(HR,40);
   /* the mouth of it, countersunk. a bore straight down into a rim shows nothing at all unless
      you happen to be looking along it — and the ring is edge-on from most of the ways the
      object is turned. the seat is what makes a hole read: a dark ring on the surface, there
      from every angle, and the screw head sits in it when the screw is home. */
-  var boreMouth=new THREE.CylinderGeometry(HR*1.55,HR,0.045,40,1,true);
+  var boreMouth=new THREE.CylinderGeometry(HR*1.95,HR,0.05,40,1,true);
   var tapMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.14,roll.tone*0.14,roll.tone*0.15),metalness:0.5,roughness:0.85,side:THREE.BackSide});
   var tapFloorMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.20,roll.tone*0.20,roll.tone*0.21),metalness:0.5,roughness:0.9});
   var seatMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.42,roll.tone*0.42,roll.tone*0.43),metalness:0.7,roughness:0.6,side:THREE.DoubleSide});
@@ -778,8 +801,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       var mouth=new THREE.Mesh(boreMouth,seatMat);mouth.position.y=RF+0.014-0.0225;hole.add(mouth);
       parent.add(hole);
       var g=new THREE.Group();g.position.x=x;g.rotation.x=a;            /* local +y points outward along the radius */
-      var head=new THREE.Mesh(screwGeo,boltSteel);head.position.y=RF-SL/2+0.012;g.add(head);
-      var sock=new THREE.Mesh(sockGeo,socketMat);sock.position.y=RF+0.0125;sock.rotation.y=rndA()*Math.PI/2;g.add(sock);
+      var head=new THREE.Mesh(screwGeo,boltSteel);head.userData.y0=RF+0.012-HH/2;g.add(head);
+      var shank=new THREE.Mesh(shankGeo,shankMat);shank.userData.y0=RF+0.012-HH-SHL/2;g.add(shank);
+      var sock=new THREE.Mesh(sockGeo,socketMat);sock.userData.y0=RF+0.0125;sock.rotation.y=rndA()*Math.PI/2;g.add(sock);
+      g.children.forEach(function(m){m.position.y=m.userData.y0;});
       g.userData.a0=rndA()*Math.PI/3;
       parent.add(g);out.push(g);
     }
@@ -996,8 +1021,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       var j=ORDER.indexOf(i),st=j*0.105,du=0.26;
       var q=clamp((p1-st)/du,0,1);
       var e=q<0.5?2*q*q:1-Math.pow(-2*q+2,2)/2;           /* torque to break it, then it spins, then it slows */
-      g.rotation.y=g.userData.a0+e*Math.PI*2*6;             /* six turns about its own axis */
-      g.children.forEach(function(m,k){m.position.y=(k===0?RF-SL/2+0.012:RF+0.012)+e*SOUT;}); /* out of the ring along the radius */
+      g.rotation.y=g.userData.a0+e*Math.PI*2*TURNS;         /* turned exactly as far as it travels */
+      g.children.forEach(function(m){m.position.y=m.userData.y0+e*SOUT;}); /* out of the ring along the radius */
     });
     var park=isMobile()?MOB_SLIDE/lastPx:(TP+0.1*LTOT);
     var pe=p2<0.5?2*p2*p2:1-Math.pow(-2*p2+2,2)/2;
