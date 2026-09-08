@@ -128,7 +128,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-corner{position:fixed;right:19px;bottom:17px;z-index:10;display:flex;gap:13px;align-items:center;}'+
     /* the pause belongs to the title it sits beside, so it is coloured with it — its mark is drawn
        in the same ink as the words on the dial and the screen on the capsule's back. */
-    '#me-corner #me-stop{color:var(--me-theme-laid);'+
+    '#me-corner #me-stop{color:var(--me-theme-laid);font:800 15px/1.55 '+FONT_LCD+';letter-spacing:-1px;'+
       'display:flex;opacity:0;transform:translateY(6px);pointer-events:none;'+
       'transition:opacity 120ms ease,transform 120ms cubic-bezier(0.23,1,0.32,1);}'+
     '#me-app.radio-on #me-stop{opacity:1;transform:none;pointer-events:auto;'+
@@ -363,12 +363,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '</div>'+
     /* bottom right: the radio corner — the word, or pause + title while playing */
     '<div id="me-corner">'+
-      '<button id="me-stop" class="icon" aria-label="Pause music">'+
-        '<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" stroke="none">'+
-          '<rect x="5" y="4.5" width="3.4" height="11" rx="1"/>'+
-          '<rect x="11.6" y="4.5" width="3.4" height="11" rx="1"/>'+
-        '</svg>'+
-      '</button>'+
+      /* the pause is set in the same face as the title it stands beside, not drawn as a shape:
+         two bars of the dot matrix rather than two rectangles of svg */
+      '<button id="me-stop" class="icon" aria-label="Pause music">||</button>'+
       '<div id="me-music" role="button" aria-label="Radio — current song"></div>'+
       '<button id="me-radio" class="txt" aria-pressed="false" aria-label="Radio — toggle radio view">radio</button>'+
     '</div>'+
@@ -460,7 +457,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var cvs=app.querySelector('#me-field');
   var browseEl=app.querySelector('#me-browse');
   var stampEl=app.querySelector('#me-stamp'),colEl=app.querySelector('#me-col');
-  var W=0,H=0,DPR=Math.min(devicePixelRatio||1,2);
+  var W=0,H=0,DPR=Math.min(devicePixelRatio||1,matchMedia('(max-width:700px)').matches?1.5:2);   /* a phone is held far enough away that 1.5 is plenty, and it is half the pixels of 2 */
 
   var renderer=null,gl=null;
   /* probe the context first: three's constructor logs an error before it throws */
@@ -649,8 +646,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
           '  vec2 cuv=vec2(0.5+(suv.x-0.5)*(sa/uCamAspect)*uZoom+rf.x*uCyl*0.2,0.5+mix((suv.y-0.5)*uZoom*1.15,rf.y*uZoom/3.0,uCyl));\n'+
           '  cuv+=(normal.xy-nonPerturbedNormal.xy)*uWarp;\n'+ /* only the cut of the letters bends it */
           '  vec3 camc=vec3(0.0);\n'+
-          '  for(int i=-5;i<=5;i++)for(int j=-2;j<=2;j++){camc+=texture2D(uCam,clamp(cuv+vec2(float(i)*uTexel.x*1.6,float(j)*uTexel.y*0.5),0.0,1.0)).rgb;}\n'+ /* long along the brushing, short across it */
-          '  camc/=55.0;\n'+
+          (isMobile()
+            ? '  for(int i=-1;i<=1;i++){camc+=texture2D(uCam,clamp(cuv+vec2(float(i)*uTexel.x*4.0,0.0),0.0,1.0)).rgb;}\n  camc/=3.0;\n'
+            : '  for(int i=-5;i<=5;i++)for(int j=-2;j<=2;j++){camc+=texture2D(uCam,clamp(cuv+vec2(float(i)*uTexel.x*1.6,float(j)*uTexel.y*0.5),0.0,1.0)).rgb;}\n  camc/=55.0;\n')+ /* long along the brushing, short across it — three reads a pixel on a phone instead of fifty-five */
           '  float lum=dot(camc,vec3(0.299,0.587,0.114));camc=mix(vec3(lum),camc,0.45);camc=(camc-0.5)*1.45+0.5;camc*=0.86;\n'+
           '  float edge=smoothstep(-0.05,0.05,cuv.x)*smoothstep(1.05,0.95,cuv.x)*smoothstep(-0.05,0.05,cuv.y)*smoothstep(1.05,0.95,cuv.y)*mix(1.0,smoothstep(0.0,0.3,rf.z),uCyl);\n'+
           '  float fres=pow(1.0-max(normal.z,0.0),1.5);\n'+
@@ -1413,7 +1411,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(e.beta==null&&e.gamma==null)return;
     gyro.live=true;gyro.count=(gyro.count||0)+1;          /* it is actually reporting: the hand stands down */
     if(!gyro.zero)gyro.zero={b:e.beta||0,g:e.gamma||0};   /* however the phone was held at the start is level */
-    var dg=clamp((e.gamma||0)-gyro.zero.g,-45,45),db=clamp((e.beta||0)-gyro.zero.b,-45,45);
+    /* a phone lying still still reports, a fraction of a degree at a time, and every one of those
+       reports was waking the renderer — which is a webgl scene drawn sixty times a second for as
+       long as the page is open, and a hot phone. Anything under a third of a degree is the sensor
+       talking to itself, and it is ignored, so a still phone draws nothing. */
+    var raw={b:e.beta||0,g:e.gamma||0};
+    if(gyro.last&&Math.abs(raw.b-gyro.last.b)<0.35&&Math.abs(raw.g-gyro.last.g)<0.35)return;
+    gyro.last=raw;
+    var dg=clamp(raw.g-gyro.zero.g,-45,45),db=clamp(raw.b-gyro.zero.b,-45,45);
     /* the two axes are swapped: tipping the phone away and back turns the object about its
        upright, tilting it left and right turns it about its length. */
     aim.yaw=HOME_YAW+db*0.026;
