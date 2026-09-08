@@ -1396,9 +1396,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      iOS will not report any of it until it has been asked in front of a person, so the ask goes
      on the first touch and the answer is remembered by the browser. */
   var HOME_YAW=rot.yaw,HOME_PITCH=rot.pitch;
-  var gyro={on:false,zero:null};
+  var gyro={on:false,live:false,zero:null};
   function gyroTurn(e){
     if(e.beta==null&&e.gamma==null)return;
+    gyro.live=true;                                       /* it is actually reporting: the hand stands down */
     if(!gyro.zero)gyro.zero={b:e.beta||0,g:e.gamma||0};   /* however the phone was held at the start is level */
     var dg=clamp((e.gamma||0)-gyro.zero.g,-50,50),db=clamp((e.beta||0)-gyro.zero.b,-50,50);
     aim.yaw=HOME_YAW+dg*0.013;                            /* about forty degrees at the stops */
@@ -1428,13 +1429,22 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       }).catch(function(){gyro.on=false;});
     }else listen();
   }
-  /* only iOS makes you ask, and only in front of a person. Everywhere else it simply listens from
-     the start, so the object answers the phone before anything has been touched. */
+  /* only iOS makes you ask, and only while a finger is actually down. Everywhere else it listens
+     from the start. The ask used to sit on the canvas, which meant it waited for a touch that
+     landed on the object — touch the list, the brand, anywhere else, and nothing was asked. It is
+     on the first touch anywhere on the page now, so the question arrives with the first thing the
+     visitor does. */
   (function(){
     var D=window.DeviceOrientationEvent;
-    if(isMobile()&&D&&typeof D.requestPermission!=='function'){startGyro();return;}
-    cvs.addEventListener('touchend',startGyro,{passive:true});
-    cvs.addEventListener('pointerup',startGyro);
+    if(!isMobile())return;
+    if(!D||typeof D.requestPermission!=='function'){startGyro();return;}
+    function ask(){
+      document.removeEventListener('touchstart',ask,true);
+      document.removeEventListener('pointerdown',ask,true);
+      startGyro();
+    }
+    document.addEventListener('touchstart',ask,{capture:true,passive:true});
+    document.addEventListener('pointerdown',ask,true);
   })();
   function dragStart(e,el){
     if(e.button!==undefined&&e.button!==0)return;
@@ -1448,7 +1458,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
     if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
     if(!drag.moved)return;
-    if(isMobile())return;                /* on a phone the hand does not turn it, the phone does */
+    if(isMobile()&&gyro.live)return;      /* the phone turns it — unless it will not, and then the hand does */
     rot.vy=dx*0.0032;rot.vx=dy*0.0032;   /* a little over half the turn per pixel it had */
     aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
     kickSpin();
