@@ -482,44 +482,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      next to this file). The built room above stays as the fallback and as the surface the
      watcher is pinned to; when the panorama lands it takes over the lighting, because a
      photograph of a lit room is what steers a reflection, not a handful of coloured planes. */
+  /* The panorama is clipped at 1.0 — it has no values above white anywhere in it, which means
+     nothing was being carried by the radiance format that a picture could not carry. So it is a
+     picture: 187 KB the browser decodes itself, instead of 12 MB of RGBE unpacked pixel by pixel
+     in JavaScript into a 134 MB float texture, which is where the wait was. Same studio, same
+     reflections, there almost as soon as the page is. */
   var HDR=null;
-  var KNEE=parseFloat(Q.get('knee')||'3.2');
-  function knee(v){return v<=1?v:1+KNEE*(1-Math.exp(-(v-1)/KNEE));}   /* above 1 it rolls off instead of climbing */
-  function readHDR(buf){                       /* radiance rgbe, new-style rle: enough for this file */
-    var b=new Uint8Array(buf),p=0,line='',w=0,h=0;
-    for(;;){                                   /* the header, ending at the resolution line */
-      line='';
-      while(b[p]!==10){line+=String.fromCharCode(b[p]);p++;}
-      p++;
-      var m=line.match(/^-Y\s+(\d+)\s+\+X\s+(\d+)/);
-      if(m){h=+m[1];w=+m[2];break;}
-      if(p>=b.length)return null;
-    }
-    var data=new Float32Array(w*h*4),row=new Uint8Array(w*4);
-    for(var y=0;y<h;y++){
-      if(b[p]!==2||b[p+1]!==2)return null;
-      p+=4;
-      for(var c=0;c<4;c++){
-        var x=0;
-        while(x<w){
-          var n=b[p++];
-          if(n>128){var v=b[p++];n-=128;while(n-->0)row[(x++)*4+c]=v;}
-          else{while(n-->0)row[(x++)*4+c]=b[p++];}
-        }
-      }
-      for(var i=0;i<w;i++){
-        var e=row[i*4+3],f=e?Math.pow(2,e-136):0,o=(y*w+i)*4;
-        /* a soft knee on the highlights: the studio's strip lights are hundreds of times
-           brighter than its walls, and on a mirror that reads as hard white bands laid along
-           the tube. the knee keeps their shape and takes the glare out of them. */
-        data[o]=knee(row[i*4]*f);data[o+1]=knee(row[i*4+1]*f);data[o+2]=knee(row[i*4+2]*f);data[o+3]=1;
-      }
-    }
-    var t=new THREE.DataTexture(data,w,h,THREE.RGBAFormat,THREE.FloatType);
-    t.mapping=THREE.EquirectangularReflectionMapping;t.minFilter=THREE.LinearFilter;
-    t.magFilter=THREE.LinearFilter;t.generateMipmaps=false;t.needsUpdate=true;
-    return t;
-  }
   function renderEnv(){
     if(!GL)return;
     if(!pmrem)pmrem=new THREE.PMREMGenerator(renderer);
@@ -529,9 +497,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   roomScene=buildRoom();renderEnv();
   if(GL&&Q.get('hdr')!=='0'){
-    fetch(new URL('env-metal.hdr',import.meta.url).href).then(function(r){return r.arrayBuffer();})
-      .then(function(buf){var t=readHDR(buf);if(!t)return;HDR=t;renderEnv();needPaint();})
-      .catch(function(){});   /* the built room stays lit as it was */
+    new THREE.TextureLoader().load(new URL('env-metal.jpg',import.meta.url).href,function(t){
+      t.mapping=THREE.EquirectangularReflectionMapping;t.colorSpace=THREE.SRGBColorSpace;
+      HDR=t;renderEnv();needPaint();
+    },undefined,function(){});   /* the built room stays lit as it was */
   }
 
   /* ── geometry in object units: tube radius 1 ─────────────────────
@@ -862,6 +831,35 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var lidL=makeLid(1);lidL.position.x=XL;
   var lid=makeLid(-1);lid.position.x=LID_HOME;
   var ENDS={L:{lid:lidL,home:XL,dir:-1,screws:screwsL},R:{lid:lid,home:LID_HOME,dir:1,screws:screwsR}};
+
+  /* what is inside it is light. With the cap off, it comes out of the bore: a cone of it standing
+     in the air along the object's own axis, brightest at the mouth and gone a few lengths out,
+     added to whatever is behind rather than covering it — and a lamp just inside the opening, so
+     the ring's rim and the back of the cap are lit by the thing they were holding in. */
+  var BEAM_L=3.6;
+  var beamGeo=new THREE.CylinderGeometry(1.75,0.86,BEAM_L,64,1,true);
+  beamGeo.rotateZ(-Math.PI/2);beamGeo.translate(TUBE1+BEAM_L/2+0.08,0,0);
+  /* a cone drawn flat has a hard silhouette, which is a cone and not a shaft of light. Its own
+     surface tells it where its edges are: where the metal of it turns away from the eye it fades
+     out, brightest where it faces us, so what is left is soft down both sides and dies along its
+     length. Added to what is behind it, never covering anything. */
+  var beamMat=new THREE.ShaderMaterial({
+    uniforms:{uAmt:{value:0},uL:{value:BEAM_L},uX0:{value:TUBE1+0.08}},
+    transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,
+    vertexShader:'varying float vT;varying vec3 vN;varying vec3 vV;uniform float uL;uniform float uX0;\n'+
+      'void main(){vT=clamp((position.x-uX0)/uL,0.0,1.0);vN=normalMatrix*normal;\n'+
+      'vec4 mv=modelViewMatrix*vec4(position,1.0);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}',
+    fragmentShader:'varying float vT;varying vec3 vN;varying vec3 vV;uniform float uAmt;\n'+
+      'void main(){float face=abs(dot(normalize(vN),normalize(vV)));\n'+
+      'float a=pow(1.0-vT,2.6)*pow(face,1.6)*uAmt;\n'+
+      'gl_FragColor=vec4(vec3(1.0,0.985,0.95)*a,a);}'
+  });
+  var beam=new THREE.Mesh(beamGeo,beamMat);beam.renderOrder=3;beam.visible=false;group.add(beam);
+  var mouthGeo=new THREE.CircleGeometry(0.9,48);mouthGeo.rotateY(Math.PI/2);mouthGeo.translate(TUBE1+0.02,0,0);
+  var mouthMat=new THREE.MeshBasicMaterial({color:0xfff6ea,transparent:true,opacity:0,
+    blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false});
+  var mouth=new THREE.Mesh(mouthGeo,mouthMat);mouth.renderOrder=4;group.add(mouth);
+  var innerLamp=new THREE.PointLight(0xfff4e2,0,7,2);innerLamp.position.set(TUBE1-0.5,0,0);group.add(innerLamp);
   /* ── the radio screen: a small set-in display on the back of the tube, a Pip-Boy of sorts — dark
      glass in a metal bezel that shows only the title playing, in the theme's colour. dark when off ── */
   var screenCanvas=document.createElement('canvas');screenCanvas.width=1024;screenCanvas.height=448;
@@ -1085,6 +1083,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var park=isMobile()?MOB_SLIDE/lastPx:(TP+0.1*LTOT);
     var pe=p2<0.5?2*p2*p2:1-Math.pow(-2*p2+2,2)/2;
     END.lid.position.x=END.home+END.dir*(cap.loosen*4/lastPx+pe*park);
+    var lit=p2*p2;                                   /* nothing until the cap actually moves */
+    beamMat.uniforms.uAmt.value=1.0*lit;mouthMat.opacity=0.85*lit;innerLamp.intensity=26*lit;
+    beam.visible=mouth.visible=lit>0.002;
     placeStamp();
   }
   var stampFixed=null;
