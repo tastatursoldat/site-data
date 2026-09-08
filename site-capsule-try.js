@@ -1297,13 +1297,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      move opens it. The wheel is the one thing added — it rolls the object about its own length. */
   var drag=null;
   /* the same drag, only the object is no longer welded to the pointer: the hand sets a pose it is
-     heading for and it eases there, a sixth of what is left each frame. What is let go of carries
+     heading for and it eases there, a tenth of what is left each frame. What is let go of carries
      on into that same pose and dies out slowly, so a throw glides rather than stops dead. */
   var aim={yaw:rot.yaw,pitch:rot.pitch},spinning=false;
   function spinLoop(){
     if(!drag){
       aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
-      rot.vy*=0.95;rot.vx*=0.95;
+      rot.vy*=0.945;rot.vx*=0.945;
       if(Math.abs(rot.vy)<0.00012)rot.vy=0;
       if(Math.abs(rot.vx)<0.00012)rot.vx=0;
     }
@@ -1312,7 +1312,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(!rot.vy&&!rot.vx&&!rot.vs&&Math.abs(dy)<0.0003&&Math.abs(dp)<0.0003){
       rot.yaw=aim.yaw;rot.pitch=aim.pitch;spinning=false;paint();return;
     }
-    rot.yaw+=dy*0.16;rot.pitch+=dp*0.16;
+    rot.yaw+=dy*0.105;rot.pitch+=dp*0.105;   /* and it takes its time getting there */
     paint();requestAnimationFrame(spinLoop);
   }
   function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
@@ -1328,7 +1328,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
     if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
     if(!drag.moved)return;
-    rot.vy=dx*0.006;rot.vx=dy*0.006;
+    rot.vy=dx*0.0032;rot.vx=dy*0.0032;   /* a little over half the turn per pixel it had */
     aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
     kickSpin();
   }
