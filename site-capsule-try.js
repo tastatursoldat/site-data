@@ -920,13 +920,27 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the view: a three-quarter turn at rest, and the visitor may turn it any way by dragging */
   var YAW=THREE.MathUtils.degToRad(roll.yaw);
   var BASE_YAW=-YAW+THREE.MathUtils.degToRad(roll.ry),LIMIT=Math.PI/8;   /* forty-five degrees of travel per axis */
-  var rot={yaw:BASE_YAW,tilt:THREE.MathUtils.degToRad(roll.rx),spin:0,vs:0};
+  /* the pose is a quaternion, not a pair of angles. Angles have axes, and axes run out: tilt a
+     capsule on its ear with a yaw-and-tilt pair and pulling sideways starts rolling it instead of
+     turning it. Held as a quaternion and turned about the axes of the SCREEN — sideways about the
+     upright of the window, up and down about the level of it — a pull turns it the way the pull
+     went, from wherever it happens to be standing, in every direction and without end. */
+  var AX_X=new THREE.Vector3(1,0,0),AX_Y=new THREE.Vector3(0,1,0),AX_Z=new THREE.Vector3(0,0,1);
+  var rot={spin:0,vs:0};
+  var pose={hy:0,ht:0,vy:0,vt:0,moving:false};   /* the pointer's drift, and what is left of a drag */
+  var qWant=new THREE.Quaternion().setFromAxisAngle(AX_Y,BASE_YAW);   /* where the drag has put it */
+  var qHave=new THREE.Quaternion().copy(qWant);                       /* where it has got to so far */
   var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qZ=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
   function applyRot(){
-    qY.setFromAxisAngle(new THREE.Vector3(0,1,0),rot.yaw);    /* the pointer, left and right */
-    qZ.setFromAxisAngle(new THREE.Vector3(0,0,1),rot.tilt);   /* the pointer, up and down */
-    qS.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.spin);   /* the wheel, about its own length */
-    qTmp.copy(qZ).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
+    qY.setFromAxisAngle(AX_Y,pose.hy);qZ.setFromAxisAngle(AX_Z,pose.ht);  /* the pointer's drift, on top */
+    qS.setFromAxisAngle(AX_X,rot.spin);                                   /* the wheel, about its own length */
+    qTmp.copy(qZ).multiply(qY).multiply(qHave).multiply(qS);
+    group.quaternion.copy(qTmp);
+  }
+  var qInc=new THREE.Quaternion();
+  function turnBy(ax,ay){        /* ax about the window's upright, ay about its level: screen axes */
+    qInc.setFromAxisAngle(AX_Y,ax);qWant.premultiply(qInc);
+    qInc.setFromAxisAngle(AX_X,ay);qWant.premultiply(qInc);
   }
   applyRot();
 
@@ -1311,21 +1325,21 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      The wheel still rolls it about its own length. */
   var HOVER=Math.PI/26;                              /* about seven degrees of drift, either way */
   var DRAG_GAIN=0.0021;   /* per pixel. no stop: keep pulling and it keeps coming round */
-  var pose={hy:0,ht:0,dy:0,dt:0,vy:0,vt:0},following=false;
+  var following=false;
   function poseGo(){if(!following){following=true;requestAnimationFrame(followLoop);}}
   function followLoop(){
-    if(!drag){                                       /* what is left of the hand that let go */
-      pose.dy+=pose.vy;pose.dt+=pose.vt;
+    if(!drag&&(pose.vy||pose.vt)){                   /* what is left of the hand that let go */
+      turnBy(pose.vy,pose.vt);
       pose.vy*=0.90;pose.vt*=0.90;
       if(Math.abs(pose.vy)<0.00004)pose.vy=0;
       if(Math.abs(pose.vt)<0.00004)pose.vt=0;
     }
-    var ty=BASE_YAW+pose.hy+pose.dy,tt=pose.ht+pose.dt;
-    var dy=ty-rot.yaw,dt=tt-rot.tilt;
-    if(!pose.vy&&!pose.vt&&Math.abs(dy)<0.0004&&Math.abs(dt)<0.0004){
-      rot.yaw=ty;rot.tilt=tt;following=false;paint();return;
+    var left=qHave.angleTo(qWant);
+    if(!pose.vy&&!pose.vt&&left<0.0006&&!pose.moving){
+      qHave.copy(qWant);following=false;paint();return;
     }
-    rot.yaw+=dy*0.055;rot.tilt+=dt*0.055;            /* slow: it arrives, it does not snap */
+    qHave.slerp(qWant,0.055);                        /* slow: it arrives, it does not snap */
+    pose.moving=false;
     paint();requestAnimationFrame(followLoop);
   }
   function aimAt(px,py){
@@ -1333,7 +1347,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(!r.width||!r.height)return;
     pose.hy=clamp(((px-r.left)/r.width)*2-1,-1,1)*HOVER;
     pose.ht=clamp(((py-r.top)/r.height)*2-1,-1,1)*HOVER;
-    poseGo();
+    pose.moving=true;poseGo();
   }
   var spinning=false;
   function spinLoop(){
@@ -1355,7 +1369,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
       if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
       if(!drag.moved)return;
-      pose.dy+=dx*DRAG_GAIN;pose.dt+=dy*DRAG_GAIN;
+      turnBy(dx*DRAG_GAIN,dy*DRAG_GAIN);
       pose.vy=dx*DRAG_GAIN*0.55;pose.vt=dy*DRAG_GAIN*0.55;   /* a little carry, not a spin */
       poseGo();
       return;
