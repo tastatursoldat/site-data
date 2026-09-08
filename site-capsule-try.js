@@ -68,6 +68,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     "I am trying to keep going a little longer.\n\n"+
     "Open when found.";
   var FONT='"Helvetica Neue",Helvetica,Arial,sans-serif';
+  /* the little screen gets a dot-matrix face of its own — the letters are made of the same round
+     pixels the thing would actually have. Everything else on the site stays in helvetica. */
+  var FONT_LCD='"Doto","Helvetica Neue",Helvetica,Arial,sans-serif';
+  var lcdFont=document.createElement('link');lcdFont.rel='stylesheet';
+  lcdFont.href='https://fonts.googleapis.com/css2?family=Doto:ROND,wght@100,700&display=swap';
+  /* the roundness axis is pinned at the sheet, not here: a canvas font string is the old css
+     shorthand and has no way to say font-variation-settings, so what it is handed has to arrive
+     as one fixed instance — round dots, bold. */
+  document.head.appendChild(lcdFont);
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
@@ -865,19 +874,31 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var screenCanvas=document.createElement('canvas');screenCanvas.width=1024;screenCanvas.height=448;
   var screenTex=new THREE.CanvasTexture(screenCanvas);screenTex.colorSpace=THREE.SRGBColorSpace;screenTex.anisotropy=8;
   var screenMat=new THREE.MeshPhysicalMaterial({color:0x040405,metalness:0,roughness:0.2,clearcoat:1,clearcoatRoughness:0.06,emissive:new THREE.Color(1,1,1),emissiveMap:screenTex,emissiveIntensity:1.0,envMapIntensity:0.5});
+  /* the face has to be in the document before a canvas will draw with it, and the stylesheet that
+     brings it is still in flight when the screen is first written — so the screen is written again
+     once it lands, and once more on a timer in case the sheet never does. */
+  var lastScreen='';
+  function lcdReady(){
+    if(!document.fonts||!document.fonts.load){setScreen(lastScreen);return;}
+    document.fonts.load('700 100px "Doto"').then(function(){setScreen(lastScreen);}).catch(function(){});
+  }
+  lcdFont.addEventListener('load',lcdReady);
+  setTimeout(lcdReady,1400);
   function setScreen(title){
+    lastScreen=title||'';
     var g=screenCanvas.getContext('2d'),W2=screenCanvas.width,H2=screenCanvas.height,t=(title||'').replace(/\s+/g,' ').trim();
     g.fillStyle='#000';g.fillRect(0,0,W2,H2);
     if(t){
-      var col=theme.key,size=150,lines=[t],pad=140;
+      var col=theme.key,size=150,lines=[t],pad=140,LF=FONT_LCD;
       for(;;){
-        g.font='400 '+size+'px '+FONT;
+        g.font='700 '+size+'px '+LF;
         if(g.measureText(t).width<=W2-pad){lines=[t];break;}
         var words=t.split(' '),best=null;
         for(var i=1;i<words.length;i++){var a=words.slice(0,i).join(' '),b=words.slice(i).join(' '),m=Math.max(g.measureText(a).width,g.measureText(b).width);if(!best||m<best.m)best={a:a,b:b,m:m};}
         if(best&&best.m<=W2-pad&&size*2.3<=H2-40){lines=[best.a,best.b];break;}
         size-=8;if(size<52){lines=best?[best.a,best.b]:[t];break;}
       }
+      g.font='700 '+size+'px '+LF;
       g.textAlign='center';g.textBaseline='middle';g.fillStyle=col;g.shadowColor=col;g.shadowBlur=30;
       var lh=size*1.15,y0=H2/2-(lines.length-1)*lh/2;
       lines.forEach(function(l,i){g.fillText(l,W2/2,y0+i*lh);g.fillText(l,W2/2,y0+i*lh);});
