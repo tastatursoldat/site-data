@@ -309,12 +309,19 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '@media (max-width:700px){#me-note{padding:76px 24px 44px;}'+
-      '#me-note .n,#me-about-screen .txt{font-size:15px;line-height:1.7;}}'+   /* the size of every other word on the page */
+      '#me-note .n,#me-about-screen .txt{font-size:14px;line-height:1.7;}}'+   /* the size of every other word on the page */
     /* phones: the open capsule is a scrolling column — a snapshot of the
        object, the stamp, then the index. the live object and the hover word
        leave while the column is up */
     '#me-col{display:none;}'+
     '@media (max-width:700px){'+
+      /* everything is set a step smaller on a phone: the brand and the corner words, the date,
+         the list, the dial's own labels and the two dot-matrix pages. A phone is held close, and
+         at the sizes a desktop wants it all reads as shouting. */
+      '#me-brand,#me-ctrl .txt,#me-corner .txt,#me-music,#me-corner #me-stop,#me-about-close,'+
+        '#me-col .plate,#me-note .nb,#me-about-screen .ab-brand{font-size:13px;}'+
+      '#me-band .b-note,#me-band .b-title{font-size:14px;}'+
+      '#me-band .g-label{font-size:9px;}#me-band .b-freq{font-size:10px;}'+
       '#me-dial,#me-stamp{transition:opacity 120ms ease;}'+
       /* the dial stays: the object is drawn live now rather than photographed into the column, so
          fading it out is fading out the object. Only the date steps aside — the column has its own. */
@@ -323,19 +330,17 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       '#me-col{display:block;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 18px 60px;box-sizing:border-box;'+
         'opacity:0;pointer-events:none;transition:opacity 120ms ease;}'+
       '#me-app.open #me-col{opacity:1;pointer-events:auto;transition:opacity 200ms ease 140ms;}'+
-      '#me-col .plate{font:700 15px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin:0 0 6px;}'+
+      '#me-col .plate{font:700 13px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin:0 0 6px;}'+   /* a shorthand later in the block beats the size set above it */
       '#me-app.open #me-field{opacity:0.5;}'+   /* the words pass over it, so it steps back — but not as far as on a desktop */
-      '#me-col{pointer-events:none;}'+
-      '#me-app.open #me-col{pointer-events:none;}'+
-      '#me-col .plate,#me-col #me-browse{pointer-events:auto;}'+
+
       '#me-app.browse #me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
       '#me-app.open #me-browse{position:static;display:block;height:auto;overflow:visible;}'+
       '#me-list{position:relative;left:auto;top:auto;transform:none;width:100%;'+
-        'padding:0 18px;box-sizing:border-box;font-size:14px;}'+
+        'padding:0 18px;box-sizing:border-box;font-size:13px;}'+
       '#me-app.open #me-list{padding:0;margin-top:40px;}'+
       '.me-row{grid-template-columns:3em 2.4em minmax(0,1fr);gap:.6em;padding:7px 0;}'+
-      '.me-row span{font-size:14px;}'+
+      '.me-row span{font-size:13px;}'+
       '.me-row span:nth-child(3),.me-row span:nth-child(5){display:none;}'+
       '#me-music{max-width:calc(100vw - 2.4rem);}'+
       '#me-bar [data-a="full"]{display:none;}'+
@@ -1366,12 +1371,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        sticks to the top so a tap on the object still shuts it however far the list has moved. */
     place();renderer.render(scene,camera);   /* the column is laid out around where the object is */
     /* the words begin below the object and pass over it as they are scrolled, the way the index
-       lies over the metal on a desktop — nothing is cut off at an edge, because there is no edge.
-       The column takes no touches of its own: what is under the finger over the object is the
-       object, which is what shuts it, and the rows themselves take the scrolling. */
+       lies over the metal on a desktop — nothing is cut off at an edge, because there is no edge. */
     var b=lastBox;
     colEl.style.top='';
     colEl.style.paddingTop=Math.round(b.top+b.h+18)+'px';
+    /* the column takes every touch, because it is what scrolls. A tap that lands on the column
+       itself rather than on a row is a tap on the object showing through the space above the
+       list, and that shuts it — which is how the object stays tappable without the column having
+       to stand aside and take the scrolling with it. */
+    colEl.onclick=function(e){if(e.target===colEl)sealCapsule();};
     }
     var p=document.createElement('div');p.className='plate';p.textContent=stampEl.textContent;
     colEl.appendChild(p);
