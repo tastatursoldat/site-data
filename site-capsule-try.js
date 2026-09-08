@@ -907,8 +907,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var fillLight=new THREE.DirectionalLight(0xffffff,0.35);fillLight.position.set(-6,2,8);stage.add(fillLight);
   /* the view: a three-quarter turn at rest, and the pointer moves it from there */
   var YAW=THREE.MathUtils.degToRad(roll.yaw);
-  var BASE_YAW=-YAW+THREE.MathUtils.degToRad(roll.ry),LIMIT=Math.PI/8;   /* forty-five degrees of travel in each axis, either side of the pose it rests in */
-  var rot={yaw:BASE_YAW,tilt:THREE.MathUtils.degToRad(roll.rx),spin:0,vs:0};
+  /* it rests dead level and square on: a side elevation, the engraving facing the room. The
+     three-quarter turn it used to sit at is now only somewhere the pointer can take it. */
+  var BASE_YAW=0,LIMIT=Math.PI/8;   /* forty-five degrees of travel in each axis, either side of the pose it rests in */
+  var rot={yaw:BASE_YAW,tilt:0,spin:0,vs:0};
   var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qZ=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
   function applyRot(){
     qY.setFromAxisAngle(new THREE.Vector3(0,1,0),rot.yaw);    /* the pointer, left and right */
