@@ -734,8 +734,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the inside is machined, not polished: rough, half-diffuse metal that the key light rakes across through the opening,
      so twisting the object moves the light inside it */
   var holeEnd=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.5,roll.tone*0.5,roll.tone*0.51),metalness:0.45,roughness:0.78,envMapIntensity:0.8});
-  var endWallL=new THREE.Mesh(endWallGeo,holeEnd);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;endWallL.receiveShadow=true;group.add(endWallL);
-  var endWallR=new THREE.Mesh(endWallGeo,holeEnd);endWallR.rotation.z=Math.PI/2;endWallR.position.x=TUBE1+0.02;endWallR.receiveShadow=true;endWallR.visible=false;group.add(endWallR);
+  var endWallL=new THREE.Mesh(endWallGeo,holeEnd);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;group.add(endWallL);
+  var endWallR=new THREE.Mesh(endWallGeo,holeEnd);endWallR.rotation.z=Math.PI/2;endWallR.position.x=TUBE1+0.02;endWallR.visible=false;group.add(endWallR);
   var boreGeo=new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,TUBE1-TUBE0)],SEG);
   var boreDark=null;
   (function(){var n=boreGeo.attributes.position.count,col=new Float32Array(n*3),half=n/2;
@@ -747,7 +747,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       boreGeo.attributes.color.needsUpdate=true;
     };})();
   var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.62,roll.tone*0.62,roll.tone*0.63),metalness:0.45,roughness:0.82,envMapIntensity:0.7,side:THREE.BackSide,vertexColors:true});
-  var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
+  var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;group.add(bore);
+  /* the inside takes no shadow map. The one light that casts stands overhead for the patch on the
+     floor, and its map — small, and blurred wide on purpose — landed inside the bore as a slab
+     with a straight edge across it, which is nothing a bore does. What darkens the inside is what
+     should: the depth painted into it, and how little of the room reaches down there. */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
   var HH=0.062,SHL=0.235,PITCH=0.068;   /* a pan head, a long shank, a thread you can count */                 /* head, threaded shank, and its pitch */
   var HR=SR*0.78,HD=HH+SHL+0.02;                      /* the bore holds the whole shank */
