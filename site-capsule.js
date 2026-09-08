@@ -462,9 +462,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var renderer=null,gl=null;
   /* probe the context first: three's constructor logs an error before it throws */
   try{
-    var glAttr={alpha:true,antialias:true,powerPreference:'high-performance'};
+    var PHONE=matchMedia('(max-width:700px)').matches;
+    /* no multisampling on a phone: it is a second full-size buffer resolved every frame, for edges
+       that are already smooth at this pixel ratio. */
+    var glAttr={alpha:true,antialias:!PHONE,powerPreference:'high-performance'};
     gl=cvs.getContext('webgl2',glAttr)||cvs.getContext('webgl',glAttr);
-    if(gl)renderer=new THREE.WebGLRenderer({canvas:cvs,context:gl,alpha:true,antialias:true,powerPreference:'high-performance'});
+    if(gl)renderer=new THREE.WebGLRenderer({canvas:cvs,context:gl,alpha:true,antialias:!PHONE,powerPreference:'high-performance'});
   }catch(e){renderer=null;}
   var GL=!!renderer; /* no webgl (lockdown mode, blocked gpu): the index stands alone, the words still work */
   if(GL){
@@ -563,7 +566,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var LID_HOME=XR-CAPL;                              /* the right cap's inner face */
   var TP=CAPL;                                       /* (kept for the placement code) */
 
-  var SEG=320,ARC=6;   /* around the axis, and the segments in each rolled edge */
+  /* a phone draws the same object out of a third of the triangles: at that size nothing of it is
+     visible, and every one of them is drawn twice — once for the picture, once for the shadow. */
+  var PHONE=matchMedia('(max-width:700px)').matches;
+  var SEG=PHONE?128:320,ARC=PHONE?3:6;   /* around the axis, and the segments in each rolled edge */
   function fillet(p,cx,cy,r,a0,a1){ /* a rolled edge: nothing on a turned part comes off sharp */
     for(var i=0;i<=ARC;i++){var a=a0+(a1-a0)*i/ARC;p.push(new THREE.Vector2(cx+Math.cos(a)*r,cy+Math.sin(a)*r));}
   }
@@ -773,7 +779,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
   var HH=0.062,SHL=0.235,PITCH=0.068;   /* a pan head, a long shank, a thread you can count */                 /* head, threaded shank, and its pitch */
   var HR=SR*0.78,HD=HH+SHL+0.02;                      /* the bore holds the whole shank */
-  var screwGeo=new THREE.CylinderGeometry(SR,SR,HH,48);
+  var screwGeo=new THREE.CylinderGeometry(SR,SR,HH,PHONE?20:48);
   /* a real thread, cut as geometry. Every point on the shank rides a helix: the radius follows
      a trapezoid — crest, flank, root, flank — as the phase (distance along the axis, less the
      angle round it) advances, which is what a single-start thread is. The silhouette carries
@@ -802,7 +808,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
     g.setIndex(idx);g.computeVertexNormals();return g;
   }
-  var shankGeo=threadGeo(SR*0.50,0.017,SHL,0.062,40,132);
+  var shankGeo=threadGeo(SR*0.50,0.017,SHL,0.062,PHONE?18:40,PHONE?56:132);
   var shankEnd=new THREE.CircleGeometry(SR*0.50,40);shankEnd.rotateX(Math.PI/2);
   /* 1.75 turns is seven quarter turns, and a four-pointed star has no way of showing the
      difference: it lands exactly as it started, which looks like a bolt that never turned.
@@ -825,7 +831,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the tapped hole each screw came out of: an open bore in the rim with a floor at the
      bottom of it. it is a little narrower than the screw, so while the screw is home the
      hole is inside it and nothing shows; back the screw out and the hole is what is left. */
-  var boreWall=new THREE.CylinderGeometry(HR,HR,HD,40,1,true);
+  var boreWall=new THREE.CylinderGeometry(HR,HR,HD,PHONE?18:40,1,true);
   var boreFloor=new THREE.CircleGeometry(HR,40);
   /* the mouth of it, countersunk. a bore straight down into a rim shows nothing at all unless
      you happen to be looking along it — and the ring is edge-on from most of the ways the
@@ -863,7 +869,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* both ends come off. Each is the same thing built twice: a cap, the plug that sits inside the
      ring, and the tapped holes its bolts came out of. Which one opens is whichever end of the
      object you clicked nearer to. */
-  var holeGeo=new THREE.CylinderGeometry(SR*0.8,SR*0.8,0.16,40);
+  var holeGeo=new THREE.CylinderGeometry(SR*0.8,SR*0.8,0.16,PHONE?18:40);
   function makeLid(inward){         /* inward: +1 for the left end, -1 for the right */
     var L=new THREE.Group();group.add(L);
     var cap=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);cap.rotation.z=-Math.PI/2;
@@ -974,7 +980,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   keyLight.position.set(-3,9,6);keyLight.castShadow=false;keyLight.target=keyTarget;stage.add(keyLight);
   var shadowLight=new THREE.DirectionalLight(0xffffff,0);
   shadowLight.position.set(0.7,16,1.4);shadowLight.castShadow=true;shadowLight.target=keyTarget;
-  shadowLight.shadow.mapSize.set(512,512);shadowLight.shadow.radius=11;   /* a small map and a wide kernel: the edge has no business being sharp */
+  shadowLight.shadow.mapSize.set(PHONE?256:512,PHONE?256:512);shadowLight.shadow.radius=11;   /* a small map and a wide kernel: the edge has no business being sharp */
   shadowLight.shadow.bias=-0.0004;shadowLight.shadow.normalBias=0.04;
   shadowLight.shadow.camera.left=-8;shadowLight.shadow.camera.right=8;shadowLight.shadow.camera.top=7;shadowLight.shadow.camera.bottom=-7;
   shadowLight.shadow.camera.near=1;shadowLight.shadow.camera.far=44;
@@ -1379,7 +1385,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the same drag, only the object is no longer welded to the pointer: the hand sets a pose it is
      heading for and it eases there, a tenth of what is left each frame. What is let go of carries
      on into that same pose and dies out slowly, so a throw glides rather than stops dead. */
-  var aim={yaw:rot.yaw,pitch:rot.pitch,tilt:rot.tilt},spinning=false;
+  var aim={yaw:rot.yaw,pitch:rot.pitch,tilt:rot.tilt},spinning=false,lastDrawn=0;
   function spinLoop(){
     if(!drag){
       aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
@@ -1393,7 +1399,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       rot.yaw=aim.yaw;rot.pitch=aim.pitch;rot.tilt=aim.tilt;spinning=false;paint();return;
     }
     rot.yaw+=dy*0.105;rot.pitch+=dp*0.105;rot.tilt+=dt*0.105;   /* and it takes its time getting there */
-    paint();requestAnimationFrame(spinLoop);
+    /* a phone draws this half as often. The movement is eased over hundreds of milliseconds, so
+       thirty frames of it look the same as sixty and cost half as much to make. */
+    var now=nowMs();
+    if(!PHONE||now-lastDrawn>31){lastDrawn=now;paint();}
+    requestAnimationFrame(spinLoop);
   }
   function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
 
@@ -1417,7 +1427,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        long as the page is open, and a hot phone. Anything under a third of a degree is the sensor
        talking to itself, and it is ignored, so a still phone draws nothing. */
     var raw={b:e.beta||0,g:e.gamma||0};
-    if(gyro.last&&Math.abs(raw.b-gyro.last.b)<0.35&&Math.abs(raw.g-gyro.last.g)<0.35)return;
+    if(gyro.last&&Math.abs(raw.b-gyro.last.b)<0.8&&Math.abs(raw.g-gyro.last.g)<0.8)return;   /* a hand is never still: under a degree is tremor */
     gyro.last=raw;
     var dg=clamp(raw.g-gyro.zero.g,-45,45),db=clamp(raw.b-gyro.zero.b,-45,45);
     /* each tilt moved on one axis: tilting the phone left and right turns the object about its
