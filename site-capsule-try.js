@@ -1032,18 +1032,26 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     endWallL.visible=(e==='R');endWallR.visible=(e==='L');
     needPaint();
   }
-  var MOB_SLIDE=44;
+  var MOB_SLIDE=44,fitL=0,fitW=0,fitH=0,rot0Yaw=BASE_YAW;
   function restBox(){
     if(isMobile()){var Lm=W-36-MOB_SLIDE;return {L:Lm,left:18,top:H*0.36};}
-    /* as large as the window will take it, at whatever angle it is standing: the caps all but
-       touch the edge. The object's axis under the current pose gives its silhouette across the
-       frame and down it, and the tighter of the two sets the size — so turning it never pushes
-       an end off the screen, and it is never smaller than it has to be. */
-    var ax=Math.abs(Math.cos(rot.yaw)*Math.cos(rot.tilt)),ay=Math.abs(Math.cos(rot.yaw)*Math.sin(rot.tilt));
-    var extX=LTOT*ax+2*CAPR*Math.sqrt(Math.max(0,1-ax*ax));
-    var extY=LTOT*ay+2*CAPR*Math.sqrt(Math.max(0,1-ay*ay));
-    var L=Math.min(W*0.76*LTOT/extX,H*0.72*LTOT/extY);   /* the near end is nearer the lens than the middle: the margin pays for the perspective */
-    return {L:L,left:W/2-L/2,top:H*0.5-(L/LTOT*2*RF)/2};
+    /* one size, held: as large as the window will take at the WORST pose the pointer can put it
+       in, not the one it happens to be in. Sizing to the current angle meant the object breathed
+       in and out as the pointer moved. Every pose inside the travel is walked once, the widest
+       silhouette across the frame and the tallest down it are taken, and the tighter of the two
+       sets a scale that then never changes — so nothing ever leaves the window, and nothing zooms. */
+    if(!fitL||fitW!==W||fitH!==H){
+      var mx=0,my=0;
+      for(var iy=0;iy<=8;iy++)for(var it=0;it<=8;it++){
+        var yw=rot0Yaw-LIMIT+2*LIMIT*iy/8,tl=-LIMIT+2*LIMIT*it/8;
+        var ax=Math.abs(Math.cos(yw)*Math.cos(tl)),ay=Math.abs(Math.cos(yw)*Math.sin(tl));
+        mx=Math.max(mx,LTOT*ax+2*CAPR*Math.sqrt(Math.max(0,1-ax*ax)));
+        my=Math.max(my,LTOT*ay+2*CAPR*Math.sqrt(Math.max(0,1-ay*ay)));
+      }
+      fitW=W;fitH=H;
+      fitL=Math.min(W*0.80*LTOT/mx,H*0.76*LTOT/my);   /* the near end is nearer the lens than the middle: the margin pays for the perspective */
+    }
+    return {L:fitL,left:W/2-fitL/2,top:H*0.5-(fitL/LTOT*2*RF)/2};
   }
   function openBox(){
     var r=restBox(),top=Math.max(72,H*0.08),L=r.L;
