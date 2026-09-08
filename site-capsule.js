@@ -305,7 +305,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-note .n p{margin:0 0 1.05em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
-    '@media (max-width:700px){#me-note{padding:76px 24px 44px;}}'+
+    '@media (max-width:700px){#me-note{padding:76px 24px 44px;}'+
+      '#me-note .n,#me-about-screen .txt{font-size:15px;line-height:1.7;}}'+   /* the size of every other word on the page */
     /* phones: the open capsule is a scrolling column — a snapshot of the
        object, the stamp, then the index. the live object and the hover word
        leave while the column is up */
@@ -534,6 +535,18 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   roomScene=buildRoom();renderEnv();
   if(GL&&Q.get('hdr')!=='0'){
     new THREE.TextureLoader().load(new URL('env-metal.jpg',import.meta.url).href,function(t){
+      /* a phone screen is small and bright, and the studio's dark walls come back off the metal as
+         holes rather than shadow. On a phone the panorama's black point is lifted before it ever
+         becomes a reflection — the same room, with less of a cellar in it. */
+      if(isMobile()&&t.image&&t.image.width){
+        try{
+          var c=document.createElement('canvas');c.width=t.image.width;c.height=t.image.height;
+          var g=c.getContext('2d');
+          g.drawImage(t.image,0,0);
+          g.fillStyle='rgba(255,255,255,0.24)';g.fillRect(0,0,c.width,c.height);
+          t=new THREE.CanvasTexture(c);
+        }catch(err){}
+      }
       t.mapping=THREE.EquirectangularReflectionMapping;t.colorSpace=THREE.SRGBColorSpace;
       HDR=t;renderEnv();needPaint();
     },undefined,function(){});   /* the built room stays lit as it was */
@@ -1076,7 +1089,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the right cap is the lid, and the only one: the left end stays bolted for good. */
   var MOB_SLIDE=44;
   function restBox(){
-    if(isMobile()){var Lm=W-36-MOB_SLIDE;return {L:Lm,left:18,top:H*0.36};}
+    if(isMobile()){var Lm=W-36-MOB_SLIDE;return {L:Lm,left:(W-Lm)/2,top:H*0.36};}   /* centred: it sat left by the width of the lid's travel */
     var L=clamp(W*0.52,460,800);
     return {L:L,left:W/2-L/2,top:H*0.47-(L/LTOT*2*RF)/2};
   }
@@ -1172,7 +1185,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var a=axisOnScreen(XL,r),b=axisOnScreen(XR+cap.slide*park,r);
     var vx=b[0]-a[0],vy=b[1]-a[1],L2=vx*vx+vy*vy;
     var t=L2?clamp(((px-a[0])*vx+(py-a[1])*vy)/L2,0,1):0;
-    var cx=a[0]+vx*t,cy=a[1]+vy*t,d=CAPR*lastPx+(canHover()?10:20);
+    var cx=a[0]+vx*t,cy=a[1]+vy*t,d=CAPR*lastPx+(canHover()?10:34);   /* a finger is wider than a pointer */
     return (px-cx)*(px-cx)+(py-cy)*(py-cy)<=d*d;
   }
 
@@ -1372,6 +1385,57 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     paint();requestAnimationFrame(spinLoop);
   }
   function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
+
+  /* ── the phone turns it ────────────────────────────────────────────
+     On a phone there is nothing to drag with that is not also the thing you tap, so the object is
+     held the way you would hold the object: tilt the phone and it tilts, level it and it comes
+     back level. Tilting sets a pose it eases toward, exactly as the drag does on a desktop, so
+     the two share every bit of the easing and the momentum. A flick is different from a tilt —
+     it is measured as turn per second rather than angle — and that goes into the spin the wheel
+     drives, so a sharp one rolls the object on its own length and it coasts to a stop.
+     iOS will not report any of it until it has been asked in front of a person, so the ask goes
+     on the first touch and the answer is remembered by the browser. */
+  var HOME_YAW=rot.yaw,HOME_PITCH=rot.pitch;
+  var gyro={on:false,zero:null};
+  function gyroTurn(e){
+    if(e.beta==null&&e.gamma==null)return;
+    if(!gyro.zero)gyro.zero={b:e.beta||0,g:e.gamma||0};   /* however the phone was held at the start is level */
+    var dg=clamp((e.gamma||0)-gyro.zero.g,-50,50),db=clamp((e.beta||0)-gyro.zero.b,-50,50);
+    aim.yaw=HOME_YAW+dg*0.013;                            /* about forty degrees at the stops */
+    aim.pitch=clamp(HOME_PITCH-db*0.011,-1.1,1.1);
+    kickSpin();
+  }
+  function gyroFlick(e){
+    var r=e.rotationRate;if(!r)return;
+    var twist=r.alpha||0,flick=r.beta||0;                  /* about the screen, and about its short edge */
+    if(Math.abs(flick)>120)rot.vs=clamp(rot.vs+flick*0.00016,-0.10,0.10);
+    if(Math.abs(twist)>120)rot.vy=clamp(rot.vy+twist*0.00004,-0.05,0.05);
+    if(rot.vs||rot.vy)kickSpin();
+  }
+  function startGyro(){
+    if(gyro.on||!isMobile())return;
+    gyro.on=true;
+    function listen(){
+      window.addEventListener('deviceorientation',gyroTurn);
+      window.addEventListener('devicemotion',gyroFlick);
+    }
+    var D=window.DeviceOrientationEvent,M=window.DeviceMotionEvent;
+    if(D&&typeof D.requestPermission==='function'){
+      D.requestPermission().then(function(v){
+        if(v!=='granted'){gyro.on=false;return;}
+        if(M&&typeof M.requestPermission==='function')return M.requestPermission().then(listen,listen);
+        listen();
+      }).catch(function(){gyro.on=false;});
+    }else listen();
+  }
+  /* only iOS makes you ask, and only in front of a person. Everywhere else it simply listens from
+     the start, so the object answers the phone before anything has been touched. */
+  (function(){
+    var D=window.DeviceOrientationEvent;
+    if(isMobile()&&D&&typeof D.requestPermission!=='function'){startGyro();return;}
+    cvs.addEventListener('touchend',startGyro,{passive:true});
+    cvs.addEventListener('pointerup',startGyro);
+  })();
   function dragStart(e,el){
     if(e.button!==undefined&&e.button!==0)return;
     if(!hitCapsule(e.clientX,e.clientY))return;
@@ -1384,6 +1448,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
     if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
     if(!drag.moved)return;
+    if(isMobile())return;                /* on a phone the hand does not turn it, the phone does */
     rot.vy=dx*0.0032;rot.vx=dy*0.0032;   /* a little over half the turn per pixel it had */
     aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
     kickSpin();
