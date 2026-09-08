@@ -436,7 +436,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     renderer.toneMapping=THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure=roll.exposure;
     renderer.shadowMap.enabled=true;
-    renderer.shadowMap.type=THREE.PCFSoftShadowMap; /* VSM bled light where two parts overlapped: a hole in the shadow */
+    /* PCF, not PCFSoft: the soft variant uses a fixed kernel and ignores shadow.radius, which is
+       the one dial that makes a shadow look like light coming from a window rather than a laser.
+       VSM bled light where two parts overlapped and put a hole in the shadow. */
+    renderer.shadowMap.type=THREE.PCFShadowMap;
   }else app.classList.add('nogl');
   var scene=new THREE.Scene();
   var camera=new THREE.PerspectiveCamera(roll.fov,1,1,400);
@@ -895,15 +898,24 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the table the object rests on — only its shadow is visible. floor, contact shadow and
      lights live on a stage that never turns, so turning the capsule moves the light on it */
   var stage=new THREE.Group();scene.add(stage);
-  var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:roll.shadow}));
-  floor.rotation.x=-Math.PI/2;floor.position.set(0,-RF-0.3,0);floor.receiveShadow=true;stage.add(floor);
-  /* one shadow only: the key light's. no painted contact blob under the object */
-  /* keyLight light travels with the object so its shadow always fits */
+  /* the object does not sit on the table, it stands off it: the floor is well below, so what is
+     under it is a shadow it is not touching. */
+  var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:roll.shadow*0.55}));
+  floor.rotation.x=-Math.PI/2;floor.position.set(0,-RF-1.25,0);floor.receiveShadow=true;stage.add(floor);
+  /* the key light is what the metal is lit by, and it comes in low from the left — which threw a
+     long hard shadow off to one side, stuck to the object like a decal. It lights only now. The
+     shadow is thrown by a second light standing almost straight overhead, at no brightness at
+     all: it adds nothing to the metal and does nothing but put a soft dark patch underneath. */
+  var keyTarget=new THREE.Object3D();keyTarget.position.set(0,0,0);stage.add(keyTarget);
   var keyLight=new THREE.DirectionalLight(0xffffff,roll.key);
-  keyLight.position.set(-3,9,6);keyLight.castShadow=true;
-  keyLight.shadow.mapSize.set(1536,1536);keyLight.shadow.radius=4;keyLight.shadow.bias=-0.00015;keyLight.shadow.normalBias=0.02;
-  keyLight.shadow.camera.left=-7;keyLight.shadow.camera.right=7;keyLight.shadow.camera.top=6;keyLight.shadow.camera.bottom=-6;keyLight.shadow.camera.near=1;keyLight.shadow.camera.far=40;
-  var keyTarget=new THREE.Object3D();keyTarget.position.set(0,0,0);stage.add(keyTarget);keyLight.target=keyTarget;stage.add(keyLight);
+  keyLight.position.set(-3,9,6);keyLight.castShadow=false;keyLight.target=keyTarget;stage.add(keyLight);
+  var shadowLight=new THREE.DirectionalLight(0xffffff,0);
+  shadowLight.position.set(0.7,16,1.4);shadowLight.castShadow=true;shadowLight.target=keyTarget;
+  shadowLight.shadow.mapSize.set(512,512);shadowLight.shadow.radius=11;   /* a small map and a wide kernel: the edge has no business being sharp */
+  shadowLight.shadow.bias=-0.0004;shadowLight.shadow.normalBias=0.04;
+  shadowLight.shadow.camera.left=-8;shadowLight.shadow.camera.right=8;shadowLight.shadow.camera.top=7;shadowLight.shadow.camera.bottom=-7;
+  shadowLight.shadow.camera.near=1;shadowLight.shadow.camera.far=44;
+  stage.add(shadowLight);
   var fillLight=new THREE.DirectionalLight(0xffffff,0.35);fillLight.position.set(-6,2,8);stage.add(fillLight);
   /* the view: a three-quarter turn at rest, and the visitor may turn it any way by dragging */
   var YAW=THREE.MathUtils.degToRad(roll.yaw);
