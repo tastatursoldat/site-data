@@ -130,7 +130,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       'transition:opacity 120ms ease,transform 120ms cubic-bezier(0.23,1,0.32,1);}'+
     '#me-app.radio-on #me-stop{opacity:1;transform:none;pointer-events:auto;'+
       'transition:opacity 180ms cubic-bezier(0.23,1,0.32,1),transform 180ms cubic-bezier(0.23,1,0.32,1);}'+
-    '#me-music{font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;'+
+    '#me-music{font:800 15px/1.55 '+FONT_LCD+';color:var(--me-theme-laid);cursor:pointer;'+
       'min-height:1em;max-width:44vw;white-space:nowrap;overflow:hidden;'+
       'display:block;opacity:0;transform:translateY(6px);pointer-events:none;'+
       'transition:opacity 120ms ease,transform 120ms cubic-bezier(0.23,1,0.32,1);}'+
@@ -167,11 +167,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the needle never moves — it lives on the glass, not the scale */
     '#me-band .needle{position:absolute;left:50%;top:60px;width:2px;height:96px;background:#0a0a0a;'+
       'pointer-events:none;transform:translateX(-50%);}'+
-    '#me-band .b-note{position:absolute;top:14px;left:50%;transform:translateX(-50%);font:700 15px/1.55 '+FONT+';'+
-      'color:#0a0a0a;text-transform:lowercase;letter-spacing:1px;width:84%;max-width:640px;text-align:center;'+
+    /* the station's title and its note are the radio's own words, so they read in the radio's own
+       face — the dot matrix from the panel, in the theme's colour. The dial's furniture around
+       them stays in helvetica: it is a scale, not a voice. */
+    '#me-band .b-note{position:absolute;top:14px;left:50%;transform:translateX(-50%);font:800 16px/1.7 '+FONT_LCD+';'+
+      'color:var(--me-theme-laid);text-transform:lowercase;width:84%;max-width:640px;text-align:center;'+
       'opacity:0;transition:opacity .35s ease;}'+
-    '#me-band .b-title{position:absolute;top:170px;left:50%;transform:translateX(-50%);font:700 15px/1.55 '+FONT+';'+
-      'color:#0a0a0a;white-space:nowrap;opacity:0;transition:opacity .35s ease;}'+
+    '#me-band .b-title{position:absolute;top:170px;left:50%;transform:translateX(-50%);font:800 16px/1.7 '+FONT_LCD+';'+
+      'color:var(--me-theme-laid);white-space:nowrap;opacity:0;transition:opacity .35s ease;}'+
     '#me-band.near .b-note,#me-band.near .b-title{opacity:1;}'+
     '#me-band .b-freq{position:absolute;top:198px;left:50%;transform:translateX(-50%);font-size:11px;color:#9a9a9a;'+
       'font-variant-numeric:tabular-nums;white-space:nowrap;}'+
