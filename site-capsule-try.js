@@ -742,28 +742,37 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var HH=0.062,SHL=0.235,PITCH=0.068;   /* a pan head, a long shank, a thread you can count */                 /* head, threaded shank, and its pitch */
   var HR=SR*0.70,HD=HH+SHL+0.02;                      /* the bore holds the whole shank */
   var screwGeo=new THREE.CylinderGeometry(SR,SR,HH,48);
-  /* the shank stays a clean cylinder — a swept thread is a mess of polygons and reads as one.
-     The thread is cut into the surface instead: a normal map whose groove is a single helix,
-     so the ridge runs round and along exactly as a cut thread does and the silhouette stays
-     the straight line a turned shank has. */
-  var threadMap=(function(){
-    var N=256,c=document.createElement('canvas');c.width=N;c.height=N;
-    var g=c.getContext('2d'),im=g.createImageData(N,N),d=im.data,turns=SHL/PITCH;
-    for(var y=0;y<N;y++)for(var x=0;x<N;x++){
-      var u=x/N,v=y/N,ph=(v*turns-u)%1;if(ph<0)ph+=1;
-      var slope=(ph<0.5?1:-1);                       /* the two flanks of the groove */
-      var ny=slope*0.9,nx=-slope*0.9/turns,nz=1,L=Math.hypot(nx,ny,nz),i=(y*N+x)*4;
-      d[i]=Math.round((nx/L*0.5+0.5)*255);d[i+1]=Math.round((ny/L*0.5+0.5)*255);
-      d[i+2]=Math.round((nz/L*0.5+0.5)*255);d[i+3]=255;
+  /* a real thread, cut as geometry. Every point on the shank rides a helix: the radius follows
+     a trapezoid — crest, flank, root, flank — as the phase (distance along the axis, less the
+     angle round it) advances, which is what a single-start thread is. The silhouette carries
+     it, so it reads as a thread from the side and not as a cylinder with a picture on it. */
+  function threadGeo(rc,amp,len,pitch,seg,rings){
+    var pos=[],uvs=[],idx=[],i,j;
+    function prof(u){
+      if(u<0.26)return 1;                      /* the crest */
+      if(u<0.50)return 1-(u-0.26)/0.24;        /* down the flank */
+      if(u<0.76)return 0;                      /* the root */
+      return (u-0.76)/0.24;                    /* and up the other one */
     }
-    g.putImageData(im,0,0);
-    var t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;
-    return t;
-  })();
-  var shankMat=boltSteel.clone();shankMat.normalMap=threadMap;shankMat.normalScale=new THREE.Vector2(0.6,0.6);
-  mirrorSteel(shankMat);
-  var shankGeo=new THREE.CylinderGeometry(SR*0.62,SR*0.62,SHL,48);
-  var TURNS=SOUT/PITCH;                               /* it comes out exactly as far as it is turned */
+    for(j=0;j<=rings;j++){
+      var y=-len/2+len*j/rings;
+      for(i=0;i<=seg;i++){
+        var t=i/seg,th=t*Math.PI*2,u=((y/pitch)-t)%1;if(u<0)u+=1;
+        var r=rc+amp*prof(u);
+        pos.push(Math.cos(th)*r,y,Math.sin(th)*r);uvs.push(t,j/rings);
+      }
+    }
+    for(j=0;j<rings;j++)for(i=0;i<seg;i++){
+      var q0=j*(seg+1)+i,q1=q0+1,q2=q0+seg+1,q3=q2+1;idx.push(q0,q2,q1,q1,q2,q3);
+    }
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+    g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+    g.setIndex(idx);g.computeVertexNormals();return g;
+  }
+  var shankGeo=threadGeo(SR*0.50,0.017,SHL,0.062,40,132);
+  var shankEnd=new THREE.CircleGeometry(SR*0.50,40);shankEnd.rotateX(Math.PI/2);
+  var TURNS=3;   /* what matters is that you can see it turn: eleven in half a second is a blur */
   /* the recess in the head: a four-pointed star, cut in rather than sunk as a hex socket */
   var sockGeo=(function(){
     var sh=new THREE.Shape(),ro=SR*0.68,ri=SR*0.115;
@@ -802,11 +811,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       var hole=new THREE.Group();hole.position.x=x;hole.rotation.x=a;   /* the hole belongs to the ring: it never moves */
       var wall=new THREE.Mesh(boreWall,tapMat);wall.position.y=RF+0.012-HD/2;hole.add(wall);
       var floor=new THREE.Mesh(boreFloor,tapFloorMat);floor.position.y=RF+0.012-HD;floor.rotation.x=-Math.PI/2;hole.add(floor);
-      var mouth=new THREE.Mesh(boreMouth,seatMat);mouth.position.y=RF+0.014-0.0225;hole.add(mouth);
       parent.add(hole);
       var g=new THREE.Group();g.position.x=x;g.rotation.x=a;            /* local +y points outward along the radius */
       var head=new THREE.Mesh(screwGeo,boltSteel);head.userData.y0=RF+0.012-HH/2;g.add(head);
-      var shank=new THREE.Mesh(shankGeo,shankMat);shank.userData.y0=RF+0.012-HH-SHL/2;g.add(shank);
+      var shank=new THREE.Mesh(shankGeo,boltSteel);shank.userData.y0=RF+0.012-HH-SHL/2;g.add(shank);
+      var tip=new THREE.Mesh(shankEnd,boltSteel);tip.userData.y0=RF+0.012-HH-SHL-0.0004;g.add(tip);
       var sock=new THREE.Mesh(sockGeo,socketMat);sock.userData.y0=RF+0.0125;sock.rotation.y=rndA()*Math.PI/2;g.add(sock);
       g.children.forEach(function(m){m.position.y=m.userData.y0;});
       g.userData.a0=rndA()*Math.PI/3;
@@ -1022,7 +1031,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var p1=clamp(cap.slide/0.72,0,1),p2=clamp((cap.slide-0.72)/0.28,0,1);
     var ORDER=[0,4,2,6,1,5,3,7];
     lidScrews.forEach(function(g,i){
-      var j=ORDER.indexOf(i),st=j*0.105,du=0.26;
+      var j=ORDER.indexOf(i),st=j*0.075,du=0.44;   /* each one takes its time */
       var q=clamp((p1-st)/du,0,1);
       var e=q<0.5?2*q*q:1-Math.pow(-2*q+2,2)/2;           /* torque to break it, then it spins, then it slows */
       g.rotation.y=g.userData.a0+e*Math.PI*2*TURNS;         /* turned exactly as far as it travels */
