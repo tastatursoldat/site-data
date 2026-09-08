@@ -1397,11 +1397,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       if(Math.abs(rot.vy)<0.00012)rot.vy=0;
       if(Math.abs(rot.vx)<0.00012)rot.vx=0;
     }
-    rot.spin+=rot.vs;rot.vs*=0.94;if(Math.abs(rot.vs)<0.0004)rot.vs=0;
+    rot.spin+=rot.vs;aim.spin+=rot.vs;rot.vs*=0.94;if(Math.abs(rot.vs)<0.0004)rot.vs=0;   /* a throw carries the aim with it, or it would be pulled straight back */
     var dy=aim.yaw-rot.yaw,dp=aim.pitch-rot.pitch,dt=aim.tilt-rot.tilt;
-    var ds=gyro.live?(aim.spin-rot.spin):0;   /* the phone holds the roll at an angle; the wheel throws it */
+    var ds=aim.spin-rot.spin;   /* the roll is eased like the rest: the phone's tilt and a swipe both set it */
     if(!rot.vy&&!rot.vx&&!rot.vs&&Math.abs(dy)<0.0003&&Math.abs(dp)<0.0003&&Math.abs(dt)<0.0003&&Math.abs(ds)<0.0003){
-      rot.yaw=aim.yaw;rot.pitch=aim.pitch;rot.tilt=aim.tilt;if(gyro.live)rot.spin=aim.spin;
+      rot.yaw=aim.yaw;rot.pitch=aim.pitch;rot.tilt=aim.tilt;rot.spin=aim.spin;
       spinning=false;paint();return;
     }
     rot.yaw+=dy*0.105;rot.pitch+=dp*0.105;rot.tilt+=dt*0.105;rot.spin+=ds*0.105;   /* and it takes its time getting there */
@@ -1423,6 +1423,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      iOS will not report any of it until it has been asked in front of a person, so the ask goes
      on the first touch and the answer is remembered by the browser. */
   var HOME_YAW=rot.yaw,HOME_PITCH=rot.pitch,HOME_SPIN=rot.spin;
+  var spinOffset=0;                       /* what the finger has wound on, before the phone's own tilt */
+  function setSpinAim(){aim.spin=HOME_SPIN+spinOffset-(gyro.db||0)*0.030;kickSpin();}
   var gyro={on:false,live:false,zero:null};
   function gyroTurn(e){
     if(e.beta==null&&e.gamma==null)return;
@@ -1440,7 +1442,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        the panel on its back round to the front. Tilting it left and right turns it about its
        upright. The nose is the flick's, below. */
     aim.yaw=HOME_YAW+dg*0.026;
-    aim.spin=HOME_SPIN-db*0.030;
+    gyro.db=db;setSpinAim();
     kickSpin();
   }
   function gyroFlick(e){
@@ -1533,7 +1535,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
     if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
     if(!drag.moved)return;
-    if(isMobile())return;                 /* on a phone only the phone turns it. no hand, no fallback. */
+    if(isMobile()){
+      /* a swipe down the object is the phone's version of the wheel: it rolls the capsule on its
+         own length. It is an offset the tilt then works around, so the two do not fight over the
+         same number — the phone still holds the angle, this just moves where that angle starts. */
+      spinOffset+=dy*0.0045;
+      setSpinAim();
+      return;
+    }
     rot.vy=dx*0.0032;rot.vx=dy*0.0032;   /* a little over half the turn per pixel it had */
     aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
     kickSpin();
