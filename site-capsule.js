@@ -1469,7 +1469,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
     if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
     if(!drag.moved)return;
-    if(isMobile()&&gyro.live)return;      /* the phone turns it — unless it will not, and then the hand does */
+    if(isMobile())return;                 /* on a phone only the phone turns it. no hand, no fallback. */
     rot.vy=dx*0.0032;rot.vx=dy*0.0032;   /* a little over half the turn per pixel it had */
     aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
     kickSpin();
