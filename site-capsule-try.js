@@ -1301,23 +1301,39 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     }else if(cap.state==='open'){setTc(h?'close':'');}
     needPaint();
   }
-  /* the object is not handled, it is looked at: where the pointer sits in the window is the pose.
-     Left and right turns it about the upright axis, up and down tilts it about the one across the
-     screen, each with forty-five degrees of travel either side of where it rests, and it glides to
-     the pointer rather than snapping. The wheel keeps the third axis, its own length. */
-  var aim={yaw:BASE_YAW,tilt:rot.tilt},following=false;
+  /* Two hands on it, and they add rather than argue.
+     The pointer's place in the window is a drift — a few degrees, no more: the object
+     acknowledging that someone is there. Dragging is the actual handle, and it is heavy: very
+     little turn per pixel, and what weight it has comes from easing rather than from a flick,
+     so it feels like turning something dense. The drift rides on top of wherever it has been
+     dragged to, so dragging is never pulled back to the middle. The wheel still rolls it about
+     its own length. */
+  var HOVER=Math.PI/26;                              /* about seven degrees of drift, either way */
+  var DRAG_GAIN=0.0021,DRAG_YAW=Math.PI/2,DRAG_TILT=Math.PI/4;   /* per pixel, and how far it can be taken */
+  var pose={hy:0,ht:0,dy:0,dt:0,vy:0,vt:0},following=false;
+  function poseGo(){if(!following){following=true;requestAnimationFrame(followLoop);}}
+  function followLoop(){
+    if(!drag){                                       /* what is left of the hand that let go */
+      pose.dy=clamp(pose.dy+pose.vy,-DRAG_YAW,DRAG_YAW);
+      pose.dt=clamp(pose.dt+pose.vt,-DRAG_TILT,DRAG_TILT);
+      pose.vy*=0.90;pose.vt*=0.90;
+      if(Math.abs(pose.vy)<0.00004)pose.vy=0;
+      if(Math.abs(pose.vt)<0.00004)pose.vt=0;
+    }
+    var ty=BASE_YAW+pose.hy+pose.dy,tt=pose.ht+pose.dt;
+    var dy=ty-rot.yaw,dt=tt-rot.tilt;
+    if(!pose.vy&&!pose.vt&&Math.abs(dy)<0.0004&&Math.abs(dt)<0.0004){
+      rot.yaw=ty;rot.tilt=tt;following=false;paint();return;
+    }
+    rot.yaw+=dy*0.055;rot.tilt+=dt*0.055;            /* slow: it arrives, it does not snap */
+    paint();requestAnimationFrame(followLoop);
+  }
   function aimAt(px,py){
     var r=cvs.getBoundingClientRect();
     if(!r.width||!r.height)return;
-    var nx=clamp(((px-r.left)/r.width)*2-1,-1,1),ny=clamp(((py-r.top)/r.height)*2-1,-1,1);
-    aim.yaw=BASE_YAW+nx*LIMIT;aim.tilt=ny*LIMIT;
-    if(!following){following=true;requestAnimationFrame(followLoop);}
-  }
-  function followLoop(){
-    var dy=aim.yaw-rot.yaw,dt=aim.tilt-rot.tilt;
-    if(Math.abs(dy)<0.0005&&Math.abs(dt)<0.0005){rot.yaw=aim.yaw;rot.tilt=aim.tilt;following=false;paint();return;}
-    rot.yaw+=dy*0.11;rot.tilt+=dt*0.11;
-    paint();requestAnimationFrame(followLoop);
+    pose.hy=clamp(((px-r.left)/r.width)*2-1,-1,1)*HOVER;
+    pose.ht=clamp(((py-r.top)/r.height)*2-1,-1,1)*HOVER;
+    poseGo();
   }
   var spinning=false;
   function spinLoop(){
@@ -1326,20 +1342,44 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     paint();requestAnimationFrame(spinLoop);
   }
   function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
+  var drag=null;
+  cvs.addEventListener('pointerdown',function(e){
+    if(e.button!==undefined&&e.button!==0)return;
+    if(!hitCapsule(e.clientX,e.clientY))return;
+    drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,moved:false,id:e.pointerId};
+    pose.vy=pose.vt=0;
+    try{cvs.setPointerCapture(e.pointerId);}catch(err){}
+  });
   cvs.addEventListener('pointermove',function(e){
+    if(drag&&e.pointerId===drag.id){
+      var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
+      if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
+      if(!drag.moved)return;
+      pose.dy=clamp(pose.dy+dx*DRAG_GAIN,-DRAG_YAW,DRAG_YAW);
+      pose.dt=clamp(pose.dt+dy*DRAG_GAIN,-DRAG_TILT,DRAG_TILT);
+      pose.vy=dx*DRAG_GAIN*0.55;pose.vt=dy*DRAG_GAIN*0.55;   /* a little carry, not a spin */
+      poseGo();
+      return;
+    }
     if(!canHover())return;
     aimAt(e.clientX,e.clientY);
     var on=hitCapsule(e.clientX,e.clientY);
     if(on)setEnd(endFromPoint(e.clientX,e.clientY));
     setHot(on);
   });
-  cvs.addEventListener('pointerleave',function(){setHot(false);});
-  cvs.addEventListener('click',function(e){
+  function letGo(e){
+    if(!drag||e.pointerId!==drag.id)return;
+    var d=drag;drag=null;cvs.classList.remove('turning');
+    try{cvs.releasePointerCapture(e.pointerId);}catch(err){}
+    poseGo();
+    if(d.moved)return;
     if(e.detail>1)return;
-    if(!hitCapsule(e.clientX,e.clientY))return;
     if(cap.state==='sealed')setEnd(endFromPoint(e.clientX,e.clientY));   /* a tap has no hover before it */
     toggleCapsule();
-  });
+  }
+  cvs.addEventListener('pointerup',letGo);
+  cvs.addEventListener('pointercancel',function(){drag=null;cvs.classList.remove('turning');});
+  cvs.addEventListener('pointerleave',function(){if(!drag)setHot(false);});
   cvs.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCapsule();}});
   /* the wheel rolls it: the object turns about its own length, the way you would turn a tube
      in your hands to read the far side of it. only while the object is what is on screen. */
