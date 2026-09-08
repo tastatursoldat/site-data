@@ -739,7 +739,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.62,roll.tone*0.62,roll.tone*0.63),metalness:0.45,roughness:0.82,envMapIntensity:0.7,side:THREE.BackSide,vertexColors:true});
   var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
-  var HH=0.085,SHL=0.235,PITCH=0.038;                 /* head, threaded shank, and its pitch */
+  var HH=0.085,SHL=0.235,PITCH=0.084;                 /* head, threaded shank, and its pitch */
   var HR=SR*0.70,HD=HH+SHL+0.02;                      /* the bore holds the whole shank */
   var screwGeo=new THREE.CylinderGeometry(SR,SR,HH,48);
   /* the shank stays a clean cylinder — a swept thread is a mess of polygons and reads as one.
@@ -787,10 +787,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      you happen to be looking along it — and the ring is edge-on from most of the ways the
      object is turned. the seat is what makes a hole read: a dark ring on the surface, there
      from every angle, and the screw head sits in it when the screw is home. */
-  var boreMouth=new THREE.CylinderGeometry(HR*1.95,HR,0.05,40,1,true);
-  var tapMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.14,roll.tone*0.14,roll.tone*0.15),metalness:0.5,roughness:0.85,side:THREE.BackSide});
-  var tapFloorMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.20,roll.tone*0.20,roll.tone*0.21),metalness:0.5,roughness:0.9});
-  var seatMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.42,roll.tone*0.42,roll.tone*0.43),metalness:0.7,roughness:0.6,side:THREE.DoubleSide});
+  var boreMouth=new THREE.CylinderGeometry(HR*1.28,HR,0.03,40,1,true);   /* a chamfer, not a dish: the black of the bore is the point */
+  /* a tapped hole has nothing in it to light: no polish, no room reaching down it. black. */
+  var tapMat=new THREE.MeshStandardMaterial({color:0x090a0b,metalness:0,roughness:1,envMapIntensity:0.05,side:THREE.BackSide});
+  var tapFloorMat=new THREE.MeshStandardMaterial({color:0x050506,metalness:0,roughness:1,envMapIntensity:0.03});
+  var seatMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.22,roll.tone*0.22,roll.tone*0.23),metalness:0.6,roughness:0.75,envMapIntensity:0.4,side:THREE.DoubleSide});
   function screwRing(parent,x){
     var out=[];
     for(var i=0;i<NB;i++){
