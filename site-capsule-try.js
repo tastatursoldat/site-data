@@ -1465,7 +1465,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(!D||typeof D.requestPermission!=='function'){startGyro();return;}
     /* it keeps asking on every touch until the phone actually answers. A prompt that is dismissed
        rather than decided leaves nothing behind, and one ask that lands on that is an ask lost. */
-    function ask(){if(!gyro.live)startGyro();}
+    /* the tap that asks is spent on asking. iOS puts its dialog over the page and the same tap
+       opening the capsule behind it reads as the object opening itself — so the first tap buys
+       the permission, the next one opens it. */
+    function ask(){
+      if(gyro.live||gyro.on||gyro.asking)return;
+      gyro.eat=true;
+      startGyro();
+    }
     document.addEventListener('touchstart',ask,{capture:true,passive:true});
     document.addEventListener('touchend',ask,{capture:true,passive:true});
     document.addEventListener('click',ask,true);
@@ -1493,6 +1500,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     try{d.el.releasePointerCapture(e.pointerId);}catch(err){}
     if(d.moved){kickSpin();return;}   /* the carry runs on in the same loop */
     if(e.detail>1)return;
+    if(gyro.eat){gyro.eat=false;return;}   /* that tap went on the permission */
     toggleCapsule();
   }
   cvs.addEventListener('pointermove',function(e){if(drag){dragMove(e);return;}if(!canHover())return;setHot(hitCapsule(e.clientX,e.clientY));});
