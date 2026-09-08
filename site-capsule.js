@@ -389,7 +389,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   document.documentElement.style.setProperty('--me-theme',theme.key);
 
   // ── the object: stainless time capsule, room light, etched plate ──
-  var Q=new URLSearchParams(location.search); /* ?cam=0 opts out of the camera reflection */
+  var Q=new URLSearchParams(location.search); /* ?cam=0 leaves the metal without the watcher */
   function clamp(v,a,b){return Math.min(b,Math.max(a,v));}
   function lerp(a,b,t){return a+(b-a)*t;}
   function outQuint(t){return 1-Math.pow(1-t,5);}
@@ -747,59 +747,82 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   applyRot();
 
   /* ── the visitor in the steel ──────────────────────────────────────
-     the front camera becomes the wall the capsule faces: mirrored, contrast
-     up, brightness down, half monochrome, small; the environment is re-lit
-     only when the picture actually changes, at most 12 times a second. */
-  var cam={on:false,video:null,c:null,g:null,prev:null,tex:null,last:0};
-  function startCamera(){
-    if(!GL||cam.on||Q.get('cam')==='0'||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
-    navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false}).then(function(stream){
-      var v=document.createElement('video');v.srcObject=stream;v.muted=true;v.playsInline=true;
-      v.play().catch(function(){});
-      cam.video=v;cam.c=document.createElement('canvas');cam.c.width=256;cam.c.height=256;cam.g=cam.c.getContext('2d',{willReadFrequently:true});
-      cam.c2=document.createElement('canvas');cam.c2.width=32;cam.c2.height=24;cam.g2=cam.c2.getContext('2d',{willReadFrequently:true});
-      cam.tex2=new THREE.CanvasTexture(cam.c2);cam.tex2.colorSpace=THREE.SRGBColorSpace;cam.tex2.minFilter=THREE.LinearFilter;cam.tex2.magFilter=THREE.LinearFilter;cam.tex2.generateMipmaps=false;
-      cam.tex=new THREE.CanvasTexture(cam.c);cam.tex.colorSpace=THREE.SRGBColorSpace;cam.tex.minFilter=THREE.LinearFilter;cam.tex.magFilter=THREE.LinearFilter;cam.tex.generateMipmaps=false;
-      camPlane.material.map=cam.tex2;camPlane.material.needsUpdate=true;camPlane.visible=true; /* the room light only gets the tint: no structure can reach the env map */
-      mirrorU.uCam.value=cam.tex;mirrorU.uCamAspect.value=4/3;mirrorU.uCamMix.value=roll.mirror;
-      cam.on=true;requestAnimationFrame(camLoop);
-      document.addEventListener('visibilitychange',function(){if(document.hidden)stream.getTracks().forEach(function(t){t.enabled=false;});else stream.getTracks().forEach(function(t){t.enabled=true;});});
-    }).catch(function(){ /* no camera, or not allowed: the room stays as it is */ });
+     The reel did this with the front camera. Asking for one puts a permission sheet in front
+     of the object before the visitor has even seen it, so the wall the capsule faces is
+     painted instead: a room, and someone standing in it, looking back. It is the same path
+     the camera used — the picture is blurred, laid over the metal in screen space, and lights
+     the room — only it is there from the first frame and never asks for anything. What moves
+     it is the object turning, which was always the only motion the reflection had. */
+  function watcher(){
+    if(!GL||Q.get('cam')==='0')return;
+    var SW=256,SH=192,src=document.createElement('canvas');src.width=SW;src.height=SH;
+    var g=src.getContext('2d');
+    /* the room: a white wall, its light coming from the left, laid in courses */
+    var wall=g.createLinearGradient(0,0,SW,SH);
+    wall.addColorStop(0,'#f2f1ed');wall.addColorStop(0.55,'#e8e7e2');wall.addColorStop(1,'#dcdbd6');
+    g.fillStyle=wall;g.fillRect(0,0,SW,SH);
+    g.strokeStyle='rgba(150,150,145,0.32)';g.lineWidth=1.4;
+    for(var y=14;y<SH;y+=26){g.beginPath();g.moveTo(0,y);g.lineTo(SW,y);g.stroke();}
+    for(var row=0,yy=14;yy<SH;yy+=26,row++){
+      for(var x=(row%2?0:36);x<SW;x+=72){g.beginPath();g.moveTo(x,yy);g.lineTo(x,yy+26);g.stroke();}
+    }
+    /* the shoulders: the dark mass that gives the metal its weight at the bottom */
+    /* the smear runs the length of the tube, so only what is stacked vertically survives it:
+       wall, the shade of a cap, a face, and the dark of a shoulder. that is what is drawn. */
+    var cx=126;
+    g.fillStyle='#232427';
+    g.beginPath();
+    g.moveTo(cx-116,SH);g.bezierCurveTo(cx-104,SH-44,cx-56,SH-62,cx-27,SH-66);
+    g.lineTo(cx+29,SH-66);g.bezierCurveTo(cx+60,SH-60,cx+106,SH-42,cx+116,SH);
+    g.closePath();g.fill();
+    g.fillStyle='#1f2023';g.fillRect(cx-24,SH-80,48,20);            /* the neck of the shirt */
+    g.fillStyle='#cfad92';
+    g.beginPath();g.ellipse(cx-1,SH-108,31,38,0,0,Math.PI*2);g.fill();  /* the face */
+    g.fillStyle='#b08a72';g.fillRect(cx-15,SH-82,30,18);                /* the throat, in shadow */
+    g.fillStyle='#4a3c2c';
+    g.beginPath();g.ellipse(cx-1,SH-132,33,25,0,Math.PI,Math.PI*2);g.fill();   /* the cap */
+    g.fillStyle='#3d3123';
+    g.beginPath();g.ellipse(cx-4,SH-127,40,8,0.04,0,Math.PI*2);g.fill();       /* its brim */
+    g.fillStyle='rgba(74,56,40,0.42)';g.fillRect(cx-31,SH-126,62,12);          /* what the brim throws */
+    g.fillStyle='#3b3630';
+    g.beginPath();g.ellipse(cx-12,SH-112,4.2,3.2,0,0,Math.PI*2);g.fill();      /* and the eyes, which is
+    the whole point of it */
+    g.beginPath();g.ellipse(cx+11,SH-112,4.2,3.2,0,0,Math.PI*2);g.fill();
+    g.fillStyle='rgba(60,50,42,0.30)';
+    g.beginPath();g.ellipse(cx-1,SH-90,11,4.5,0,0,Math.PI*2);g.fill();         /* the mouth, barely */
+
+    /* into the square the shader samples, the way a 4:3 picture was stretched into it before */
+    var c=document.createElement('canvas');c.width=256;c.height=256;
+    var cg=c.getContext('2d',{willReadFrequently:true});
+    cg.drawImage(src,0,0,256,256);
+    var im=cg.getImageData(0,0,256,256),d=im.data;
+    for(var i=0;i<d.length;i+=4){                                   /* the camera's own grade: half
+                                                                       monochrome, contrast up, down a stop */
+      var lum=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+      d[i]=((d[i]*0.53+lum*0.47)-128)*1.18+128;
+      d[i+1]=((d[i+1]*0.53+lum*0.47)-128)*1.18+128;
+      d[i+2]=((d[i+2]*0.53+lum*0.47)-128)*1.18+128;
+    }
+    softBlur(d,256,256,2);cg.putImageData(im,0,0);
+    var tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+    tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;tex.generateMipmaps=false;
+    /* the room light gets the tint only: no structure of the picture reaches the env map */
+    var c2=document.createElement('canvas');c2.width=32;c2.height=24;
+    var g2=c2.getContext('2d',{willReadFrequently:true});
+    g2.drawImage(c,0,0,32,24);
+    var im2=g2.getImageData(0,0,32,24);softBlur(im2.data,32,24,2);g2.putImageData(im2,0,0);
+    var tex2=new THREE.CanvasTexture(c2);tex2.colorSpace=THREE.SRGBColorSpace;
+    tex2.minFilter=THREE.LinearFilter;tex2.magFilter=THREE.LinearFilter;tex2.generateMipmaps=false;
+    camPlane.material.map=tex2;camPlane.material.needsUpdate=true;camPlane.visible=true;
+    mirrorU.uCam.value=tex;mirrorU.uCamAspect.value=4/3;mirrorU.uCamMix.value=roll.mirror;
+    renderEnv();needPaint();
   }
   function softBlur(d,w,h,r){ /* separable box blur on rgba bytes, radius r */
     var tmp=new Uint8ClampedArray(d.length),k=2*r+1;
     for(var y=0;y<h;y++)for(var x=0;x<w;x++){var i=(y*w+x)*4,R=0,G=0,B=0;for(var o=-r;o<=r;o++){var xx=Math.min(w-1,Math.max(0,x+o)),j=(y*w+xx)*4;R+=d[j];G+=d[j+1];B+=d[j+2];}tmp[i]=R/k;tmp[i+1]=G/k;tmp[i+2]=B/k;tmp[i+3]=255;}
     for(var y2=0;y2<h;y2++)for(var x2=0;x2<w;x2++){var i2=(y2*w+x2)*4,R2=0,G2=0,B2=0;for(var o2=-r;o2<=r;o2++){var yy=Math.min(h-1,Math.max(0,y2+o2)),j2=(yy*w+x2)*4;R2+=tmp[j2];G2+=tmp[j2+1];B2+=tmp[j2+2];}d[i2]=R2/k;d[i2+1]=G2/k;d[i2+2]=B2/k;d[i2+3]=255;}
   }
-  function camLoop(now){
-    if(!cam.on)return;
-    requestAnimationFrame(camLoop);
-    /* nothing to see: the radio, the player, the about page or the phone column covers the steel */
-    if(document.hidden||fieldMode==='radio'||pl.classList.contains('show')||document.getElementById('me-about-screen')||(isMobile()&&app.classList.contains('open')))return;
-    if(now-cam.last<83||cam.video.readyState<2)return;
-    cam.last=now;
-    var g=cam.g,w=cam.c.width,h=cam.c.height;
-    if(cam.video.videoWidth&&cam.video.videoHeight)mirrorU.uCamAspect.value=cam.video.videoWidth/cam.video.videoHeight;
-    g.save();g.translate(w,0);g.scale(-1,1);g.drawImage(cam.video,0,0,w,h);g.restore();
-    var im=g.getImageData(0,0,w,h),d=im.data;
-    softBlur(d,w,h,2);g.putImageData(im,0,0);
-    cam.g2.drawImage(cam.c,0,0,32,24);var im2=cam.g2.getImageData(0,0,32,24);softBlur(im2.data,32,24,2);cam.g2.putImageData(im2,0,0);cam.tex2.needsUpdate=true; /* two box passes ≈ a gaussian, no canvas filter needed */
-    var diff=0,n=0;
-    if(cam.prev){for(var i=0;i<d.length;i+=16){diff+=Math.abs(d[i]-cam.prev[i]);n++;}diff/=n;}else diff=999;
-    cam.prev=d;
-    cam.tex.needsUpdate=true;
-    if(diff>=1.5)renderEnv();            /* the room is re-lit only when something moved */
-    paint();
-  }
-  /* the camera is asked for only once the visitor touches the page: a permission sheet on load
-     stops Safari painting, and the capsule must be on screen before anything else happens */
-  (function(){
-    var armed=false;
-    function ask(){if(armed)return;armed=true;
-      ['pointerdown','pointermove','touchstart','keydown','wheel'].forEach(function(ev){window.removeEventListener(ev,ask,true);});
-      startCamera();}
-    ['pointerdown','pointermove','touchstart','keydown','wheel'].forEach(function(ev){window.addEventListener(ev,ask,true);});
-  })();
+  watcher();
 
   /* ── placement: a screen box → world position and scale ─────────── */
   function screenToWorld(sx,sy){
