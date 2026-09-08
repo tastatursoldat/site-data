@@ -280,9 +280,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the about page speaks in the note's voice: the same serif, the same weight */
     /* the note and the about page read in the screen's own face and its colour: the dot matrix
        from the panel on the back, at a size the dots can actually resolve at. */
-    '#me-about-screen .txt{margin:auto;max-width:32em;font:700 16px/1.8 '+FONT_LCD+';color:var(--me-theme);'+
+    '#me-about-screen .txt{margin:auto;max-width:32em;font:700 17px/1.85 '+FONT_LCD+';color:var(--me-ink);'+
       'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
-    '#me-about-screen .txt a{color:var(--me-theme);text-decoration:none;}'+
+    '#me-about-screen .txt a{color:var(--me-ink);text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
@@ -294,7 +294,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-field,#me-browse,#me-stamp,#me-ctrl,#me-corner,#me-col{transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:32em;font:700 16px/1.8 '+FONT_LCD+';color:var(--me-theme);}'+
+    '#me-note .n{margin:auto;max-width:32em;font:700 17px/1.85 '+FONT_LCD+';color:var(--me-ink);}'+
     '#me-note .n p{margin:0 0 1.05em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
@@ -398,6 +398,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var bwDeal=Math.random()<0.4;
   /* the index hover borrows the deal's colour — even on a b/w deal it stays colourful */
   document.documentElement.style.setProperty('--me-theme',theme.key);
+  /* the same colour, taken down to ink. The theme keys are picked to glow on black glass; on the
+     page's own paper they are a pale wash you cannot read. This is that hue at a third of its
+     lightness — the screen's colour, but written rather than lit. */
+  (function(){
+    var h=theme.key.replace('#','');
+    if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+    function ink(v){return Math.round(v*0.34);}
+    document.documentElement.style.setProperty('--me-ink','rgb('+ink(r)+','+ink(g)+','+ink(b)+')');
+  })();
 
   // ── the object: stainless time capsule, room light, etched plate ──
   var Q=new URLSearchParams(location.search); /* ?cam=0 leaves the metal without the watcher */
