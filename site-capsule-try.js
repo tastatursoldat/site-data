@@ -740,7 +740,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
   var HH=0.062,SHL=0.235,PITCH=0.068;   /* a pan head, a long shank, a thread you can count */                 /* head, threaded shank, and its pitch */
-  var HR=SR*0.70,HD=HH+SHL+0.02;                      /* the bore holds the whole shank */
+  var HR=SR*0.78,HD=HH+SHL+0.02;                      /* the bore holds the whole shank */
   var screwGeo=new THREE.CylinderGeometry(SR,SR,HH,48);
   /* a real thread, cut as geometry. Every point on the shank rides a helix: the radius follows
      a trapezoid — crest, flank, root, flank — as the phase (distance along the axis, less the
@@ -772,7 +772,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   var shankGeo=threadGeo(SR*0.50,0.017,SHL,0.062,40,132);
   var shankEnd=new THREE.CircleGeometry(SR*0.50,40);shankEnd.rotateX(Math.PI/2);
-  var TURNS=3;   /* what matters is that you can see it turn: eleven in half a second is a blur */
+  var TURNS=1.75;   /* what matters is that you can see it turn */
   /* the recess in the head: a four-pointed star, cut in rather than sunk as a hex socket */
   var sockGeo=(function(){
     var sh=new THREE.Shape(),ro=SR*0.68,ri=SR*0.115;
@@ -1028,7 +1028,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     lastBox={left:b.left,top:b.top,w:b.L,h:Hpx};lastPx=ppu*s; /* screen px per object unit */
     /* the unbolting: a mechanic's star order, each bolt seven turns out on its thread,
        rising with the pitch; once the last one is free the plate is pulled off and parked */
-    var p1=clamp(cap.slide/0.72,0,1),p2=clamp((cap.slide-0.72)/0.28,0,1);
+    /* the slide is eased hard at the end, which spends four fifths of its distance in the first
+       fifth of its time: the bolts were unwinding in under two hundred milliseconds, far too fast
+       to read as turning. The bolts run off the tween's own clock instead, recovered by undoing
+       the easing, so each one turns at the speed it looks like it is turning. */
+    var lin=1-Math.pow(1-clamp(cap.slide,0,1),0.2);
+    var p1=clamp(lin/0.72,0,1),p2=clamp((lin-0.72)/0.28,0,1);
     var ORDER=[0,4,2,6,1,5,3,7];
     lidScrews.forEach(function(g,i){
       var j=ORDER.indexOf(i),st=j*0.075,du=0.44;   /* each one takes its time */
