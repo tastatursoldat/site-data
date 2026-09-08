@@ -920,34 +920,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the view: a three-quarter turn at rest, and the visitor may turn it any way by dragging */
   var YAW=THREE.MathUtils.degToRad(roll.yaw);
   var BASE_YAW=-YAW+THREE.MathUtils.degToRad(roll.ry),LIMIT=Math.PI/8;   /* forty-five degrees of travel per axis */
-  /* the pose is a quaternion, not a pair of angles. Angles have axes, and axes run out: tilt a
-     capsule on its ear with a yaw-and-tilt pair and pulling sideways starts rolling it instead of
-     turning it. Held as a quaternion and turned about the axes of the SCREEN — sideways about the
-     upright of the window, up and down about the level of it — a pull turns it the way the pull
-     went, from wherever it happens to be standing, in every direction and without end. */
   var AX_X=new THREE.Vector3(1,0,0),AX_Y=new THREE.Vector3(0,1,0),AX_Z=new THREE.Vector3(0,0,1);
-  var rot={spin:0,vs:0};
-  var pose={hy:0,ht:0,vy:0,vt:0,moving:false};   /* the pointer's drift, and what is left of a drag */
-  var qWant=new THREE.Quaternion().setFromAxisAngle(AX_Y,BASE_YAW);   /* where the drag has put it */
-  var qHave=new THREE.Quaternion().copy(qWant);                       /* where it has got to so far */
-  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qZ=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
+  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
+  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),spin:0,vy:0,vx:0,vs:0};
   function applyRot(){
-    qY.setFromAxisAngle(AX_Y,pose.hy);qZ.setFromAxisAngle(AX_Z,pose.ht);  /* the pointer's drift, on top */
-    qS.setFromAxisAngle(AX_X,rot.spin);                                   /* the wheel, about its own length */
-    qTmp.copy(qZ).multiply(qY).multiply(qHave).multiply(qS);
-    group.quaternion.copy(qTmp);
-  }
-  var qInc=new THREE.Quaternion();
-  /* Dragging turns two axes and only two: sideways swings it about the upright (y), up and down
-     tips it about the axis across the screen (z). The third — x, its own length — is the wheel's
-     and nothing else's. Vertical dragging used to turn about x, which is the same roll the wheel
-     does: two controls doing one job, and the object never tipping. Both are still premultiplied,
-     so they are the screen's axes rather than the object's and a pull turns it the way the pull
-     went, from wherever it is standing. */
-  function turnBy(ax,az){
-    qInc.setFromAxisAngle(AX_Y,ax);qWant.premultiply(qInc);
-    qInc.setFromAxisAngle(AX_Z,az);qWant.premultiply(qInc);
-    qWant.normalize();           /* thousands of these compose: without it the pose slowly stops being a rotation */
+    qY.setFromAxisAngle(AX_Y,rot.yaw);qX.setFromAxisAngle(AX_X,rot.pitch);  /* the drag, as on the live site */
+    qS.setFromAxisAngle(AX_X,rot.spin);                                     /* the wheel, about its own length */
+    qTmp.copy(qX).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
   }
   applyRot();
 
@@ -1040,37 +1019,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var a=p.clone().project(camera),b=p.clone().add(new THREE.Vector3(1,0,0)).project(camera);
     return Math.abs(b.x-a.x)*W/2;
   }
-  var cap={state:'sealed',loosen:0,slide:0,move:0,hot:false,end:'R'};
-  var _pv=new THREE.Vector3();
-  /* which end the pointer is nearer to, decided on screen: both cap centres are projected
-     through whatever rotation the object is currently under, so a rolled or spun capsule
-     answers the same way it looks. */
-  function endFromPoint(px,py){
-    if(!GL)return 'R';
-    group.updateMatrixWorld();
-    var r=cvs.getBoundingClientRect();
-    function screenOf(x){
-      _pv.set(x,0,0).applyMatrix4(group.matrixWorld).project(camera);
-      return [r.left+(_pv.x*0.5+0.5)*r.width, r.top+(-_pv.y*0.5+0.5)*r.height];
-    }
-    var a=screenOf(XL+CAPL/2),b=screenOf(XR-CAPL/2);
-    var da=(px-a[0])*(px-a[0])+(py-a[1])*(py-a[1]);
-    var db=(px-b[0])*(px-b[0])+(py-b[1])*(py-b[1]);
-    /* turned end-on, the two cap centres land almost on top of each other and the nearer of them
-       changes with every twitch of the pointer — which flipped the bore's dark end and its end
-       wall back and forth. The end only changes when the other one is clearly nearer. */
-    var now=cap.end;
-    if(now==='L'&&db*1.7<da)return 'R';
-    if(now==='R'&&da*1.7<db)return 'L';
-    return now;
-  }
-  function setEnd(e){
-    if(cap.end===e||cap.state!=='sealed')return;
-    cap.end=e;
-    if(boreDark)boreDark(e);
-    endWallL.visible=(e==='R');endWallR.visible=(e==='L');
-    needPaint();
-  }
+  var cap={state:'sealed',loosen:0,slide:0,move:0,hot:false,end:'R'};   /* end never changes */
+  /* the right cap is the lid, and the only one: the left end stays bolted for good. */
   var MOB_SLIDE=44;
   function restBox(){
     if(isMobile()){var Lm=W-36-MOB_SLIDE;return {L:Lm,left:18,top:H*0.36};}
@@ -1147,12 +1097,27 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(!(stampEl.classList.contains('kept')||app.classList.contains('open')||cap.state==='opening'))stampFixed=null;
     stampEl.style.transform='translate('+x+'px,'+y+'px)';
   }
-  function hitCapsule(x,y){
-    if(!lastBox||!GL)return false;
-    var slop=canHover()?8:18;
-    var extra=cap.slide*(isMobile()?MOB_SLIDE:(TP+0.1*LTOT)*lastPx);
-    var l=lastBox.left-slop-(cap.end==='L'?extra:0),r=lastBox.left+lastBox.w+slop+(cap.end==='L'?0:extra);
-    return x>=l&&x<=r&&y>=lastBox.top-slop&&y<=lastBox.top+lastBox.h+slop;
+  /* the object is clickable wherever it actually is. The old test was the box it occupies when it
+     sits square on, which stops being where the object is the moment it is turned — hence a click
+     landing on metal and doing nothing. Its axis is projected to the screen and the point measured
+     against that line, inside the caps' own radius: right at any angle, and the segment grows with
+     the lid as it slides off. */
+  var _hv=new THREE.Vector3();
+  function axisOnScreen(x,r){
+    _hv.set(x,0,0).applyMatrix4(group.matrixWorld).project(camera);
+    return [r.left+(_hv.x*0.5+0.5)*r.width,r.top+(-_hv.y*0.5+0.5)*r.height];
+  }
+  function hitCapsule(px,py){
+    if(!GL||!lastPx)return false;
+    var r=cvs.getBoundingClientRect();
+    if(!r.width||!r.height)return false;
+    group.updateMatrixWorld();
+    var park=isMobile()?MOB_SLIDE/lastPx:(TP+0.1*LTOT);
+    var a=axisOnScreen(XL,r),b=axisOnScreen(XR+cap.slide*park,r);
+    var vx=b[0]-a[0],vy=b[1]-a[1],L2=vx*vx+vy*vy;
+    var t=L2?clamp(((px-a[0])*vx+(py-a[1])*vy)/L2,0,1):0;
+    var cx=a[0]+vx*t,cy=a[1]+vy*t,d=CAPR*lastPx+(canHover()?10:20);
+    return (px-cx)*(px-cx)+(py-cy)*(py-cy)<=d*d;
   }
 
   /* ── render on demand: nothing paints at rest ──────────────────── */
@@ -1328,85 +1293,58 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     }else if(cap.state==='open'){setTc(h?'close':'');}
     needPaint();
   }
-  /* Two hands on it, and they add rather than argue.
-     The pointer's place in the window is a drift — a few degrees, no more: the object
-     acknowledging that someone is there. Dragging is the actual handle, and it is heavy: very
-     little turn per pixel, and what weight it has comes from easing rather than from a flick,
-     so it feels like turning something dense. The drift rides on top of wherever it has been
-     dragged to, so dragging is never pulled back to the middle. Neither axis has a stop: keep
-     pulling in one direction and it keeps coming round, as many turns as you have patience for.
-     The wheel still rolls it about its own length. */
-  var HOVER=Math.PI/26;                              /* about seven degrees of drift, either way */
-  var DRAG_GAIN=0.0021;   /* per pixel. no stop: keep pulling and it keeps coming round */
-  var following=false;
-  function poseGo(){if(!following){following=true;requestAnimationFrame(followLoop);}}
-  function followLoop(){
-    if(!drag&&(pose.vy||pose.vt)){                   /* what is left of the hand that let go */
-      turnBy(pose.vy,pose.vt);
-      pose.vy*=0.90;pose.vt*=0.90;
-      if(Math.abs(pose.vy)<0.00004)pose.vy=0;
-      if(Math.abs(pose.vt)<0.00004)pose.vt=0;
-    }
-    var left=qHave.angleTo(qWant);
-    if(!pose.vy&&!pose.vt&&left<0.0006&&!pose.moving){
-      qHave.copy(qWant);following=false;paint();return;
-    }
-    qHave.slerp(qWant,0.055);                        /* slow: it arrives, it does not snap */
-    pose.moving=false;
-    paint();requestAnimationFrame(followLoop);
-  }
-  function aimAt(px,py){
-    var r=cvs.getBoundingClientRect();
-    if(!r.width||!r.height)return;
-    pose.hy=clamp(((px-r.left)/r.width)*2-1,-1,1)*HOVER;
-    pose.ht=clamp(((py-r.top)/r.height)*2-1,-1,1)*HOVER;
-    pose.moving=true;poseGo();
-  }
-  var spinning=false;
+  /* the live site's own handling: drag turns it, with a little momentum, and a click that did not
+     move opens it. The wheel is the one thing added — it rolls the object about its own length. */
+  var drag=null;
+  /* the same drag, only the object is no longer welded to the pointer: the hand sets a pose it is
+     heading for and it eases there, a sixth of what is left each frame. What is let go of carries
+     on into that same pose and dies out slowly, so a throw glides rather than stops dead. */
+  var aim={yaw:rot.yaw,pitch:rot.pitch},spinning=false;
   function spinLoop(){
-    if(Math.abs(rot.vs)<0.0004){rot.vs=0;spinning=false;return;}
-    rot.spin+=rot.vs;rot.vs*=0.94;
+    if(!drag){
+      aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
+      rot.vy*=0.95;rot.vx*=0.95;
+      if(Math.abs(rot.vy)<0.00012)rot.vy=0;
+      if(Math.abs(rot.vx)<0.00012)rot.vx=0;
+    }
+    rot.spin+=rot.vs;rot.vs*=0.94;if(Math.abs(rot.vs)<0.0004)rot.vs=0;
+    var dy=aim.yaw-rot.yaw,dp=aim.pitch-rot.pitch;
+    if(!rot.vy&&!rot.vx&&!rot.vs&&Math.abs(dy)<0.0003&&Math.abs(dp)<0.0003){
+      rot.yaw=aim.yaw;rot.pitch=aim.pitch;spinning=false;paint();return;
+    }
+    rot.yaw+=dy*0.16;rot.pitch+=dp*0.16;
     paint();requestAnimationFrame(spinLoop);
   }
   function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
-  var drag=null;
-  cvs.addEventListener('pointerdown',function(e){
+  function dragStart(e,el){
     if(e.button!==undefined&&e.button!==0)return;
     if(!hitCapsule(e.clientX,e.clientY))return;
-    drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,moved:false,id:e.pointerId};
-    pose.vy=pose.vt=0;
-    try{cvs.setPointerCapture(e.pointerId);}catch(err){}
-  });
-  cvs.addEventListener('pointermove',function(e){
-    if(drag&&e.pointerId===drag.id){
-      var dx=clamp(e.clientX-drag.x,-70,70),dy=clamp(e.clientY-drag.y,-70,70);
-      drag.x=e.clientX;drag.y=e.clientY;
-      if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
-      if(!drag.moved)return;
-      turnBy(dx*DRAG_GAIN,-dy*DRAG_GAIN);                    /* down tips the near end down */
-      pose.vy=dx*DRAG_GAIN*0.55;pose.vt=-dy*DRAG_GAIN*0.55;  /* a little carry, not a spin */
-      poseGo();
-      return;
-    }
-    if(!canHover())return;
-    aimAt(e.clientX,e.clientY);
-    var on=hitCapsule(e.clientX,e.clientY);
-    if(on)setEnd(endFromPoint(e.clientX,e.clientY));
-    setHot(on);
-  });
-  function letGo(e){
+    drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,moved:false,id:e.pointerId,el:el};
+    rot.vy=rot.vx=0;aim.yaw=rot.yaw;aim.pitch=rot.pitch;
+    try{el.setPointerCapture(e.pointerId);}catch(err){}
+  }
+  function dragMove(e){
+    if(!drag||e.pointerId!==drag.id)return;
+    var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
+    if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
+    if(!drag.moved)return;
+    rot.vy=dx*0.006;rot.vx=dy*0.006;
+    aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
+    kickSpin();
+  }
+  function dragEnd(e){
     if(!drag||e.pointerId!==drag.id)return;
     var d=drag;drag=null;cvs.classList.remove('turning');
-    try{cvs.releasePointerCapture(e.pointerId);}catch(err){}
-    poseGo();
-    if(d.moved)return;
+    try{d.el.releasePointerCapture(e.pointerId);}catch(err){}
+    if(d.moved){kickSpin();return;}   /* the carry runs on in the same loop */
     if(e.detail>1)return;
-    if(cap.state==='sealed')setEnd(endFromPoint(e.clientX,e.clientY));   /* a tap has no hover before it */
     toggleCapsule();
   }
-  cvs.addEventListener('pointerup',letGo);
-  cvs.addEventListener('pointercancel',function(){drag=null;cvs.classList.remove('turning');});
+  cvs.addEventListener('pointermove',function(e){if(drag){dragMove(e);return;}if(!canHover())return;setHot(hitCapsule(e.clientX,e.clientY));});
   cvs.addEventListener('pointerleave',function(){if(!drag)setHot(false);});
+  cvs.addEventListener('pointerdown',function(e){dragStart(e,cvs);});
+  cvs.addEventListener('pointerup',dragEnd);
+  cvs.addEventListener('pointercancel',function(){drag=null;cvs.classList.remove('turning');});
   cvs.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCapsule();}});
   /* the wheel rolls it: the object turns about its own length, the way you would turn a tube
      in your hands to read the far side of it. only while the object is what is on screen. */
@@ -1417,7 +1355,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     e.preventDefault();
     var d=e.deltaMode===1?e.deltaY*16:(e.deltaMode===2?e.deltaY*400:e.deltaY);
     rot.spin+=d*0.0022;rot.vs=clamp(d*0.0016,-0.09,0.09);
-    applyRot();paint();kickSpin();
+    kickSpin();
   },{passive:false});
 
   /* ── size ─────────────────────────────────────────────────────── */
