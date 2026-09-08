@@ -126,7 +126,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        nothing pops from nothing: pause+title rise in, the word fades;
        exit runs faster than enter */
     '#me-corner{position:fixed;right:19px;bottom:17px;z-index:10;display:flex;gap:13px;align-items:center;}'+
-    '#me-corner #me-stop{display:flex;opacity:0;transform:translateY(6px);pointer-events:none;'+
+    /* the pause belongs to the title it sits beside, so it is coloured with it — its mark is drawn
+       in the same ink as the words on the dial and the screen on the capsule's back. */
+    '#me-corner #me-stop{color:var(--me-theme-laid);'+
+      'display:flex;opacity:0;transform:translateY(6px);pointer-events:none;'+
       'transition:opacity 120ms ease,transform 120ms cubic-bezier(0.23,1,0.32,1);}'+
     '#me-app.radio-on #me-stop{opacity:1;transform:none;pointer-events:auto;'+
       'transition:opacity 180ms cubic-bezier(0.23,1,0.32,1),transform 180ms cubic-bezier(0.23,1,0.32,1);}'+
@@ -313,16 +316,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-col{display:none;}'+
     '@media (max-width:700px){'+
       '#me-dial,#me-stamp{transition:opacity 120ms ease;}'+
-      '#me-app.open #me-dial,#me-app.open #me-stamp{opacity:0;pointer-events:none;transition:opacity 120ms ease 140ms;}'+
+      /* the dial stays: the object is drawn live now rather than photographed into the column, so
+         fading it out is fading out the object. Only the date steps aside — the column has its own. */
+      '#me-app.open #me-stamp{opacity:0;pointer-events:none;transition:opacity 120ms ease 140ms;}'+
       '#me-app.browse #me-tc{display:none;}'+
-      '#me-col{display:block;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:64px 18px 60px;box-sizing:border-box;'+
+      '#me-col{display:block;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 18px 60px;box-sizing:border-box;'+
         'opacity:0;pointer-events:none;transition:opacity 120ms ease;}'+
       '#me-app.open #me-col{opacity:1;pointer-events:auto;transition:opacity 200ms ease 140ms;}'+
-      '#me-col .shot{position:relative;overflow:visible;margin:0 -18px;}'+
-      '#me-col .plate,#me-col #me-browse{position:relative;z-index:1;}'+ /* the words lie over the picture's overhang */
-      '#me-col .shot img{position:absolute;left:0;display:block;}'+
-      '#me-col .plate{font:700 15px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin-top:8px;}'+
-      '#me-col .shot{cursor:pointer;}'+
+      '#me-col .plate{font:700 15px/1.55 '+FONT+';color:#0a0a0a;font-variant-numeric:tabular-nums;margin:0 0 6px;}'+
+      '#me-app.open #me-field{opacity:1;}'+   /* the list sits below it here, so nothing has to be seen through */
       '#me-app.browse #me-browse{overflow:hidden;height:100vh;display:flex;align-items:center;}'+
       '@supports (height:100dvh){#me-app.browse #me-browse{height:100dvh;}}'+
       '#me-app.open #me-browse{position:static;display:block;height:auto;overflow:visible;}'+
@@ -1089,7 +1091,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the right cap is the lid, and the only one: the left end stays bolted for good. */
   var MOB_SLIDE=44;
   function restBox(){
-    if(isMobile()){var Lm=W-36-MOB_SLIDE;return {L:Lm,left:(W-Lm)/2,top:H*0.36};}   /* centred: it sat left by the width of the lid's travel */
+    if(isMobile()){
+      /* centred as it stands, and centred again as it opens: the lid's travel grows the object to
+         the right, so the whole of it shifts left by half of that as it goes. Nothing leaves the
+         screen at either end. */
+      var Lm=W-36-MOB_SLIDE;
+      return {L:Lm,left:(W-Lm)/2-cap.slide*MOB_SLIDE/2,top:H*0.36};
+    }
     var L=clamp(W*0.52,460,800);
     return {L:L,left:W/2-L/2,top:H*0.47-(L/LTOT*2*RF)/2};
   }
@@ -1150,6 +1158,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var lit=p2*p2;                                   /* nothing until the cap actually moves */
     beamMat.uniforms.uAmt.value=1.0*lit;mouthMat.opacity=0.85*lit;innerLamp.intensity=26*lit;
     beam.visible=mouth.visible=lit>0.002;
+    /* the little screen sits the other way up on a phone: the object is held at a different angle
+       there, and the words on it read upside down unless the panel is turned in its own frame. */
+    panel.rotation.z=isMobile()?Math.PI:0;
     placeStamp();
   }
   var stampFixed=null;
@@ -1335,22 +1346,23 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function buildColumn(){
     colEl.innerHTML='';
     if(GL){
-    place();renderer.render(scene,camera);
-    var url=renderer.domElement.toDataURL('image/png');
-    var shot=document.createElement('div');shot.className='shot';
-    var b=lastBox,pad=14,topPad=Math.round(b.h*0.45),botPad=Math.round(b.h*0.75);
-    colEl.style.paddingTop=Math.round(Math.max(64,b.top-pad))+'px'; /* the object does not move up: the column starts where it stood */
-    shot.style.height=Math.round(b.h+pad*2)+'px'; /* the slot keeps the tube's height so the date stays where it is… */
-    var img=document.createElement('img');img.src=url;img.alt='';
-    img.style.width=W+'px';img.style.height=H+'px';img.style.top=Math.round(-(b.top-pad))+'px';
-    /* …while the picture shows past the slot: rings, screws and the shadow are never cut off */
-    img.style.clipPath='inset('+Math.max(0,Math.round(b.top-topPad))+'px 0 '+Math.max(0,Math.round(H-(b.top+b.h+botPad)))+'px 0)';
-    shot.appendChild(img);colEl.appendChild(shot);
-    shot.setAttribute('role','button');shot.setAttribute('aria-label','time capsule — close');shot.addEventListener('click',function(){sealCapsule();}); /* a tap on the object seals it again */
+    /* The object used to be photographed into the top of this column, which is why it scrolled
+       away with the words and why its cap ran off the edge — a picture in a slot can only be as
+       wide as the slot. It stays where it is now, drawn live on the canvas behind, and what
+       scrolls is the writing. All that goes in the column is the room it occupies, and that space
+       sticks to the top so a tap on the object still shuts it however far the list has moved. */
+    place();renderer.render(scene,camera);   /* the column is laid out around where the object is */
+    /* the object keeps the top of the screen and the words start underneath it, so the writing
+       scrolls past without ever crossing the metal — and the object itself is left uncovered,
+       which is what shuts it again when tapped. */
+    var b=lastBox;
+    colEl.style.top=Math.round(b.top+b.h+18)+'px';
+    colEl.style.paddingTop='0px';
     }
     var p=document.createElement('div');p.className='plate';p.textContent=stampEl.textContent;
     colEl.appendChild(p);
     colEl.appendChild(browseEl);
+    needPaint();   /* it is drawn live from here on, not photographed */
   }
 
   /* ── input ────────────────────────────────────────────────────── */
@@ -1401,17 +1413,21 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(e.beta==null&&e.gamma==null)return;
     gyro.live=true;gyro.count=(gyro.count||0)+1;          /* it is actually reporting: the hand stands down */
     if(!gyro.zero)gyro.zero={b:e.beta||0,g:e.gamma||0};   /* however the phone was held at the start is level */
-    var dg=clamp((e.gamma||0)-gyro.zero.g,-50,50),db=clamp((e.beta||0)-gyro.zero.b,-50,50);
-    aim.yaw=HOME_YAW+dg*0.013;                            /* about forty degrees at the stops */
-    aim.pitch=clamp(HOME_PITCH-db*0.011,-1.1,1.1);
+    var dg=clamp((e.gamma||0)-gyro.zero.g,-45,45),db=clamp((e.beta||0)-gyro.zero.b,-45,45);
+    aim.yaw=HOME_YAW+dg*0.026;                            /* twice what it was: a small tilt goes a long way */
+    aim.pitch=clamp(HOME_PITCH-db*0.022,-1.1,1.1);
     kickSpin();
   }
   function gyroFlick(e){
+    /* a flick does one thing: it rolls the object on its own length. Turning the phone sharply to
+       the left or right about its upright — the wrist flick you would give a tube to spin it — is
+       the only thing measured, and it is measured as turn per second rather than as an angle, so
+       a slow deliberate turn tilts it and a sharp one spins it. */
     var r=e.rotationRate;if(!r)return;
-    var twist=r.alpha||0,flick=r.beta||0;                  /* about the screen, and about its short edge */
-    if(Math.abs(flick)>120)rot.vs=clamp(rot.vs+flick*0.00016,-0.10,0.10);
-    if(Math.abs(twist)>120)rot.vy=clamp(rot.vy+twist*0.00004,-0.05,0.05);
-    if(rot.vs||rot.vy)kickSpin();
+    var flick=r.gamma||0;
+    if(Math.abs(flick)<45)return;
+    rot.vs=clamp(rot.vs+flick*0.00040,-0.16,0.16);
+    kickSpin();
   }
   /* Asking iOS is fussier than it looks. The call has to happen inside a gesture the browser
      counts as one, and if the answer never comes back — a prompt the system decides not to show,
