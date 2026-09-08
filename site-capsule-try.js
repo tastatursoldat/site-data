@@ -732,10 +732,17 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      so twisting the object moves the light inside it */
   var holeEnd=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.5,roll.tone*0.5,roll.tone*0.51),metalness:0.45,roughness:0.78,envMapIntensity:0.8});
   var endWallL=new THREE.Mesh(endWallGeo,holeEnd);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;endWallL.receiveShadow=true;group.add(endWallL);
+  var endWallR=new THREE.Mesh(endWallGeo,holeEnd);endWallR.rotation.z=Math.PI/2;endWallR.position.x=TUBE1+0.02;endWallR.receiveShadow=true;endWallR.visible=false;group.add(endWallR);
   var boreGeo=new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,TUBE1-TUBE0)],SEG);
+  var boreDark=null;
   (function(){var n=boreGeo.attributes.position.count,col=new Float32Array(n*3),half=n/2;
     for(var i=0;i<n;i++){var v=i<half?0.28:1.0;col[i*3]=v;col[i*3+1]=v;col[i*3+2]=v;}
-    boreGeo.setAttribute('color',new THREE.BufferAttribute(col,3));})();
+    boreGeo.setAttribute('color',new THREE.BufferAttribute(col,3));
+    boreDark=function(end){                       /* the dark end of the bore is the shut one */
+      var a=boreGeo.attributes.color.array,dark=(end==='L')?1.0:0.28,lit=(end==='L')?0.28:1.0;
+      for(var k=0;k<n;k++){var w=k<half?dark:lit;a[k*3]=w;a[k*3+1]=w;a[k*3+2]=w;}
+      boreGeo.attributes.color.needsUpdate=true;
+    };})();
   var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.62,roll.tone*0.62,roll.tone*0.63),metalness:0.45,roughness:0.82,envMapIntensity:0.7,side:THREE.BackSide,vertexColors:true});
   var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
@@ -772,7 +779,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   var shankGeo=threadGeo(SR*0.50,0.017,SHL,0.062,40,132);
   var shankEnd=new THREE.CircleGeometry(SR*0.50,40);shankEnd.rotateX(Math.PI/2);
-  var TURNS=1.75;   /* what matters is that you can see it turn */
+  /* 1.75 turns is seven quarter turns, and a four-pointed star has no way of showing the
+     difference: it lands exactly as it started, which looks like a bolt that never turned.
+     A number that is not a multiple of a quarter leaves it somewhere else than it began. */
+  var TURNS=1.62;
   /* the recess in the head: a four-pointed star, cut in rather than sunk as a hex socket */
   var sockGeo=(function(){
     var sh=new THREE.Shape(),ro=SR*0.68,ri=SR*0.115;
@@ -823,20 +833,28 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     }
     return out;
   }
-  screwRing(group,XL+CAPL+GAP+TR/2);
-  var lidScrews=screwRing(group,TUBE1+TR/2);
-  /* end caps: the left one for good, the right one is the lid */
-  var capL=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);capL.rotation.z=-Math.PI/2;capL.position.x=XL;capL.castShadow=true;group.add(capL);
-  var lid=new THREE.Group();group.add(lid);
-  var capR=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);capR.rotation.z=-Math.PI/2;capR.castShadow=true;lid.add(capR);
-  var plug=new THREE.Mesh(discGeo(0.895,TR+GAP),capSteel);plug.rotation.z=-Math.PI/2;plug.position.x=-(TR+GAP);lid.add(plug); /* the part inside the ring */
-  /* the threaded holes the screws sat in, around the plug */
+  var screwsL=screwRing(group,XL+CAPL+GAP+TR/2);
+  var screwsR=screwRing(group,TUBE1+TR/2);
+  /* both ends come off. Each is the same thing built twice: a cap, the plug that sits inside the
+     ring, and the tapped holes its bolts came out of. Which one opens is whichever end of the
+     object you clicked nearer to. */
   var holeGeo=new THREE.CylinderGeometry(SR*0.8,SR*0.8,0.16,40);
-  for(var hi=0;hi<NB;hi++){
-    var ha=hi/NB*Math.PI*2+Math.PI/NB,hg=new THREE.Group();hg.position.x=-(TR+GAP)/2-GAP/2;hg.rotation.x=ha;
-    var hole=new THREE.Mesh(holeGeo,socketMat);hole.position.y=0.895-0.06;hg.add(hole);lid.add(hg);
+  function makeLid(inward){         /* inward: +1 for the left end, -1 for the right */
+    var L=new THREE.Group();group.add(L);
+    var cap=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);cap.rotation.z=-Math.PI/2;
+    cap.position.x=inward>0?0:0;cap.castShadow=true;L.add(cap);
+    var plugX=inward>0?CAPL:-(TR+GAP);
+    var plug=new THREE.Mesh(discGeo(0.895,TR+GAP),capSteel);plug.rotation.z=-Math.PI/2;plug.position.x=plugX;L.add(plug);
+    for(var hi=0;hi<NB;hi++){
+      var ha=hi/NB*Math.PI*2+Math.PI/NB,hg=new THREE.Group();
+      hg.position.x=inward>0?(CAPL+(TR+GAP)/2+GAP/2):(-(TR+GAP)/2-GAP/2);hg.rotation.x=ha;
+      var hole=new THREE.Mesh(holeGeo,socketMat);hole.position.y=0.895-0.06;hg.add(hole);L.add(hg);
+    }
+    return L;
   }
-  lid.position.x=LID_HOME;
+  var lidL=makeLid(1);lidL.position.x=XL;
+  var lid=makeLid(-1);lid.position.x=LID_HOME;
+  var ENDS={L:{lid:lidL,home:XL,dir:-1,screws:screwsL},R:{lid:lid,home:LID_HOME,dir:1,screws:screwsR}};
   /* ── the radio screen: a small set-in display on the back of the tube, a Pip-Boy of sorts — dark
      glass in a metal bezel that shows only the title playing, in the theme's colour. dark when off ── */
   var screenCanvas=document.createElement('canvas');screenCanvas.width=1024;screenCanvas.height=448;
@@ -987,7 +1005,31 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var a=p.clone().project(camera),b=p.clone().add(new THREE.Vector3(1,0,0)).project(camera);
     return Math.abs(b.x-a.x)*W/2;
   }
-  var cap={state:'sealed',loosen:0,slide:0,move:0,hot:false};
+  var cap={state:'sealed',loosen:0,slide:0,move:0,hot:false,end:'R'};
+  var _pv=new THREE.Vector3();
+  /* which end the pointer is nearer to, decided on screen: both cap centres are projected
+     through whatever rotation the object is currently under, so a rolled or spun capsule
+     answers the same way it looks. */
+  function endFromPoint(px,py){
+    if(!GL)return 'R';
+    group.updateMatrixWorld();
+    var r=cvs.getBoundingClientRect();
+    function screenOf(x){
+      _pv.set(x,0,0).applyMatrix4(group.matrixWorld).project(camera);
+      return [r.left+(_pv.x*0.5+0.5)*r.width, r.top+(-_pv.y*0.5+0.5)*r.height];
+    }
+    var a=screenOf(XL+CAPL/2),b=screenOf(XR-CAPL/2);
+    var da=(px-a[0])*(px-a[0])+(py-a[1])*(py-a[1]);
+    var db=(px-b[0])*(px-b[0])+(py-b[1])*(py-b[1]);
+    return da<db?'L':'R';
+  }
+  function setEnd(e){
+    if(cap.end===e||cap.state!=='sealed')return;
+    cap.end=e;
+    if(boreDark)boreDark(e);
+    endWallL.visible=(e==='R');endWallR.visible=(e==='L');
+    needPaint();
+  }
   var MOB_SLIDE=44;
   function restBox(){
     if(isMobile()){var Lm=W-36-MOB_SLIDE;return {L:Lm,left:18,top:H*0.36};}
@@ -1034,8 +1076,13 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        the easing, so each one turns at the speed it looks like it is turning. */
     var lin=1-Math.pow(1-clamp(cap.slide,0,1),0.2);
     var p1=clamp(lin/0.72,0,1),p2=clamp((lin-0.72)/0.28,0,1);
-    var ORDER=[0,4,2,6,1,5,3,7];
-    lidScrews.forEach(function(g,i){
+    var ORDER=[0,4,2,6,1,5,3,7],END=ENDS[cap.end],OTHER=ENDS[cap.end==='L'?'R':'L'];
+    OTHER.screws.forEach(function(g){          /* the end that stays shut stays bolted */
+      g.rotation.y=g.userData.a0;
+      g.children.forEach(function(m){m.position.y=m.userData.y0;});
+    });
+    OTHER.lid.position.x=OTHER.home;
+    END.screws.forEach(function(g,i){
       var j=ORDER.indexOf(i),st=j*0.075,du=0.44;   /* each one takes its time */
       var q=clamp((p1-st)/du,0,1);
       var e=q<0.5?2*q*q:1-Math.pow(-2*q+2,2)/2;           /* torque to break it, then it spins, then it slows */
@@ -1044,7 +1091,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     });
     var park=isMobile()?MOB_SLIDE/lastPx:(TP+0.1*LTOT);
     var pe=p2<0.5?2*p2*p2:1-Math.pow(-2*p2+2,2)/2;
-    lid.position.x=LID_HOME+cap.loosen*4/lastPx+pe*park;
+    END.lid.position.x=END.home+END.dir*(cap.loosen*4/lastPx+pe*park);
     placeStamp();
   }
   var stampFixed=null;
@@ -1065,7 +1112,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(!lastBox||!GL)return false;
     var slop=canHover()?8:18;
     var extra=cap.slide*(isMobile()?MOB_SLIDE:(TP+0.1*LTOT)*lastPx);
-    return x>=lastBox.left-slop&&x<=lastBox.left+lastBox.w+slop+extra&&y>=lastBox.top-slop&&y<=lastBox.top+lastBox.h+slop;
+    var l=lastBox.left-slop-(cap.end==='L'?extra:0),r=lastBox.left+lastBox.w+slop+(cap.end==='L'?0:extra);
+    return x>=l&&x<=r&&y>=lastBox.top-slop&&y<=lastBox.top+lastBox.h+slop;
   }
 
   /* ── render on demand: nothing paints at rest ──────────────────── */
@@ -1273,9 +1321,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     try{d.el.releasePointerCapture(e.pointerId);}catch(err){}
     if(d.moved){kickSpin();return;}
     if(e.detail>1)return;
+    if(cap.state==='sealed')setEnd(endFromPoint(e.clientX,e.clientY));   /* a tap has no hover before it */
     toggleCapsule();
   }
-  cvs.addEventListener('pointermove',function(e){if(drag){dragMove(e);return;}if(!canHover())return;setHot(hitCapsule(e.clientX,e.clientY));});
+  cvs.addEventListener('pointermove',function(e){
+    if(drag){dragMove(e);return;}
+    if(!canHover())return;
+    var on=hitCapsule(e.clientX,e.clientY);
+    if(on)setEnd(endFromPoint(e.clientX,e.clientY));
+    setHot(on);
+  });
   cvs.addEventListener('pointerleave',function(){if(!drag)setHot(false);});
   cvs.addEventListener('pointerdown',function(e){dragStart(e,cvs);});
   cvs.addEventListener('pointerup',dragEnd);
