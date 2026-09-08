@@ -267,7 +267,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     // mobile: compact desktop-style list, full-screen About
     /* the about page breathes in: fade + 0.98 scale, centred (a modal has no
        trigger to grow from). exit runs faster than enter */
-    '#me-about-screen{cursor:pointer;position:fixed;inset:0;background:rgba(13,13,15,0.90);z-index:2147483700;'+
+    '#me-about-screen{cursor:pointer;position:fixed;inset:0;background:rgba(239,239,236,0.78);z-index:2147483700;'+
       'padding:max(76px,env(safe-area-inset-top)) 7vw 44px;box-sizing:border-box;overflow-y:auto;display:flex;'+
       'opacity:1;'+
       'transition:opacity 200ms ease,transform 200ms cubic-bezier(0.23,1,0.32,1);}'+
@@ -280,24 +280,24 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the about page speaks in the note's voice: the same serif, the same weight */
     /* the note and the about page read in the screen's own face and its colour: the dot matrix
        from the panel on the back, at a size the dots can actually resolve at. */
-    '#me-about-screen .txt{margin:auto;max-width:32em;font:700 17px/1.85 '+FONT_LCD+';color:var(--me-theme);text-shadow:0 0 24px var(--me-theme);'+
+    '#me-about-screen .txt{margin:auto;max-width:32em;font:700 17px/1.85 '+FONT_LCD+';color:var(--me-theme);'+
       'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
     '#me-about-screen .txt a{color:var(--me-theme);text-decoration:none;}'+
-    '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#EFEFEC;cursor:pointer;}'+
+    '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
     /* the note lies over the page: everything behind it drops to a quarter, nothing is replaced */
-    '#me-note{position:fixed;inset:0;background:rgba(13,13,15,0.90);z-index:2147483700;display:flex;overflow:auto;-webkit-overflow-scrolling:touch;'+
+    '#me-note{position:fixed;inset:0;background:rgba(239,239,236,0.78);z-index:2147483700;display:flex;overflow:auto;-webkit-overflow-scrolling:touch;'+
       'padding:6vh 7vw;box-sizing:border-box;cursor:pointer;transition:opacity 240ms ease;}'+
     '#me-app.noting #me-field,#me-app.noting #me-browse,#me-app.noting #me-stamp,'+
       '#me-app.noting #me-ctrl,#me-app.noting #me-corner,#me-app.noting #me-col{opacity:0.35;}'+
     '#me-field,#me-browse,#me-stamp,#me-ctrl,#me-corner,#me-col{transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:32em;font:700 17px/1.85 '+FONT_LCD+';color:var(--me-theme);text-shadow:0 0 24px var(--me-theme);}'+
+    '#me-note .n{margin:auto;max-width:32em;font:700 17px/1.85 '+FONT_LCD+';color:var(--me-theme);}'+
     '#me-note .n p{margin:0 0 1.05em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
-    '#me-note .nb{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#EFEFEC;}'+
+    '#me-note .nb{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '@media (max-width:700px){#me-note{padding:76px 24px 44px;}}'+
     /* phones: the open capsule is a scrolling column — a snapshot of the
        object, the stamp, then the index. the live object and the hover word
