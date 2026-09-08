@@ -68,6 +68,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     "I am trying to keep going a little longer.\n\n"+
     "Open when found.";
   var FONT='"Helvetica Neue",Helvetica,Arial,sans-serif';
+  /* the little screen gets a dot-matrix face of its own — the letters are made of the same round
+     pixels the thing would actually have. Everything else on the site stays in helvetica. */
+  var FONT_LCD='"Doto","Helvetica Neue",Helvetica,Arial,sans-serif';
+  var lcdFont=document.createElement('link');lcdFont.rel='stylesheet';
+  lcdFont.href='https://fonts.googleapis.com/css2?family=Doto:ROND,wght@100,800&display=swap';
+  /* the roundness axis is pinned at the sheet, not here: a canvas font string is the old css
+     shorthand and has no way to say font-variation-settings, so what it is handed has to arrive
+     as one fixed instance — round dots, bold. */
+  document.head.appendChild(lcdFont);
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
@@ -269,9 +278,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-about-close{position:fixed;top:18px;right:19px;'+
       'background:none;border:0;padding:0;font:700 15px/1.55 '+FONT+';cursor:pointer;color:#0a0a0a;}'+
     /* the about page speaks in the note's voice: the same serif, the same weight */
-    '#me-about-screen .txt{margin:auto;max-width:34em;font:400 15px/1.55 '+SERIF+';'+
-      'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
-    '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
+    /* the note and the about page read in the screen's own face and its colour: the dot matrix
+       from the panel on the back, at a size the dots can actually resolve at. */
+    '#me-about-screen .txt{margin:auto;max-width:32em;font:800 18px/1.85 '+FONT_LCD+';color:var(--me-theme-laid);mix-blend-mode:multiply;'+
+      'white-space:pre-line;}'+   /* nothing after this may set colour again: it was doing exactly that */
+    '#me-about-screen .txt a{color:var(--me-theme-laid);text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
@@ -283,8 +294,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-field,#me-browse,#me-stamp,#me-ctrl,#me-corner,#me-col{transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:34em;font:400 15px/1.55 '+SERIF+';color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
-    '#me-note .n p{margin:0 0 0.62em;white-space:pre-line;}'+
+    /* the exact colour, laid over the page rather than painted on it: multiplied into the paper, so
+       what darkens it is the page underneath and not a second colour. The lines multiply once for
+       themselves and once inside the block, which is the same colour twice over. */
+    '#me-note .n{margin:auto;max-width:32em;font:800 18px/1.85 '+FONT_LCD+';color:var(--me-theme-laid);mix-blend-mode:multiply;}'+
+    '#me-note .n p{mix-blend-mode:multiply;}'+
+    '#me-note .n p{margin:0 0 1.05em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '@media (max-width:700px){#me-note{padding:76px 24px 44px;}}'+
@@ -387,6 +402,24 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var bwDeal=Math.random()<0.4;
   /* the index hover borrows the deal's colour — even on a b/w deal it stays colourful */
   document.documentElement.style.setProperty('--me-theme',theme.key);
+  /* the same colour laid over itself. Multiplying it into the page does nothing — the paper is
+     within a few per cent of white, and anything times white is itself, which is why the pale
+     keys stayed pale. Multiplied by ITSELF it deepens without turning into another colour: pink
+     stays pink, it just stops being a wash. Repeated until it is dark enough to read, never more
+     than three times, so the keys that are already deep are left where they are. */
+  (function(){
+    var h=theme.key.replace('#','');
+    if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    var c=[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+    for(var i=0;i<3;i++){
+      var L=(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255;
+      if(L<0.34)break;
+      c=[c[0]*c[0]/255,c[1]*c[1]/255,c[2]*c[2]/255];
+    }
+    document.documentElement.style.setProperty('--me-theme-laid',
+      'rgb('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+')');
+  })();
+
 
   // ── the object: stainless time capsule, room light, etched plate ──
   var Q=new URLSearchParams(location.search); /* ?cam=0 leaves the metal without the watcher */
@@ -401,7 +434,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     tone:0.82,
     key:1.6,
     shadow:0.2,
-    yaw:30,
+    yaw:21,
     fov:32,       /* lens: wider = more perspective in the reflections */
     dist:19,
     wave:0.015,    /* polish waviness: bends the reflections */
@@ -436,7 +469,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     renderer.toneMapping=THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure=roll.exposure;
     renderer.shadowMap.enabled=true;
-    renderer.shadowMap.type=THREE.PCFSoftShadowMap; /* VSM bled light where two parts overlapped: a hole in the shadow */
+    /* PCF, not PCFSoft: the soft variant uses a fixed kernel and ignores shadow.radius, which is
+       the one dial that makes a shadow look like light coming from a window rather than a laser.
+       VSM bled light where two parts overlapped and put a hole in the shadow. */
+    renderer.shadowMap.type=THREE.PCFShadowMap;
   }else app.classList.add('nogl');
   var scene=new THREE.Scene();
   var camera=new THREE.PerspectiveCamera(roll.fov,1,1,400);
@@ -474,14 +510,31 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     camPlane.position.set(0,0.5,13.6);camPlane.rotation.y=Math.PI;camPlane.visible=false;room.add(camPlane);
     return room;
   }
+  /* ── the room the metal actually stands in ─────────────────────────
+     A real studio, shot as a lat-long panorama with its full range intact (a radiance .hdr
+     next to this file). The built room above stays as the fallback and as the surface the
+     watcher is pinned to; when the panorama lands it takes over the lighting, because a
+     photograph of a lit room is what steers a reflection, not a handful of coloured planes. */
+  /* The panorama is clipped at 1.0 — it has no values above white anywhere in it, which means
+     nothing was being carried by the radiance format that a picture could not carry. So it is a
+     picture: 187 KB the browser decodes itself, instead of 12 MB of RGBE unpacked pixel by pixel
+     in JavaScript into a 134 MB float texture, which is where the wait was. Same studio, same
+     reflections, there almost as soon as the page is. */
+  var HDR=null;
   function renderEnv(){
     if(!GL)return;
     if(!pmrem)pmrem=new THREE.PMREMGenerator(renderer);
-    var rt=pmrem.fromScene(roomScene,0.02);
+    var rt=HDR?pmrem.fromEquirectangular(HDR):pmrem.fromScene(roomScene,0.02);
     if(envRT)envRT.dispose(); /* the target, not just its texture — otherwise every re-light leaks a 6 MB fbo+texture */
     envRT=rt;scene.environment=rt.texture;
   }
   roomScene=buildRoom();renderEnv();
+  if(GL&&Q.get('hdr')!=='0'){
+    new THREE.TextureLoader().load(new URL('env-metal.jpg',import.meta.url).href,function(t){
+      t.mapping=THREE.EquirectangularReflectionMapping;t.colorSpace=THREE.SRGBColorSpace;
+      HDR=t;renderEnv();needPaint();
+    },undefined,function(){});   /* the built room stays lit as it was */
+  }
 
   /* ── geometry in object units: tube radius 1 ─────────────────────
      a polished stainless tube; at each end a thick flange ring clamped by
@@ -489,27 +542,35 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      cap. the right cap is the lid: its screws back out of the ring, then
      the cap is pulled off. */
   var R=1,D=2,LTOT=3.6*D;
-  var RF=1.28,TR=0.55,CAPL=0.5,CAPR=0.98,GAP=0.035,NB=8,FIL=0.035,SR=0.07,SL=0.16,SOUT=0.24;
+  var RF=1.28,TR=0.55,CAPL=0.5,CAPR=0.98,GAP=0.006,NB=8,FIL=0.035,SR=0.07,SL=0.16,SOUT=0.34;
   var XL=0, XR=LTOT;
   var TUBE0=XL+CAPL+GAP+TR, TUBE1=XR-CAPL-GAP-TR;    /* the tube between the rings */
   var LID_HOME=XR-CAPL;                              /* the right cap's inner face */
   var TP=CAPL;                                       /* (kept for the placement code) */
 
-  function discGeo(rad,len){ /* a chamfered disc, axis y, from 0 to len */
+  var SEG=320,ARC=6;   /* around the axis, and the segments in each rolled edge */
+  function fillet(p,cx,cy,r,a0,a1){ /* a rolled edge: nothing on a turned part comes off sharp */
+    for(var i=0;i<=ARC;i++){var a=a0+(a1-a0)*i/ARC;p.push(new THREE.Vector2(cx+Math.cos(a)*r,cy+Math.sin(a)*r));}
+  }
+  function discGeo(rad,len){ /* a disc with both edges rolled, axis y, from 0 to len */
     var p=[];
-    p.push(new THREE.Vector2(0,0));p.push(new THREE.Vector2(rad-FIL,0));p.push(new THREE.Vector2(rad,FIL));
-    p.push(new THREE.Vector2(rad,len-FIL));p.push(new THREE.Vector2(rad-FIL,len));p.push(new THREE.Vector2(0,len));
-    return new THREE.LatheGeometry(p,160);
+    p.push(new THREE.Vector2(0,0));p.push(new THREE.Vector2(rad-FIL,0));
+    fillet(p,rad-FIL,FIL,FIL,-Math.PI/2,0);
+    fillet(p,rad-FIL,len-FIL,FIL,0,Math.PI/2);
+    p.push(new THREE.Vector2(0,len));
+    return new THREE.LatheGeometry(p,SEG);
   }
   function ringGeo(len){ /* a flange ring with its bore: the cap's plug sits in it */
     var p=[];
-    p.push(new THREE.Vector2(0.9,0));p.push(new THREE.Vector2(RF-FIL,0));p.push(new THREE.Vector2(RF,FIL));
-    p.push(new THREE.Vector2(RF,len-FIL));p.push(new THREE.Vector2(RF-FIL,len));p.push(new THREE.Vector2(0.9,len));p.push(new THREE.Vector2(0.9,0));
-    return new THREE.LatheGeometry(p,160);
+    p.push(new THREE.Vector2(0.9,0));p.push(new THREE.Vector2(RF-FIL,0));
+    fillet(p,RF-FIL,FIL,FIL,-Math.PI/2,0);
+    fillet(p,RF-FIL,len-FIL,FIL,0,Math.PI/2);
+    p.push(new THREE.Vector2(0.9,len));p.push(new THREE.Vector2(0.9,0));
+    return new THREE.LatheGeometry(p,SEG);
   }
   function tubeGeo(){
     var p=[new THREE.Vector2(R,0),new THREE.Vector2(R,TUBE1-TUBE0)]; /* an open tube: no end discs, the bore is a hole */
-    var g=new THREE.LatheGeometry(p,192);
+    var g=new THREE.LatheGeometry(p,SEG);
     var pos=g.attributes.position,uv=g.attributes.uv;
     for(var i=0;i<pos.count;i++)uv.setY(i,clamp(pos.getY(i)/(TUBE1-TUBE0),0,1));
     return g;
@@ -521,21 +582,25 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
 
   /* ── surfaces ─────────────────────────────────────────────────── */
+  /* the grain of polished stainless. it used to be drawn for a room of coloured panels; against
+     a photographed studio the same strokes read as scratches, so they are a third of the weight
+     and the smear that stretched them along the tube is off. ?brush= sets the weight. */
+  var BR=parseFloat(Q.get('brush')||'0.34');
   function brush(r,w,h,ppx,ppy,seed){ /* lines along the tube: the grain of polished stainless */
     r.fillStyle='#8c8c8c';r.fillRect(0,0,w,h);
     var rnd=(function(){var q=seed;return function(){q=(q*1664525+1013904223)>>>0;return q/4294967296;};})();
     var n=Math.round(110*(w/ppx)*(h/ppy));
     for(var i=0;i<n;i++){
-      var x=rnd()*w,len=(0.6+rnd()*5.5)*ppy,y=rnd()*h,a=0.05+rnd()*0.12,dark=rnd()<0.5;
+      var x=rnd()*w,len=(0.6+rnd()*5.5)*ppy,y=rnd()*h,a=(0.05+rnd()*0.12)*BR,dark=rnd()<0.5;
       r.strokeStyle=dark?'rgba(40,40,40,'+a+')':'rgba(230,230,230,'+a+')';r.lineWidth=(0.6+rnd()*1.2)*ppx/326;
-      r.beginPath();r.moveTo(x,y);r.lineTo(x+(rnd()-0.5)*2,y+len);r.stroke();
+      r.beginPath();r.moveTo(x,y);r.lineTo(x,y+len);r.stroke();   /* dead straight: a brushed line is */
     }
   }
   var steel=new THREE.MeshPhysicalMaterial({
     color:new THREE.Color(roll.tone,roll.tone,roll.tone*0.99),metalness:1,roughness:roll.rough,
     envMapIntensity:1.0
   });
-  steel.anisotropy=roll.aniso;steel.anisotropyRotation=Math.PI/2;
+  steel.anisotropy=parseFloat(Q.get('aniso')||'0.18');steel.anisotropyRotation=Math.PI/2;
   /* every other part is the same metal as the tube: same tone, same roughness, same brushing
      along the axis (the grain scaled to each part's length), same anisotropy */
   function sameMetal(){
@@ -543,6 +608,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     mt.anisotropy=roll.aniso;mt.anisotropyRotation=Math.PI/2;return mt;
   }
   var plateSteel=sameMetal(),capSteel=sameMetal(),boltSteel=sameMetal();
+  /* the fittings carry no brushing any more, so there is no grain for an anisotropic highlight
+     to lie along — and on a lathe it follows the uv, which put a diagonal weave across every
+     rim seen at a glancing angle. they are plain polished metal now. */
+  plateSteel.anisotropy=0;boltSteel.anisotropy=0;   /* the caps keep theirs: it is what turns their faces */
   var socketMat=new THREE.MeshStandardMaterial({color:0x111213,metalness:0.6,roughness:0.85});
   /* the visitor in the steel, the way the reel does it: the mirrored camera picture is laid
      over the metal in screen space — where you look, you see yourself — and bent by the
@@ -594,8 +663,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     plateLines.forEach(function(t,i){g.fillText(t,0,-lineH+i*lineH);});
     g.restore();
   }
-  function wave(u,v){ /* polish waviness, shared by both engraved faces */
-    var A=roll.wave;
+  /* polish waviness: a real polished tube is never dead flat, and this bends the reflections a
+     little. It was set against a room of flat panels, where it barely showed; a photographed
+     studio has structure of its own for it to bend, and at the old weight — with the brushing
+     that used to cover it now down to a third — it came out as circles rolling down the tube.
+     A tenth of it is what a polish actually looks like. ?wave= sets it. */
+  var WAVE=parseFloat(Q.get('wave')||'0');
+  function wave(u,v){
+    var A=WAVE;
     var nx=A*(Math.sin(6.283*(2.3*v+0.7*u))+0.6*Math.sin(6.283*(5.1*v-1.3*u+0.3))+0.35*Math.sin(6.283*(9.7*v+2.1*u+0.8))+0.5*Math.sin(6.283*(1.37*v-0.41*u+0.61)+2.1*Math.sin(6.283*0.9*v)));
     var ny=A*(0.8*Math.sin(6.283*(1.7*u+3.2*v+1.1))+0.5*Math.sin(6.283*(4.3*u-2.2*v))+0.4*Math.sin(6.283*(0.8*u+1.9*v+0.2)+1.7*Math.sin(6.283*1.3*u)));
     return [nx,ny];
@@ -632,8 +707,20 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   drawTube();
   var brushOnly=document.createElement('canvas');brushOnly.width=1024;brushOnly.height=1024;brush(brushOnly.getContext('2d'),1024,1024,PPX/4,PPY/4,29);
-  function brushFor(len){var t=new THREE.CanvasTexture(brushOnly);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;t.repeat.set(1,Math.max(0.02,len/(TUBE1-TUBE0)));t.anisotropy=8;return t;}
-  plateSteel.roughnessMap=brushFor(TR);capSteel.roughnessMap=brushFor(CAPL);boltSteel.roughnessMap=brushFor(SL);
+  /* the rings, caps and screws carry no grain map at all now. It was one canvas stretched to
+     each part's own length, so on anything as short as a flange ring it magnified about nine
+     times and came out as stripes; scaled properly it was still a pattern laid over metal that
+     the room already gives everything it needs. The tube keeps its own map — the engraving
+     lives in it. ?grain=1 puts the old one back to compare. */
+  if(Q.get('grain')==='1'){
+    function brushFor(circ,len){
+      var t=new THREE.CanvasTexture(brushOnly);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;
+      t.repeat.set(Math.max(1,Math.round(circ/0.62)),Math.max(1,Math.round(len/0.62)));t.anisotropy=8;return t;
+    }
+    plateSteel.roughnessMap=brushFor(2*Math.PI*RF,TR);
+    capSteel.roughnessMap=brushFor(2*Math.PI*CAPR,CAPL);
+    boltSteel.roughnessMap=brushFor(2*Math.PI*SR,SL);
+  }
   var tubeRoughTex=new THREE.CanvasTexture(tubeRough),tubeNormalTex=new THREE.CanvasTexture(tubeNormal);
   [tubeRoughTex,tubeNormalTex].forEach(function(t){t.wrapS=THREE.RepeatWrapping;t.offset.x=0.5;t.anisotropy=8;});
   steel.roughnessMap=tubeRoughTex;steel.normalMap=tubeNormalTex;steel.normalScale=new THREE.Vector2(roll.depth,roll.depth);steel.needsUpdate=true;
@@ -649,61 +736,193 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the inside is machined, not polished: rough, half-diffuse metal that the key light rakes across through the opening,
      so twisting the object moves the light inside it */
   var holeEnd=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.5,roll.tone*0.5,roll.tone*0.51),metalness:0.45,roughness:0.78,envMapIntensity:0.8});
-  var endWallL=new THREE.Mesh(endWallGeo,holeEnd);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;endWallL.receiveShadow=true;group.add(endWallL);
-  var boreGeo=new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,TUBE1-TUBE0)],96);
+  var endWallL=new THREE.Mesh(endWallGeo,holeEnd);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;group.add(endWallL);
+  var endWallR=new THREE.Mesh(endWallGeo,holeEnd);endWallR.rotation.z=Math.PI/2;endWallR.position.x=TUBE1+0.02;endWallR.visible=false;group.add(endWallR);
+  var boreGeo=new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,TUBE1-TUBE0)],SEG);
+  var boreDark=null;
   (function(){var n=boreGeo.attributes.position.count,col=new Float32Array(n*3),half=n/2;
     for(var i=0;i<n;i++){var v=i<half?0.28:1.0;col[i*3]=v;col[i*3+1]=v;col[i*3+2]=v;}
-    boreGeo.setAttribute('color',new THREE.BufferAttribute(col,3));})();
+    boreGeo.setAttribute('color',new THREE.BufferAttribute(col,3));
+    boreDark=function(end){                       /* the dark end of the bore is the shut one */
+      var a=boreGeo.attributes.color.array,dark=(end==='L')?1.0:0.28,lit=(end==='L')?0.28:1.0;
+      for(var k=0;k<n;k++){var w=k<half?dark:lit;a[k*3]=w;a[k*3+1]=w;a[k*3+2]=w;}
+      boreGeo.attributes.color.needsUpdate=true;
+    };})();
   var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.62,roll.tone*0.62,roll.tone*0.63),metalness:0.45,roughness:0.82,envMapIntensity:0.7,side:THREE.BackSide,vertexColors:true});
-  var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
+  var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;group.add(bore);
+  /* the inside takes no shadow map. The one light that casts stands overhead for the patch on the
+     floor, and its map — small, and blurred wide on purpose — landed inside the bore as a slab
+     with a straight edge across it, which is nothing a bore does. What darkens the inside is what
+     should: the depth painted into it, and how little of the room reaches down there. */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
-  var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,24);
-  var sockGeo=new THREE.CylinderGeometry(SR*0.55,SR*0.55,0.02,6);
+  var HH=0.062,SHL=0.235,PITCH=0.068;   /* a pan head, a long shank, a thread you can count */                 /* head, threaded shank, and its pitch */
+  var HR=SR*0.78,HD=HH+SHL+0.02;                      /* the bore holds the whole shank */
+  var screwGeo=new THREE.CylinderGeometry(SR,SR,HH,48);
+  /* a real thread, cut as geometry. Every point on the shank rides a helix: the radius follows
+     a trapezoid — crest, flank, root, flank — as the phase (distance along the axis, less the
+     angle round it) advances, which is what a single-start thread is. The silhouette carries
+     it, so it reads as a thread from the side and not as a cylinder with a picture on it. */
+  function threadGeo(rc,amp,len,pitch,seg,rings){
+    var pos=[],uvs=[],idx=[],i,j;
+    function prof(u){
+      if(u<0.26)return 1;                      /* the crest */
+      if(u<0.50)return 1-(u-0.26)/0.24;        /* down the flank */
+      if(u<0.76)return 0;                      /* the root */
+      return (u-0.76)/0.24;                    /* and up the other one */
+    }
+    for(j=0;j<=rings;j++){
+      var y=-len/2+len*j/rings;
+      for(i=0;i<=seg;i++){
+        var t=i/seg,th=t*Math.PI*2,u=((y/pitch)-t)%1;if(u<0)u+=1;
+        var r=rc+amp*prof(u);
+        pos.push(Math.cos(th)*r,y,Math.sin(th)*r);uvs.push(t,j/rings);
+      }
+    }
+    for(j=0;j<rings;j++)for(i=0;i<seg;i++){
+      var q0=j*(seg+1)+i,q1=q0+1,q2=q0+seg+1,q3=q2+1;idx.push(q0,q2,q1,q1,q2,q3);
+    }
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+    g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+    g.setIndex(idx);g.computeVertexNormals();return g;
+  }
+  var shankGeo=threadGeo(SR*0.50,0.017,SHL,0.062,40,132);
+  var shankEnd=new THREE.CircleGeometry(SR*0.50,40);shankEnd.rotateX(Math.PI/2);
+  /* 1.75 turns is seven quarter turns, and a four-pointed star has no way of showing the
+     difference: it lands exactly as it started, which looks like a bolt that never turned.
+     A number that is not a multiple of a quarter leaves it somewhere else than it began. */
+  var TURNS=1.62;
+  /* the recess in the head: a four-pointed star, cut in rather than sunk as a hex socket */
+  var sockGeo=(function(){
+    var sh=new THREE.Shape(),ro=SR*0.68,ri=SR*0.115;
+    for(var i=0;i<8;i++){
+      var a=i/8*Math.PI*2-Math.PI/2,rad=(i%2===0)?ro:ri;
+      var x=Math.cos(a)*rad,y=Math.sin(a)*rad;
+      if(i===0)sh.moveTo(x,y);else sh.lineTo(x,y);
+    }
+    sh.closePath();
+    var g=new THREE.ShapeGeometry(sh,1);
+    g.rotateX(-Math.PI/2);            /* it lies on the head's face, which looks along +y */
+    return g;
+  })();
   var rndA=(function(){var q=91;return function(){q=(q*1664525+1013904223)>>>0;return q/4294967296;};})();
+  /* the tapped hole each screw came out of: an open bore in the rim with a floor at the
+     bottom of it. it is a little narrower than the screw, so while the screw is home the
+     hole is inside it and nothing shows; back the screw out and the hole is what is left. */
+  var boreWall=new THREE.CylinderGeometry(HR,HR,HD,40,1,true);
+  var boreFloor=new THREE.CircleGeometry(HR,40);
+  /* the mouth of it, countersunk. a bore straight down into a rim shows nothing at all unless
+     you happen to be looking along it — and the ring is edge-on from most of the ways the
+     object is turned. the seat is what makes a hole read: a dark ring on the surface, there
+     from every angle, and the screw head sits in it when the screw is home. */
+  var boreMouth=new THREE.CylinderGeometry(HR*1.28,HR,0.03,40,1,true);   /* a chamfer, not a dish: the black of the bore is the point */
+  /* a tapped hole has nothing in it to light: no polish, no room reaching down it. black. */
+  var tapMat=new THREE.MeshStandardMaterial({color:0x090a0b,metalness:0,roughness:1,envMapIntensity:0.05,side:THREE.DoubleSide});
+  /* both faces, on purpose: a bore drawn from the inside only shows its far wall, and at any
+     angle but straight down it that is nothing at all — which is how eight holes managed to
+     disappear. drawn from both, the mouth is black from wherever you stand. */
+  var tapFloorMat=new THREE.MeshStandardMaterial({color:0x050506,metalness:0,roughness:1,envMapIntensity:0.03});
+  var seatMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.22,roll.tone*0.22,roll.tone*0.23),metalness:0.6,roughness:0.75,envMapIntensity:0.4,side:THREE.DoubleSide});
   function screwRing(parent,x){
     var out=[];
     for(var i=0;i<NB;i++){
       var a=i/NB*Math.PI*2+Math.PI/NB;
+      var hole=new THREE.Group();hole.position.x=x;hole.rotation.x=a;   /* the hole belongs to the ring: it never moves */
+      var wall=new THREE.Mesh(boreWall,tapMat);wall.position.y=RF+0.012-HD/2;hole.add(wall);
+      var floor=new THREE.Mesh(boreFloor,tapFloorMat);floor.position.y=RF+0.012-HD;floor.rotation.x=-Math.PI/2;hole.add(floor);
+      parent.add(hole);
       var g=new THREE.Group();g.position.x=x;g.rotation.x=a;            /* local +y points outward along the radius */
-      var head=new THREE.Mesh(screwGeo,boltSteel);head.position.y=RF-SL/2+0.012;g.add(head);
-      var sock=new THREE.Mesh(sockGeo,socketMat);sock.position.y=RF+0.012;sock.rotation.y=rndA()*Math.PI/3;g.add(sock);
+      var head=new THREE.Mesh(screwGeo,boltSteel);head.userData.y0=RF+0.012-HH/2;g.add(head);
+      var shank=new THREE.Mesh(shankGeo,boltSteel);shank.userData.y0=RF+0.012-HH-SHL/2;g.add(shank);
+      var tip=new THREE.Mesh(shankEnd,boltSteel);tip.userData.y0=RF+0.012-HH-SHL-0.0004;g.add(tip);
+      var sock=new THREE.Mesh(sockGeo,socketMat);sock.userData.y0=RF+0.0125;sock.rotation.y=rndA()*Math.PI/2;g.add(sock);
+      g.children.forEach(function(m){m.position.y=m.userData.y0;});
       g.userData.a0=rndA()*Math.PI/3;
       parent.add(g);out.push(g);
     }
     return out;
   }
-  screwRing(group,XL+CAPL+GAP+TR/2);
-  var lidScrews=screwRing(group,TUBE1+TR/2);
-  /* end caps: the left one for good, the right one is the lid */
-  var capL=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);capL.rotation.z=-Math.PI/2;capL.position.x=XL;capL.castShadow=true;group.add(capL);
-  var lid=new THREE.Group();group.add(lid);
-  var capR=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);capR.rotation.z=-Math.PI/2;capR.castShadow=true;lid.add(capR);
-  var plug=new THREE.Mesh(discGeo(0.895,TR+GAP),capSteel);plug.rotation.z=-Math.PI/2;plug.position.x=-(TR+GAP);lid.add(plug); /* the part inside the ring */
-  /* the threaded holes the screws sat in, around the plug */
-  var holeGeo=new THREE.CylinderGeometry(SR*0.8,SR*0.8,0.16,20);
-  for(var hi=0;hi<NB;hi++){
-    var ha=hi/NB*Math.PI*2+Math.PI/NB,hg=new THREE.Group();hg.position.x=-(TR+GAP)/2-GAP/2;hg.rotation.x=ha;
-    var hole=new THREE.Mesh(holeGeo,socketMat);hole.position.y=0.895-0.06;hg.add(hole);lid.add(hg);
+  var screwsL=screwRing(group,XL+CAPL+GAP+TR/2);
+  var screwsR=screwRing(group,TUBE1+TR/2);
+  /* both ends come off. Each is the same thing built twice: a cap, the plug that sits inside the
+     ring, and the tapped holes its bolts came out of. Which one opens is whichever end of the
+     object you clicked nearer to. */
+  var holeGeo=new THREE.CylinderGeometry(SR*0.8,SR*0.8,0.16,40);
+  function makeLid(inward){         /* inward: +1 for the left end, -1 for the right */
+    var L=new THREE.Group();group.add(L);
+    var cap=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);cap.rotation.z=-Math.PI/2;
+    cap.position.x=inward>0?0:0;cap.castShadow=true;L.add(cap);
+    var plugX=inward>0?CAPL:-(TR+GAP);
+    var plug=new THREE.Mesh(discGeo(0.895,TR+GAP),capSteel);plug.rotation.z=-Math.PI/2;plug.position.x=plugX;L.add(plug);
+    for(var hi=0;hi<NB;hi++){
+      var ha=hi/NB*Math.PI*2+Math.PI/NB,hg=new THREE.Group();
+      hg.position.x=inward>0?(CAPL+(TR+GAP)/2+GAP/2):(-(TR+GAP)/2-GAP/2);hg.rotation.x=ha;
+      var hole=new THREE.Mesh(holeGeo,socketMat);hole.position.y=0.895-0.06;hg.add(hole);L.add(hg);
+    }
+    return L;
   }
-  lid.position.x=LID_HOME;
+  var lidL=makeLid(1);lidL.position.x=XL;
+  var lid=makeLid(-1);lid.position.x=LID_HOME;
+  var ENDS={L:{lid:lidL,home:XL,dir:-1,screws:screwsL},R:{lid:lid,home:LID_HOME,dir:1,screws:screwsR}};
+
+  /* what is inside it is light. With the cap off, it comes out of the bore: a cone of it standing
+     in the air along the object's own axis, brightest at the mouth and gone a few lengths out,
+     added to whatever is behind rather than covering it — and a lamp just inside the opening, so
+     the ring's rim and the back of the cap are lit by the thing they were holding in. */
+  var BEAM_L=3.6;
+  var beamGeo=new THREE.CylinderGeometry(1.75,0.86,BEAM_L,64,1,true);
+  beamGeo.rotateZ(-Math.PI/2);beamGeo.translate(TUBE1+BEAM_L/2+0.08,0,0);
+  /* a cone drawn flat has a hard silhouette, which is a cone and not a shaft of light. Its own
+     surface tells it where its edges are: where the metal of it turns away from the eye it fades
+     out, brightest where it faces us, so what is left is soft down both sides and dies along its
+     length. Added to what is behind it, never covering anything. */
+  var beamMat=new THREE.ShaderMaterial({
+    uniforms:{uAmt:{value:0},uL:{value:BEAM_L},uX0:{value:TUBE1+0.08}},
+    transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,
+    vertexShader:'varying float vT;varying vec3 vN;varying vec3 vV;uniform float uL;uniform float uX0;\n'+
+      'void main(){vT=clamp((position.x-uX0)/uL,0.0,1.0);vN=normalMatrix*normal;\n'+
+      'vec4 mv=modelViewMatrix*vec4(position,1.0);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}',
+    fragmentShader:'varying float vT;varying vec3 vN;varying vec3 vV;uniform float uAmt;\n'+
+      'void main(){float face=abs(dot(normalize(vN),normalize(vV)));\n'+
+      'float a=pow(1.0-vT,2.6)*pow(face,1.6)*uAmt;\n'+
+      'gl_FragColor=vec4(vec3(1.0,0.985,0.95)*a,a);}'
+  });
+  var beam=new THREE.Mesh(beamGeo,beamMat);beam.renderOrder=3;beam.visible=false;group.add(beam);
+  var mouthGeo=new THREE.CircleGeometry(0.9,48);mouthGeo.rotateY(Math.PI/2);mouthGeo.translate(TUBE1+0.02,0,0);
+  var mouthMat=new THREE.MeshBasicMaterial({color:0xfff6ea,transparent:true,opacity:0,
+    blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false});
+  var mouth=new THREE.Mesh(mouthGeo,mouthMat);mouth.renderOrder=4;group.add(mouth);
+  var innerLamp=new THREE.PointLight(0xfff4e2,0,7,2);innerLamp.position.set(TUBE1-0.5,0,0);group.add(innerLamp);
   /* ── the radio screen: a small set-in display on the back of the tube, a Pip-Boy of sorts — dark
      glass in a metal bezel that shows only the title playing, in the theme's colour. dark when off ── */
   var screenCanvas=document.createElement('canvas');screenCanvas.width=1024;screenCanvas.height=448;
   var screenTex=new THREE.CanvasTexture(screenCanvas);screenTex.colorSpace=THREE.SRGBColorSpace;screenTex.anisotropy=8;
   var screenMat=new THREE.MeshPhysicalMaterial({color:0x040405,metalness:0,roughness:0.2,clearcoat:1,clearcoatRoughness:0.06,emissive:new THREE.Color(1,1,1),emissiveMap:screenTex,emissiveIntensity:1.0,envMapIntensity:0.5});
+  /* the face has to be in the document before a canvas will draw with it, and the stylesheet that
+     brings it is still in flight when the screen is first written — so the screen is written again
+     once it lands, and once more on a timer in case the sheet never does. */
+  var lastScreen='';
+  function lcdReady(){
+    if(!document.fonts||!document.fonts.load){setScreen(lastScreen);return;}
+    document.fonts.load('800 100px "Doto"').then(function(){setScreen(lastScreen);}).catch(function(){});
+  }
+  lcdFont.addEventListener('load',lcdReady);
+  setTimeout(lcdReady,1400);
   function setScreen(title){
+    lastScreen=title||'';
     var g=screenCanvas.getContext('2d'),W2=screenCanvas.width,H2=screenCanvas.height,t=(title||'').replace(/\s+/g,' ').trim();
     g.fillStyle='#000';g.fillRect(0,0,W2,H2);
     if(t){
-      var col=theme.key,size=150,lines=[t],pad=140;
+      var col=theme.key,size=150,lines=[t],pad=140,LF=FONT_LCD;
       for(;;){
-        g.font='400 '+size+'px '+FONT;
+        g.font='800 '+size+'px '+LF;
         if(g.measureText(t).width<=W2-pad){lines=[t];break;}
         var words=t.split(' '),best=null;
         for(var i=1;i<words.length;i++){var a=words.slice(0,i).join(' '),b=words.slice(i).join(' '),m=Math.max(g.measureText(a).width,g.measureText(b).width);if(!best||m<best.m)best={a:a,b:b,m:m};}
         if(best&&best.m<=W2-pad&&size*2.3<=H2-40){lines=[best.a,best.b];break;}
         size-=8;if(size<52){lines=best?[best.a,best.b]:[t];break;}
       }
+      g.font='800 '+size+'px '+LF;
       g.textAlign='center';g.textBaseline='middle';g.fillStyle=col;g.shadowColor=col;g.shadowBlur=30;
       var lh=size*1.15,y0=H2/2-(lines.length-1)*lh/2;
       lines.forEach(function(l,i){g.fillText(l,W2/2,y0+i*lh);g.fillText(l,W2/2,y0+i*lh);});
@@ -715,7 +934,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function roundRect(sh,x,y,w,h,r){sh.moveTo(x+r,y);sh.lineTo(x+w-r,y);sh.quadraticCurveTo(x+w,y,x+w,y+r);sh.lineTo(x+w,y+h-r);sh.quadraticCurveTo(x+w,y+h,x+w-r,y+h);sh.lineTo(x+r,y+h);sh.quadraticCurveTo(x,y+h,x,y+h-r);sh.lineTo(x,y+r);sh.quadraticCurveTo(x,y,x+r,y);}
   var frameShape=new THREE.Shape();roundRect(frameShape,-PW/2,-PH/2,PW,PH,PR);
   var holePath=new THREE.Path();roundRect(holePath,-PW/2+PI,-PH/2+PI,PW-2*PI,PH-2*PI,PR*0.5);frameShape.holes.push(holePath);
-  var frameGeo=new THREE.ExtrudeGeometry(frameShape,{depth:0.06,bevelEnabled:true,bevelThickness:0.012,bevelSize:0.012,bevelSegments:3,curveSegments:12});
+  var frameGeo=new THREE.ExtrudeGeometry(frameShape,{depth:0.06,bevelEnabled:true,bevelThickness:0.012,bevelSize:0.012,bevelSegments:4,curveSegments:24});
   var bezelMat=sameMetal();mirrorSteel(bezelMat);
   var panel=new THREE.Group();
   var bezel=new THREE.Mesh(frameGeo,bezelMat);bezel.castShadow=true;panel.add(bezel);
@@ -726,23 +945,38 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the table the object rests on — only its shadow is visible. floor, contact shadow and
      lights live on a stage that never turns, so turning the capsule moves the light on it */
   var stage=new THREE.Group();scene.add(stage);
-  var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:roll.shadow}));
-  floor.rotation.x=-Math.PI/2;floor.position.set(0,-RF-0.3,0);floor.receiveShadow=true;stage.add(floor);
-  /* one shadow only: the key light's. no painted contact blob under the object */
-  /* keyLight light travels with the object so its shadow always fits */
+  /* the object does not sit on the table, it stands off it: the floor is well below, so what is
+     under it is a shadow it is not touching. */
+  var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:roll.shadow*0.55}));
+  floor.rotation.x=-Math.PI/2;floor.position.set(0,-4.05,0);   /* clear of the object even stood on end */floor.receiveShadow=true;stage.add(floor);
+  /* the key light is what the metal is lit by, and it comes in low from the left — which threw a
+     long hard shadow off to one side, stuck to the object like a decal. It lights only now. The
+     shadow is thrown by a second light standing almost straight overhead, at no brightness at
+     all: it adds nothing to the metal and does nothing but put a soft dark patch underneath. */
+  var keyTarget=new THREE.Object3D();keyTarget.position.set(0,0,0);stage.add(keyTarget);
   var keyLight=new THREE.DirectionalLight(0xffffff,roll.key);
-  keyLight.position.set(-3,9,6);keyLight.castShadow=true;
-  keyLight.shadow.mapSize.set(1536,1536);keyLight.shadow.radius=4;keyLight.shadow.bias=-0.00015;keyLight.shadow.normalBias=0.02;
-  keyLight.shadow.camera.left=-7;keyLight.shadow.camera.right=7;keyLight.shadow.camera.top=6;keyLight.shadow.camera.bottom=-6;keyLight.shadow.camera.near=1;keyLight.shadow.camera.far=40;
-  var keyTarget=new THREE.Object3D();keyTarget.position.set(0,0,0);stage.add(keyTarget);keyLight.target=keyTarget;stage.add(keyLight);
+  keyLight.position.set(-3,9,6);keyLight.castShadow=false;keyLight.target=keyTarget;stage.add(keyLight);
+  var shadowLight=new THREE.DirectionalLight(0xffffff,0);
+  shadowLight.position.set(0.7,16,1.4);shadowLight.castShadow=true;shadowLight.target=keyTarget;
+  shadowLight.shadow.mapSize.set(512,512);shadowLight.shadow.radius=11;   /* a small map and a wide kernel: the edge has no business being sharp */
+  shadowLight.shadow.bias=-0.0004;shadowLight.shadow.normalBias=0.04;
+  shadowLight.shadow.camera.left=-8;shadowLight.shadow.camera.right=8;shadowLight.shadow.camera.top=7;shadowLight.shadow.camera.bottom=-7;
+  shadowLight.shadow.camera.near=1;shadowLight.shadow.camera.far=44;
+  stage.add(shadowLight);
   var fillLight=new THREE.DirectionalLight(0xffffff,0.35);fillLight.position.set(-6,2,8);stage.add(fillLight);
   /* the view: a three-quarter turn at rest, and the visitor may turn it any way by dragging */
   var YAW=THREE.MathUtils.degToRad(roll.yaw);
-  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),vy:0,vx:0};
-  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),vC=new THREE.Vector3();
+  var BASE_YAW=-YAW+THREE.MathUtils.degToRad(roll.ry),LIMIT=Math.PI/8;   /* forty-five degrees of travel per axis */
+  var AX_X=new THREE.Vector3(1,0,0),AX_Y=new THREE.Vector3(0,1,0),AX_Z=new THREE.Vector3(0,0,1);
+  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
+  /* the pose a fresh page lands in: turned a little less than three quarters, so the far cap is
+     read edge-on rather than face-on, and rolled a touch so the engraving sits above the middle
+     of the barrel instead of across it. */
+  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),spin:-0.16,vy:0,vx:0,vs:0};
   function applyRot(){
-    qY.setFromAxisAngle(new THREE.Vector3(0,1,0),rot.yaw);qX.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.pitch);
-    qTmp.copy(qX).multiply(qY);group.quaternion.copy(qTmp);
+    qY.setFromAxisAngle(AX_Y,rot.yaw);qX.setFromAxisAngle(AX_X,rot.pitch);  /* the drag, as on the live site */
+    qS.setFromAxisAngle(AX_X,rot.spin);                                     /* the wheel, about its own length */
+    qTmp.copy(qX).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
   }
   applyRot();
 
@@ -835,7 +1069,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var a=p.clone().project(camera),b=p.clone().add(new THREE.Vector3(1,0,0)).project(camera);
     return Math.abs(b.x-a.x)*W/2;
   }
-  var cap={state:'sealed',loosen:0,slide:0,move:0,hot:false};
+  var cap={state:'sealed',loosen:0,slide:0,move:0,hot:false,end:'R'};   /* end never changes */
+  /* the right cap is the lid, and the only one: the left end stays bolted for good. */
   var MOB_SLIDE=44;
   function restBox(){
     if(isMobile()){var Lm=W-36-MOB_SLIDE;return {L:Lm,left:18,top:H*0.36};}
@@ -867,27 +1102,38 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     applyRot();
     vC.set((LTOT/2)*s,0,0).applyQuaternion(group.quaternion);
     group.position.set(centre.x-vC.x,centre.y-vC.y,-vC.z);
-    /* tilted, the object stands on its lower end: the floor drops away so nothing sinks through it,
-       */
-    vC.set(1,0,0).applyQuaternion(group.quaternion);
-    var ay=Math.abs(vC.y),ac=Math.sqrt(Math.max(0,1-ay*ay));
-    var low=Math.max((LTOT/2-CAPL-GAP)*ay+RF*ac,(LTOT/2)*ay+CAPR*ac),drop=Math.max(0,low-RF);
-    stage.position.set(centre.x,centre.y-drop*s,0);stage.scale.setScalar(s);
+    /* the floor used to drop away by however far the tilted object reached below its middle, which
+       moved the shadow up and down every time the object turned. The object floats clear of it at
+       any angle the pointer can reach, so the floor simply sits still. */
+    stage.position.set(centre.x,centre.y,0);stage.scale.setScalar(s);
     lastBox={left:b.left,top:b.top,w:b.L,h:Hpx};lastPx=ppu*s; /* screen px per object unit */
     /* the unbolting: a mechanic's star order, each bolt seven turns out on its thread,
        rising with the pitch; once the last one is free the plate is pulled off and parked */
-    var p1=clamp(cap.slide/0.72,0,1),p2=clamp((cap.slide-0.72)/0.28,0,1);
-    var ORDER=[0,4,2,6,1,5,3,7];
-    lidScrews.forEach(function(g,i){
-      var j=ORDER.indexOf(i),st=j*0.105,du=0.26;
+    /* the slide is eased hard at the end, which spends four fifths of its distance in the first
+       fifth of its time: the bolts were unwinding in under two hundred milliseconds, far too fast
+       to read as turning. The bolts run off the tween's own clock instead, recovered by undoing
+       the easing, so each one turns at the speed it looks like it is turning. */
+    var lin=1-Math.pow(1-clamp(cap.slide,0,1),0.2);
+    var p1=clamp(lin/0.72,0,1),p2=clamp((lin-0.72)/0.28,0,1);
+    var ORDER=[0,4,2,6,1,5,3,7],END=ENDS[cap.end],OTHER=ENDS[cap.end==='L'?'R':'L'];
+    OTHER.screws.forEach(function(g){          /* the end that stays shut stays bolted */
+      g.rotation.y=g.userData.a0;
+      g.children.forEach(function(m){m.position.y=m.userData.y0;});
+    });
+    OTHER.lid.position.x=OTHER.home;
+    END.screws.forEach(function(g,i){
+      var j=ORDER.indexOf(i),st=j*0.075,du=0.44;   /* each one takes its time */
       var q=clamp((p1-st)/du,0,1);
       var e=q<0.5?2*q*q:1-Math.pow(-2*q+2,2)/2;           /* torque to break it, then it spins, then it slows */
-      g.rotation.y=g.userData.a0+e*Math.PI*2*6;             /* six turns about its own axis */
-      g.children.forEach(function(m,k){m.position.y=(k===0?RF-SL/2+0.012:RF+0.012)+e*SOUT;}); /* out of the ring along the radius */
+      g.rotation.y=g.userData.a0+e*Math.PI*2*TURNS;         /* turned exactly as far as it travels */
+      g.children.forEach(function(m){m.position.y=m.userData.y0+e*SOUT;}); /* out of the ring along the radius */
     });
     var park=isMobile()?MOB_SLIDE/lastPx:(TP+0.1*LTOT);
     var pe=p2<0.5?2*p2*p2:1-Math.pow(-2*p2+2,2)/2;
-    lid.position.x=LID_HOME+cap.loosen*4/lastPx+pe*park;
+    END.lid.position.x=END.home+END.dir*(cap.loosen*4/lastPx+pe*park);
+    var lit=p2*p2;                                   /* nothing until the cap actually moves */
+    beamMat.uniforms.uAmt.value=1.0*lit;mouthMat.opacity=0.85*lit;innerLamp.intensity=26*lit;
+    beam.visible=mouth.visible=lit>0.002;
     placeStamp();
   }
   var stampFixed=null;
@@ -904,11 +1150,27 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(!(stampEl.classList.contains('kept')||app.classList.contains('open')||cap.state==='opening'))stampFixed=null;
     stampEl.style.transform='translate('+x+'px,'+y+'px)';
   }
-  function hitCapsule(x,y){
-    if(!lastBox||!GL)return false;
-    var slop=canHover()?8:18;
-    var extra=cap.slide*(isMobile()?MOB_SLIDE:(TP+0.1*LTOT)*lastPx);
-    return x>=lastBox.left-slop&&x<=lastBox.left+lastBox.w+slop+extra&&y>=lastBox.top-slop&&y<=lastBox.top+lastBox.h+slop;
+  /* the object is clickable wherever it actually is. The old test was the box it occupies when it
+     sits square on, which stops being where the object is the moment it is turned — hence a click
+     landing on metal and doing nothing. Its axis is projected to the screen and the point measured
+     against that line, inside the caps' own radius: right at any angle, and the segment grows with
+     the lid as it slides off. */
+  var _hv=new THREE.Vector3();
+  function axisOnScreen(x,r){
+    _hv.set(x,0,0).applyMatrix4(group.matrixWorld).project(camera);
+    return [r.left+(_hv.x*0.5+0.5)*r.width,r.top+(-_hv.y*0.5+0.5)*r.height];
+  }
+  function hitCapsule(px,py){
+    if(!GL||!lastPx)return false;
+    var r=cvs.getBoundingClientRect();
+    if(!r.width||!r.height)return false;
+    group.updateMatrixWorld();
+    var park=isMobile()?MOB_SLIDE/lastPx:(TP+0.1*LTOT);
+    var a=axisOnScreen(XL,r),b=axisOnScreen(XR+cap.slide*park,r);
+    var vx=b[0]-a[0],vy=b[1]-a[1],L2=vx*vx+vy*vy;
+    var t=L2?clamp(((px-a[0])*vx+(py-a[1])*vy)/L2,0,1):0;
+    var cx=a[0]+vx*t,cy=a[1]+vy*t,d=CAPR*lastPx+(canHover()?10:20);
+    return (px-cx)*(px-cx)+(py-cy)*(py-cy)<=d*d;
   }
 
   /* ── render on demand: nothing paints at rest ──────────────────── */
@@ -1084,18 +1346,34 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     }else if(cap.state==='open'){setTc(h?'close':'');}
     needPaint();
   }
-  /* drag turns the capsule (with a little momentum); a click that did not move opens or seals it */
+  /* the live site's own handling: drag turns it, with a little momentum, and a click that did not
+     move opens it. The wheel is the one thing added — it rolls the object about its own length. */
   var drag=null;
+  /* the same drag, only the object is no longer welded to the pointer: the hand sets a pose it is
+     heading for and it eases there, a tenth of what is left each frame. What is let go of carries
+     on into that same pose and dies out slowly, so a throw glides rather than stops dead. */
+  var aim={yaw:rot.yaw,pitch:rot.pitch},spinning=false;
   function spinLoop(){
-    if(drag||(Math.abs(rot.vy)<0.0004&&Math.abs(rot.vx)<0.0004)){rot.vy=rot.vx=0;return;}
-    rot.yaw+=rot.vy;rot.pitch=clamp(rot.pitch+rot.vx,-1.1,1.1);rot.vy*=0.93;rot.vx*=0.93;
+    if(!drag){
+      aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
+      rot.vy*=0.945;rot.vx*=0.945;
+      if(Math.abs(rot.vy)<0.00012)rot.vy=0;
+      if(Math.abs(rot.vx)<0.00012)rot.vx=0;
+    }
+    rot.spin+=rot.vs;rot.vs*=0.94;if(Math.abs(rot.vs)<0.0004)rot.vs=0;
+    var dy=aim.yaw-rot.yaw,dp=aim.pitch-rot.pitch;
+    if(!rot.vy&&!rot.vx&&!rot.vs&&Math.abs(dy)<0.0003&&Math.abs(dp)<0.0003){
+      rot.yaw=aim.yaw;rot.pitch=aim.pitch;spinning=false;paint();return;
+    }
+    rot.yaw+=dy*0.105;rot.pitch+=dp*0.105;   /* and it takes its time getting there */
     paint();requestAnimationFrame(spinLoop);
   }
+  function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
   function dragStart(e,el){
     if(e.button!==undefined&&e.button!==0)return;
     if(!hitCapsule(e.clientX,e.clientY))return;
     drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,moved:false,id:e.pointerId,el:el};
-    rot.vy=rot.vx=0;
+    rot.vy=rot.vx=0;aim.yaw=rot.yaw;aim.pitch=rot.pitch;
     try{el.setPointerCapture(e.pointerId);}catch(err){}
   }
   function dragMove(e){
@@ -1103,15 +1381,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
     if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
     if(!drag.moved)return;
-    rot.vy=dx*0.006;rot.vx=dy*0.006;
-    rot.yaw+=rot.vy;rot.pitch=clamp(rot.pitch+rot.vx,-1.1,1.1);
-    paint();
+    rot.vy=dx*0.0032;rot.vx=dy*0.0032;   /* a little over half the turn per pixel it had */
+    aim.yaw+=rot.vy;aim.pitch=clamp(aim.pitch+rot.vx,-1.1,1.1);
+    kickSpin();
   }
   function dragEnd(e){
     if(!drag||e.pointerId!==drag.id)return;
     var d=drag;drag=null;cvs.classList.remove('turning');
     try{d.el.releasePointerCapture(e.pointerId);}catch(err){}
-    if(d.moved){requestAnimationFrame(spinLoop);return;}
+    if(d.moved){kickSpin();return;}   /* the carry runs on in the same loop */
     if(e.detail>1)return;
     toggleCapsule();
   }
@@ -1121,6 +1399,17 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   cvs.addEventListener('pointerup',dragEnd);
   cvs.addEventListener('pointercancel',function(){drag=null;cvs.classList.remove('turning');});
   cvs.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCapsule();}});
+  /* the wheel rolls it: the object turns about its own length, the way you would turn a tube
+     in your hands to read the far side of it. only while the object is what is on screen. */
+  cvs.addEventListener('wheel',function(e){
+    if(fieldMode==='radio'||pl.classList.contains('show')||document.getElementById('me-about-screen'))return;
+    if(document.getElementById('me-note'))return;
+    if(isMobile()&&app.classList.contains('open'))return;
+    e.preventDefault();
+    var d=e.deltaMode===1?e.deltaY*16:(e.deltaMode===2?e.deltaY*400:e.deltaY);
+    rot.spin+=d*0.0022;rot.vs=clamp(d*0.0016,-0.09,0.09);
+    kickSpin();
+  },{passive:false});
 
   /* ── size ─────────────────────────────────────────────────────── */
   var mobileNow=isMobile();
