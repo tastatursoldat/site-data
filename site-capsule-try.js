@@ -901,7 +901,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   /* the object does not sit on the table, it stands off it: the floor is well below, so what is
      under it is a shadow it is not touching. */
   var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:roll.shadow*0.55}));
-  floor.rotation.x=-Math.PI/2;floor.position.set(0,-RF-1.25,0);floor.receiveShadow=true;stage.add(floor);
+  floor.rotation.x=-Math.PI/2;floor.position.set(0,-3.15,0);   /* below the lowest the object can swing */floor.receiveShadow=true;stage.add(floor);
   /* the key light is what the metal is lit by, and it comes in low from the left — which threw a
      long hard shadow off to one side, stuck to the object like a decal. It lights only now. The
      shadow is thrown by a second light standing almost straight overhead, at no brightness at
@@ -919,12 +919,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var fillLight=new THREE.DirectionalLight(0xffffff,0.35);fillLight.position.set(-6,2,8);stage.add(fillLight);
   /* the view: a three-quarter turn at rest, and the visitor may turn it any way by dragging */
   var YAW=THREE.MathUtils.degToRad(roll.yaw);
-  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),spin:0,vy:0,vx:0,vs:0};
-  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
+  var BASE_YAW=-YAW+THREE.MathUtils.degToRad(roll.ry),LIMIT=Math.PI/8;   /* forty-five degrees of travel per axis */
+  var rot={yaw:BASE_YAW,tilt:THREE.MathUtils.degToRad(roll.rx),spin:0,vs:0};
+  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qZ=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
   function applyRot(){
-    qY.setFromAxisAngle(new THREE.Vector3(0,1,0),rot.yaw);qX.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.pitch);
-    qS.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.spin);   /* about its own length, whichever way it is turned */
-    qTmp.copy(qX).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
+    qY.setFromAxisAngle(new THREE.Vector3(0,1,0),rot.yaw);    /* the pointer, left and right */
+    qZ.setFromAxisAngle(new THREE.Vector3(0,0,1),rot.tilt);   /* the pointer, up and down */
+    qS.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.spin);   /* the wheel, about its own length */
+    qTmp.copy(qZ).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
   }
   applyRot();
 
@@ -1073,12 +1075,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     applyRot();
     vC.set((LTOT/2)*s,0,0).applyQuaternion(group.quaternion);
     group.position.set(centre.x-vC.x,centre.y-vC.y,-vC.z);
-    /* tilted, the object stands on its lower end: the floor drops away so nothing sinks through it,
-       */
-    vC.set(1,0,0).applyQuaternion(group.quaternion);
-    var ay=Math.abs(vC.y),ac=Math.sqrt(Math.max(0,1-ay*ay));
-    var low=Math.max((LTOT/2-CAPL-GAP)*ay+RF*ac,(LTOT/2)*ay+CAPR*ac),drop=Math.max(0,low-RF);
-    stage.position.set(centre.x,centre.y-drop*s,0);stage.scale.setScalar(s);
+    /* the floor used to drop away by however far the tilted object reached below its middle, which
+       moved the shadow up and down every time the object turned. The object floats clear of it at
+       any angle the pointer can reach, so the floor simply sits still. */
+    stage.position.set(centre.x,centre.y,0);stage.scale.setScalar(s);
     lastBox={left:b.left,top:b.top,w:b.L,h:Hpx};lastPx=ppu*s; /* screen px per object unit */
     /* the unbolting: a mechanic's star order, each bolt seven turns out on its thread,
        rising with the pitch; once the last one is free the plate is pulled off and parked */
@@ -1301,52 +1301,45 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     }else if(cap.state==='open'){setTc(h?'close':'');}
     needPaint();
   }
-  /* drag turns the capsule (with a little momentum); a click that did not move opens or seals it */
-  var drag=null;
+  /* the object is not handled, it is looked at: where the pointer sits in the window is the pose.
+     Left and right turns it about the upright axis, up and down tilts it about the one across the
+     screen, each with forty-five degrees of travel either side of where it rests, and it glides to
+     the pointer rather than snapping. The wheel keeps the third axis, its own length. */
+  var aim={yaw:BASE_YAW,tilt:rot.tilt},following=false;
+  function aimAt(px,py){
+    var r=cvs.getBoundingClientRect();
+    if(!r.width||!r.height)return;
+    var nx=clamp(((px-r.left)/r.width)*2-1,-1,1),ny=clamp(((py-r.top)/r.height)*2-1,-1,1);
+    aim.yaw=BASE_YAW+nx*LIMIT;aim.tilt=ny*LIMIT;
+    if(!following){following=true;requestAnimationFrame(followLoop);}
+  }
+  function followLoop(){
+    var dy=aim.yaw-rot.yaw,dt=aim.tilt-rot.tilt;
+    if(Math.abs(dy)<0.0005&&Math.abs(dt)<0.0005){rot.yaw=aim.yaw;rot.tilt=aim.tilt;following=false;paint();return;}
+    rot.yaw+=dy*0.11;rot.tilt+=dt*0.11;
+    paint();requestAnimationFrame(followLoop);
+  }
   var spinning=false;
   function spinLoop(){
-    if(drag||(Math.abs(rot.vy)<0.0004&&Math.abs(rot.vx)<0.0004&&Math.abs(rot.vs)<0.0004)){rot.vy=rot.vx=rot.vs=0;spinning=false;return;}
-    rot.yaw+=rot.vy;rot.pitch=clamp(rot.pitch+rot.vx,-1.1,1.1);rot.spin+=rot.vs;
-    rot.vy*=0.93;rot.vx*=0.93;rot.vs*=0.94;
+    if(Math.abs(rot.vs)<0.0004){rot.vs=0;spinning=false;return;}
+    rot.spin+=rot.vs;rot.vs*=0.94;
     paint();requestAnimationFrame(spinLoop);
   }
   function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
-  function dragStart(e,el){
-    if(e.button!==undefined&&e.button!==0)return;
-    if(!hitCapsule(e.clientX,e.clientY))return;
-    drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,moved:false,id:e.pointerId,el:el};
-    rot.vy=rot.vx=0;
-    try{el.setPointerCapture(e.pointerId);}catch(err){}
-  }
-  function dragMove(e){
-    if(!drag||e.pointerId!==drag.id)return;
-    var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
-    if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
-    if(!drag.moved)return;
-    rot.vy=dx*0.006;rot.vx=dy*0.006;
-    rot.yaw+=rot.vy;rot.pitch=clamp(rot.pitch+rot.vx,-1.1,1.1);
-    paint();
-  }
-  function dragEnd(e){
-    if(!drag||e.pointerId!==drag.id)return;
-    var d=drag;drag=null;cvs.classList.remove('turning');
-    try{d.el.releasePointerCapture(e.pointerId);}catch(err){}
-    if(d.moved){kickSpin();return;}
-    if(e.detail>1)return;
-    if(cap.state==='sealed')setEnd(endFromPoint(e.clientX,e.clientY));   /* a tap has no hover before it */
-    toggleCapsule();
-  }
   cvs.addEventListener('pointermove',function(e){
-    if(drag){dragMove(e);return;}
     if(!canHover())return;
+    aimAt(e.clientX,e.clientY);
     var on=hitCapsule(e.clientX,e.clientY);
     if(on)setEnd(endFromPoint(e.clientX,e.clientY));
     setHot(on);
   });
-  cvs.addEventListener('pointerleave',function(){if(!drag)setHot(false);});
-  cvs.addEventListener('pointerdown',function(e){dragStart(e,cvs);});
-  cvs.addEventListener('pointerup',dragEnd);
-  cvs.addEventListener('pointercancel',function(){drag=null;cvs.classList.remove('turning');});
+  cvs.addEventListener('pointerleave',function(){setHot(false);});
+  cvs.addEventListener('click',function(e){
+    if(e.detail>1)return;
+    if(!hitCapsule(e.clientX,e.clientY))return;
+    if(cap.state==='sealed')setEnd(endFromPoint(e.clientX,e.clientY));   /* a tap has no hover before it */
+    toggleCapsule();
+  });
   cvs.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCapsule();}});
   /* the wheel rolls it: the object turns about its own length, the way you would turn a tube
      in your hands to read the far side of it. only while the object is what is on screen. */
