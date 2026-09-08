@@ -480,6 +480,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      watcher is pinned to; when the panorama lands it takes over the lighting, because a
      photograph of a lit room is what steers a reflection, not a handful of coloured planes. */
   var HDR=null;
+  var KNEE=parseFloat(Q.get('knee')||'3.2');
+  function knee(v){return v<=1?v:1+KNEE*(1-Math.exp(-(v-1)/KNEE));}   /* above 1 it rolls off instead of climbing */
   function readHDR(buf){                       /* radiance rgbe, new-style rle: enough for this file */
     var b=new Uint8Array(buf),p=0,line='',w=0,h=0;
     for(;;){                                   /* the header, ending at the resolution line */
@@ -504,7 +506,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       }
       for(var i=0;i<w;i++){
         var e=row[i*4+3],f=e?Math.pow(2,e-136):0,o=(y*w+i)*4;
-        data[o]=row[i*4]*f;data[o+1]=row[i*4+1]*f;data[o+2]=row[i*4+2]*f;data[o+3]=1;
+        /* a soft knee on the highlights: the studio's strip lights are hundreds of times
+           brighter than its walls, and on a mirror that reads as hard white bands laid along
+           the tube. the knee keeps their shape and takes the glare out of them. */
+        data[o]=knee(row[i*4]*f);data[o+1]=knee(row[i*4+1]*f);data[o+2]=knee(row[i*4+2]*f);data[o+3]=1;
       }
     }
     var t=new THREE.DataTexture(data,w,h,THREE.RGBAFormat,THREE.FloatType);
@@ -683,16 +688,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   drawTube();
   var brushOnly=document.createElement('canvas');brushOnly.width=1024;brushOnly.height=1024;brush(brushOnly.getContext('2d'),1024,1024,PPX/4,PPY/4,29);
-  /* the brushing canvas was stretched to each part's own length, which on a part as short as a
-     flange ring magnified it about nine times: what should be a grain came out as stripes.
-     The grain now keeps one physical size wherever it lands — a tile every GRAIN units, around
-     and along — so a ring reads the same as the tube it is bolted to. ?grain=0 drops it. */
-  var GRAIN=0.62;
-  function brushFor(circ,len){
-    var t=new THREE.CanvasTexture(brushOnly);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;
-    t.repeat.set(Math.max(1,Math.round(circ/GRAIN)),Math.max(1,Math.round(len/GRAIN)));t.anisotropy=8;return t;
-  }
-  if(Q.get('grain')!=='0'){
+  /* the rings, caps and screws carry no grain map at all now. It was one canvas stretched to
+     each part's own length, so on anything as short as a flange ring it magnified about nine
+     times and came out as stripes; scaled properly it was still a pattern laid over metal that
+     the room already gives everything it needs. The tube keeps its own map — the engraving
+     lives in it. ?grain=1 puts the old one back to compare. */
+  if(Q.get('grain')==='1'){
+    function brushFor(circ,len){
+      var t=new THREE.CanvasTexture(brushOnly);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;
+      t.repeat.set(Math.max(1,Math.round(circ/0.62)),Math.max(1,Math.round(len/0.62)));t.anisotropy=8;return t;
+    }
     plateSteel.roughnessMap=brushFor(2*Math.PI*RF,TR);
     capSteel.roughnessMap=brushFor(2*Math.PI*CAPR,CAPL);
     boltSteel.roughnessMap=brushFor(2*Math.PI*SR,SL);
@@ -721,16 +726,34 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
   var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,48);
-  var sockGeo=new THREE.CylinderGeometry(SR*0.55,SR*0.55,0.02,6);
+  /* the recess in the head: a four-pointed star, cut in rather than sunk as a hex socket */
+  var sockGeo=(function(){
+    var sh=new THREE.Shape(),ro=SR*0.68,ri=SR*0.115;
+    for(var i=0;i<8;i++){
+      var a=i/8*Math.PI*2-Math.PI/2,rad=(i%2===0)?ro:ri;
+      var x=Math.cos(a)*rad,y=Math.sin(a)*rad;
+      if(i===0)sh.moveTo(x,y);else sh.lineTo(x,y);
+    }
+    sh.closePath();
+    var g=new THREE.ShapeGeometry(sh,1);
+    g.rotateX(-Math.PI/2);            /* it lies on the head's face, which looks along +y */
+    return g;
+  })();
   var rndA=(function(){var q=91;return function(){q=(q*1664525+1013904223)>>>0;return q/4294967296;};})();
   /* the tapped hole each screw came out of: an open bore in the rim with a floor at the
      bottom of it. it is a little narrower than the screw, so while the screw is home the
      hole is inside it and nothing shows; back the screw out and the hole is what is left. */
-  var HR=SR*0.9,HD=SL+0.03;
+  var HR=SR*0.92,HD=SL+0.03;
   var boreWall=new THREE.CylinderGeometry(HR,HR,HD,40,1,true);
   var boreFloor=new THREE.CircleGeometry(HR,40);
+  /* the mouth of it, countersunk. a bore straight down into a rim shows nothing at all unless
+     you happen to be looking along it — and the ring is edge-on from most of the ways the
+     object is turned. the seat is what makes a hole read: a dark ring on the surface, there
+     from every angle, and the screw head sits in it when the screw is home. */
+  var boreMouth=new THREE.CylinderGeometry(HR*1.55,HR,0.045,40,1,true);
   var tapMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.14,roll.tone*0.14,roll.tone*0.15),metalness:0.5,roughness:0.85,side:THREE.BackSide});
   var tapFloorMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.20,roll.tone*0.20,roll.tone*0.21),metalness:0.5,roughness:0.9});
+  var seatMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.42,roll.tone*0.42,roll.tone*0.43),metalness:0.7,roughness:0.6,side:THREE.DoubleSide});
   function screwRing(parent,x){
     var out=[];
     for(var i=0;i<NB;i++){
@@ -738,10 +761,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       var hole=new THREE.Group();hole.position.x=x;hole.rotation.x=a;   /* the hole belongs to the ring: it never moves */
       var wall=new THREE.Mesh(boreWall,tapMat);wall.position.y=RF+0.012-HD/2;hole.add(wall);
       var floor=new THREE.Mesh(boreFloor,tapFloorMat);floor.position.y=RF+0.012-HD;floor.rotation.x=-Math.PI/2;hole.add(floor);
+      var mouth=new THREE.Mesh(boreMouth,seatMat);mouth.position.y=RF+0.014-0.0225;hole.add(mouth);
       parent.add(hole);
       var g=new THREE.Group();g.position.x=x;g.rotation.x=a;            /* local +y points outward along the radius */
       var head=new THREE.Mesh(screwGeo,boltSteel);head.position.y=RF-SL/2+0.012;g.add(head);
-      var sock=new THREE.Mesh(sockGeo,socketMat);sock.position.y=RF+0.012;sock.rotation.y=rndA()*Math.PI/3;g.add(sock);
+      var sock=new THREE.Mesh(sockGeo,socketMat);sock.position.y=RF+0.0125;sock.rotation.y=rndA()*Math.PI/2;g.add(sock);
       g.userData.a0=rndA()*Math.PI/3;
       parent.add(g);out.push(g);
     }
