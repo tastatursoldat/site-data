@@ -1414,8 +1414,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     gyro.live=true;gyro.count=(gyro.count||0)+1;          /* it is actually reporting: the hand stands down */
     if(!gyro.zero)gyro.zero={b:e.beta||0,g:e.gamma||0};   /* however the phone was held at the start is level */
     var dg=clamp((e.gamma||0)-gyro.zero.g,-45,45),db=clamp((e.beta||0)-gyro.zero.b,-45,45);
-    aim.yaw=HOME_YAW+dg*0.026;                            /* twice what it was: a small tilt goes a long way */
-    aim.pitch=clamp(HOME_PITCH-db*0.022,-1.1,1.1);
+    /* the two axes are swapped: tipping the phone away and back turns the object about its
+       upright, tilting it left and right turns it about its length. */
+    aim.yaw=HOME_YAW+db*0.026;
+    aim.pitch=clamp(HOME_PITCH-dg*0.022,-1.1,1.1);
     kickSpin();
   }
   function gyroFlick(e){
