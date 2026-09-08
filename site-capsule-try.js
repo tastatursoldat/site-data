@@ -1399,7 +1399,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var gyro={on:false,live:false,zero:null};
   function gyroTurn(e){
     if(e.beta==null&&e.gamma==null)return;
-    gyro.live=true;                                       /* it is actually reporting: the hand stands down */
+    gyro.live=true;gyro.count=(gyro.count||0)+1;          /* it is actually reporting: the hand stands down */
     if(!gyro.zero)gyro.zero={b:e.beta||0,g:e.gamma||0};   /* however the phone was held at the start is level */
     var dg=clamp((e.gamma||0)-gyro.zero.g,-50,50),db=clamp((e.beta||0)-gyro.zero.b,-50,50);
     aim.yaw=HOME_YAW+dg*0.013;                            /* about forty degrees at the stops */
@@ -1423,11 +1423,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var D=window.DeviceOrientationEvent,M=window.DeviceMotionEvent;
     if(D&&typeof D.requestPermission==='function'){
       D.requestPermission().then(function(v){
+        gyro.said=String(v);
         if(v!=='granted'){gyro.on=false;return;}
         if(M&&typeof M.requestPermission==='function')return M.requestPermission().then(listen,listen);
         listen();
-      }).catch(function(){gyro.on=false;});
-    }else listen();
+      }).catch(function(err){gyro.said='threw: '+(err&&err.name||err);gyro.on=false;});
+    }else{gyro.said='no ask needed';listen();}
   }
   /* only iOS makes you ask, and only while a finger is actually down. Everywhere else it listens
      from the start. The ask used to sit on the canvas, which meant it waited for a touch that
@@ -1436,6 +1437,18 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      visitor does. */
   (function(){
     var D=window.DeviceOrientationEvent;
+    if(Q.get('gyro')==='debug'){          /* ?gyro=debug prints what the phone is actually doing */
+      var dbg=document.createElement('div');
+      dbg.id='me-gyrodbg';
+      dbg.style.cssText='position:fixed;left:8px;bottom:8px;z-index:2147483746;font:600 11px/1.4 '+FONT+
+        ';color:#0a0a0a;background:rgba(255,255,255,0.9);padding:6px 8px;border-radius:6px;white-space:pre;';
+      document.body.appendChild(dbg);
+      gyro.say=function(){
+        dbg.textContent='mobile '+isMobile()+'\nask '+(typeof D.requestPermission)+
+          '\nsaid '+(gyro.said||'—')+'\nevents '+(gyro.count||0)+'\nlive '+gyro.live;
+      };
+      gyro.say();setInterval(gyro.say,400);
+    }
     if(!isMobile())return;
     if(!D||typeof D.requestPermission!=='function'){startGyro();return;}
     /* it keeps asking on every touch until the phone actually answers. A prompt that is dismissed
