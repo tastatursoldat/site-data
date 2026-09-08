@@ -658,8 +658,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     plateLines.forEach(function(t,i){g.fillText(t,0,-lineH+i*lineH);});
     g.restore();
   }
-  function wave(u,v){ /* polish waviness, shared by both engraved faces */
-    var A=roll.wave;
+  /* polish waviness: a real polished tube is never dead flat, and this bends the reflections a
+     little. It was set against a room of flat panels, where it barely showed; a photographed
+     studio has structure of its own for it to bend, and at the old weight — with the brushing
+     that used to cover it now down to a third — it came out as circles rolling down the tube.
+     A tenth of it is what a polish actually looks like. ?wave= sets it. */
+  var WAVE=parseFloat(Q.get('wave')||'0.0018');
+  function wave(u,v){
+    var A=WAVE;
     var nx=A*(Math.sin(6.283*(2.3*v+0.7*u))+0.6*Math.sin(6.283*(5.1*v-1.3*u+0.3))+0.35*Math.sin(6.283*(9.7*v+2.1*u+0.8))+0.5*Math.sin(6.283*(1.37*v-0.41*u+0.61)+2.1*Math.sin(6.283*0.9*v)));
     var ny=A*(0.8*Math.sin(6.283*(1.7*u+3.2*v+1.1))+0.5*Math.sin(6.283*(4.3*u-2.2*v))+0.4*Math.sin(6.283*(0.8*u+1.9*v+0.2)+1.7*Math.sin(6.283*1.3*u)));
     return [nx,ny];
