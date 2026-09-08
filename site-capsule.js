@@ -1413,22 +1413,33 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(Math.abs(twist)>120)rot.vy=clamp(rot.vy+twist*0.00004,-0.05,0.05);
     if(rot.vs||rot.vy)kickSpin();
   }
-  function startGyro(){
-    if(gyro.on||!isMobile())return;
+  /* Asking iOS is fussier than it looks. The call has to happen inside a gesture the browser
+     counts as one, and if the answer never comes back — a prompt the system decides not to show,
+     a promise that simply never settles — anything that latched 'we asked' will never ask again.
+     So nothing latches until permission is actually granted: every touch that has not yet
+     produced a reading is free to ask, and what happened is written down at each step. */
+  function gyroListen(){
+    if(gyro.on)return;
     gyro.on=true;
-    function listen(){
-      window.addEventListener('deviceorientation',gyroTurn);
-      window.addEventListener('devicemotion',gyroFlick);
-    }
+    window.addEventListener('deviceorientation',gyroTurn);
+    window.addEventListener('devicemotion',gyroFlick);
+  }
+  function startGyro(){
+    if(gyro.on||gyro.asking||!isMobile())return;
     var D=window.DeviceOrientationEvent,M=window.DeviceMotionEvent;
-    if(D&&typeof D.requestPermission==='function'){
-      D.requestPermission().then(function(v){
-        gyro.said=String(v);
-        if(v!=='granted'){gyro.on=false;return;}
-        if(M&&typeof M.requestPermission==='function')return M.requestPermission().then(listen,listen);
-        listen();
-      }).catch(function(err){gyro.said='threw: '+(err&&err.name||err);gyro.on=false;});
-    }else{gyro.said='no ask needed';listen();}
+    if(!D||typeof D.requestPermission!=='function'){gyro.said='no ask needed';gyroListen();return;}
+    gyro.asking=true;gyro.said='asking…';
+    var t=setTimeout(function(){                       /* an answer that never comes is not an answer */
+      if(!gyro.on){gyro.asking=false;gyro.said='no reply — tap again';}
+    },4000);
+    D.requestPermission().then(function(v){
+      clearTimeout(t);gyro.asking=false;gyro.said=String(v);
+      if(v!=='granted')return;
+      if(M&&typeof M.requestPermission==='function')M.requestPermission().then(gyroListen,gyroListen);
+      else gyroListen();
+    }).catch(function(err){
+      clearTimeout(t);gyro.asking=false;gyro.said='threw: '+((err&&err.name)||err);
+    });
   }
   /* only iOS makes you ask, and only while a finger is actually down. Everywhere else it listens
      from the start. The ask used to sit on the canvas, which meant it waited for a touch that
@@ -1456,7 +1467,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        rather than decided leaves nothing behind, and one ask that lands on that is an ask lost. */
     function ask(){if(!gyro.live)startGyro();}
     document.addEventListener('touchstart',ask,{capture:true,passive:true});
-    document.addEventListener('pointerdown',ask,true);
+    document.addEventListener('touchend',ask,{capture:true,passive:true});
+    document.addEventListener('click',ask,true);
   })();
   function dragStart(e,el){
     if(e.button!==undefined&&e.button!==0)return;
