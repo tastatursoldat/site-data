@@ -938,9 +938,15 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     group.quaternion.copy(qTmp);
   }
   var qInc=new THREE.Quaternion();
-  function turnBy(ax,ay){        /* ax about the window's upright, ay about its level: screen axes */
+  /* Dragging turns two axes and only two: sideways swings it about the upright (y), up and down
+     tips it about the axis across the screen (z). The third — x, its own length — is the wheel's
+     and nothing else's. Vertical dragging used to turn about x, which is the same roll the wheel
+     does: two controls doing one job, and the object never tipping. Both are still premultiplied,
+     so they are the screen's axes rather than the object's and a pull turns it the way the pull
+     went, from wherever it is standing. */
+  function turnBy(ax,az){
     qInc.setFromAxisAngle(AX_Y,ax);qWant.premultiply(qInc);
-    qInc.setFromAxisAngle(AX_X,ay);qWant.premultiply(qInc);
+    qInc.setFromAxisAngle(AX_Z,az);qWant.premultiply(qInc);
     qWant.normalize();           /* thousands of these compose: without it the pose slowly stops being a rotation */
   }
   applyRot();
@@ -1377,8 +1383,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       drag.x=e.clientX;drag.y=e.clientY;
       if(!drag.moved&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6){drag.moved=true;cvs.classList.add('turning');}
       if(!drag.moved)return;
-      turnBy(dx*DRAG_GAIN,dy*DRAG_GAIN);
-      pose.vy=dx*DRAG_GAIN*0.55;pose.vt=dy*DRAG_GAIN*0.55;   /* a little carry, not a spin */
+      turnBy(dx*DRAG_GAIN,-dy*DRAG_GAIN);                    /* down tips the near end down */
+      pose.vy=dx*DRAG_GAIN*0.55;pose.vt=-dy*DRAG_GAIN*0.55;  /* a little carry, not a spin */
       poseGo();
       return;
     }
