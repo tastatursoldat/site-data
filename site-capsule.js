@@ -711,6 +711,129 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     }
     screenTex.needsUpdate=true;needPaint();
   }
+
+  /* ── the machined capsule ──────────────────────────────────────────
+     The object above is drawn from arithmetic. This one was cut in Blender: a real wall, real
+     hex sockets, the engraving as geometry rather than a picture of geometry. It is loaded
+     beside the built one and only shown once it has arrived intact, so a slow or failed
+     download leaves the site exactly as it was. Every part keeps its own name, which is what
+     lets the same unbolting drive it. */
+  var MODEL=null;
+  (function loadModel(){
+    /* the machining is cut with screen-space derivatives: on a webgl1 context there are none,
+       and the built object is the better answer anyway */
+    if(!GL||!renderer.capabilities.isWebGL2||Q.get('model')==='off')return;
+    var here=import.meta.url;
+    import(new URL('gltf-loader.js',here).href).then(function(mod){
+      return new Promise(function(ok,no){
+        new mod.GLTFLoader().load(new URL('capsule.glb',here).href,ok,undefined,no);
+      });
+    }).then(function(gltf){
+      var root=gltf.scene;
+      root.updateMatrixWorld(true);
+      var box=new THREE.Box3().setFromObject(root),size=box.getSize(new THREE.Vector3());
+      if(!(size.x>0))throw new Error('empty model');
+      var k=LTOT/size.x;                                  /* metres in the file, site units here */
+      var ay=(box.min.y+box.max.y)/2,az=(box.min.z+box.max.z)/2;  /* the bore's axis in the file's own space */
+      root.scale.setScalar(k);
+      root.position.set(-box.min.x*k,-(box.min.y+box.max.y)/2*k,-(box.min.z+box.max.z)/2*k);
+      root.rotation.x=0.58;                              /* the engraving turned to face the room */
+
+      /* the site's own metals, so the visitor still appears in the surface */
+      /* the file carries no finish — Blender's procedural surfaces do not travel through glTF —
+         so the machining is cut in the shader from the part's own coordinates, which needs no uv:
+         brushing runs the length of the axis, the cap faces keep the rings the tool left. */
+      function machined(mat,rings){
+        var prev=mat.onBeforeCompile,amp=rings?0.22:0.14,tilt=rings?0.17:0.09;
+        mat.onBeforeCompile=function(sh){
+          prev(sh);
+          sh.vertexShader='varying vec3 vObj;varying vec3 vRadV;\n'+sh.vertexShader
+            .replace('#include <begin_vertex>','#include <begin_vertex>\nvObj=position;\n'+
+              'vRadV=(viewMatrix*modelMatrix*vec4(normalize(vec3(position.x,0.0,position.z)+vec3(1e-6,0.0,0.0)),0.0)).xyz;');
+          sh.fragmentShader=('varying vec3 vObj;varying vec3 vRadV;\nfloat mgrain(float n){return fract(sin(n*12.9898)*43758.5453);}\n'+
+            sh.fragmentShader)
+            .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\n'+
+              /* every part was lathed about its own +y: the barrel keeps the grinder's lines,
+                 the faced ends keep the rings the tool left. the surface's own slope says which
+                 of the two a fragment is on, so none of this needs a uv. */
+              'vec3 mon=normalize(cross(dFdx(vObj),dFdy(vObj)));\n'+
+              'float mface=smoothstep(0.45,0.8,abs(mon.y));\n'+
+              'float mr=length(vObj.xz),ma=atan(vObj.z,vObj.x);\n'+
+              'float mfr=1.0-smoothstep(0.15,0.6,fwidth(mr)*1600.0);\n'+   /* the finish fades where it would shimmer instead of read */
+              'float mfa=1.0-smoothstep(0.15,0.6,fwidth(ma)*450.0);\n'+
+              'float mturned=1.0+'+amp.toFixed(2)+'*sin(mr*1600.0)*mfr;\n'+
+              'float mbrush=1.0+0.13*(mgrain(floor(ma*450.0)*1.7+floor(vObj.y*300.0))-0.5)*mfa;\n'+
+              'roughnessFactor*=mix(mbrush,mturned,mface);\n'+
+              /* the studio is one broad white wall, so roughness alone leaves a faced end blank:
+                 the rings also darken what the metal gives back, the way a groove does */
+              'diffuseColor.rgb*=mix(1.0,0.62+0.16*sin(mr*1600.0)*mfr,mface);\n'+
+              /* the bore is the one surface that faces inward: it is machined, not polished, and
+                 what light gets past the opening runs out with depth */
+              'float mbore=smoothstep(0.2,0.6,-dot(mon,normalize(vec3(vObj.x,1e-6,vObj.z))));\n'+
+              'float mdeep=clamp(0.5+vObj.y*2.4,0.0,1.0);\n'+
+              'diffuseColor.rgb*=mix(1.0,mix(0.22,0.60,mdeep),mbore);\n'+
+              'roughnessFactor=mix(roughnessFactor,0.80,mbore);')
+            .replace('#include <normal_fragment_maps>','#include <normal_fragment_maps>\n'+
+              'normal=normalize(normal+normalize(vRadV)*('+tilt.toFixed(3)+'*cos(mr*1600.0))*mface*mfr);');
+        };
+        mat.customProgramCacheKey=function(){return rings?'mirror-turned':'mirror-brushed';};
+      }
+      var mSteel=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone,roll.tone,roll.tone*0.99),
+        metalness:1,roughness:roll.rough,envMapIntensity:0.82});   /* the machined faces clip white at full strength */
+      mSteel.anisotropy=roll.aniso;mSteel.anisotropyRotation=Math.PI/2;mirrorSteel(mSteel);machined(mSteel,false);
+      var mTurn=new THREE.MeshPhysicalMaterial({color:mSteel.color.clone(),metalness:1,
+        roughness:roll.rough+0.10,envMapIntensity:0.82});
+      mTurn.anisotropy=0.35;mirrorSteel(mTurn);machined(mTurn,true);
+      var mCut=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.92,roll.tone*0.92,roll.tone*0.93),
+        metalness:1,roughness:0.55,envMapIntensity:0.8});   /* the engraved floor: matte inside the polish */
+      root.traverse(function(o){
+        if(!o.isMesh)return;
+        var n=(o.material&&o.material.name)||'';
+        o.material = n.indexOf('cut')>=0?mCut : n.indexOf('turned')>=0?mTurn
+                   : n.indexOf('glass')>=0?screenMat : mSteel;
+        o.castShadow=true;o.receiveShadow=true;
+      });
+
+      /* the built object steps aside; the stage, lights and floor are not group children.
+         it waits for the capsule to be shut and still, so the swap never happens mid-unbolting */
+      function swap(){
+        group.children.slice().forEach(function(c){c.visible=false;});
+        group.add(root);
+        root.updateMatrixWorld(true);
+        needPaint();
+      }
+      if(cap.state==='sealed'&&cap.loosen===0){swap();}
+      else{var wait=setInterval(function(){if(cap.state==='sealed'&&cap.loosen===0){clearInterval(wait);swap();}},400);}
+
+      var rig={root:root,k:k,screws:[],cap:null};
+      var inv=new THREE.Matrix4().copy(root.matrixWorld).invert();
+      for(var i=0;i<NB;i++){
+        var m=root.getObjectByName('capsulescrewR'+i);
+        if(!m)continue;
+        var c=new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()).applyMatrix4(inv);
+        var dir=new THREE.Vector3(0,c.y-ay,c.z-az);                /* out along its own thread */
+        if(dir.lengthSq()<1e-9)continue;
+        dir.normalize();
+        rig.screws.push({m:m,dir:dir,home:m.position.clone(),q0:m.quaternion.clone(),i:i});
+      }
+      rig.cap=root.getObjectByName('capsulecapR');
+      if(rig.cap)rig.capHome=rig.cap.position.x;
+
+      var ORDER=[0,4,2,6,1,5,3,7],spin=new THREE.Quaternion();
+      rig.update=function(p1,pe,park,loosen){
+        rig.screws.forEach(function(sw){
+          var j=ORDER.indexOf(sw.i),st=j*0.105,du=0.26;
+          var q=clamp((p1-st)/du,0,1);
+          var e=q<0.5?2*q*q:1-Math.pow(-2*q+2,2)/2;
+          sw.m.position.copy(sw.home).addScaledVector(sw.dir,e*SOUT/k);   /* out along its own thread */
+          spin.setFromAxisAngle(sw.dir,e*Math.PI*2*6);                    /* six turns */
+          sw.m.quaternion.copy(sw.q0).premultiply(spin);
+        });
+        if(rig.cap)rig.cap.position.x=rig.capHome+(loosen+pe*park)/k;
+      };
+      MODEL=rig;
+    }).catch(function(){ MODEL=null; });   /* the built object simply stays */
+  })();
   var PW=1.0,PH=0.5,PR=0.06,PI=0.07; /* the bezel: outer size, corner radius, frame width */
   function roundRect(sh,x,y,w,h,r){sh.moveTo(x+r,y);sh.lineTo(x+w-r,y);sh.quadraticCurveTo(x+w,y,x+w,y+r);sh.lineTo(x+w,y+h-r);sh.quadraticCurveTo(x+w,y+h,x+w-r,y+h);sh.lineTo(x+r,y+h);sh.quadraticCurveTo(x,y+h,x,y+h-r);sh.lineTo(x,y+r);sh.quadraticCurveTo(x,y,x+r,y);}
   var frameShape=new THREE.Shape();roundRect(frameShape,-PW/2,-PH/2,PW,PH,PR);
@@ -865,6 +988,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var park=isMobile()?MOB_SLIDE/lastPx:(TP+0.1*LTOT);
     var pe=p2<0.5?2*p2*p2:1-Math.pow(-2*p2+2,2)/2;
     lid.position.x=LID_HOME+cap.loosen*4/lastPx+pe*park;
+    if(MODEL)MODEL.update(p1,pe,park,cap.loosen*4/lastPx);
     placeStamp();
   }
   var stampFixed=null;
