@@ -278,9 +278,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-about-close{position:fixed;top:18px;right:19px;'+
       'background:none;border:0;padding:0;font:700 15px/1.55 '+FONT+';cursor:pointer;color:#0a0a0a;}'+
     /* the about page speaks in the note's voice: the same serif, the same weight */
-    '#me-about-screen .txt{margin:auto;max-width:34em;font:400 15px/1.55 '+SERIF+';'+
+    /* the note and the about page read in the screen's own face and its colour: the dot matrix
+       from the panel on the back, at a size the dots can actually resolve at. */
+    '#me-about-screen .txt{margin:auto;max-width:32em;font:700 16px/1.8 '+FONT_LCD+';color:var(--me-theme);'+
       'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
-    '#me-about-screen .txt a{color:#111;text-decoration:none;}'+
+    '#me-about-screen .txt a{color:var(--me-theme);text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
@@ -292,8 +294,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '#me-field,#me-browse,#me-stamp,#me-ctrl,#me-corner,#me-col{transition:opacity 240ms ease;}'+
     '@starting-style{#me-note{opacity:0;}}'+
     '#me-note.closing{opacity:0;transition:opacity 140ms ease;}'+
-    '#me-note .n{margin:auto;max-width:34em;font:400 15px/1.55 '+SERIF+';color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
-    '#me-note .n p{margin:0 0 0.62em;white-space:pre-line;}'+
+    '#me-note .n{margin:auto;max-width:32em;font:700 16px/1.8 '+FONT_LCD+';color:var(--me-theme);}'+
+    '#me-note .n p{margin:0 0 1.05em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
     '#me-note .nb{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;}'+
     '@media (max-width:700px){#me-note{padding:76px 24px 44px;}}'+
