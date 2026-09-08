@@ -1438,11 +1438,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var D=window.DeviceOrientationEvent;
     if(!isMobile())return;
     if(!D||typeof D.requestPermission!=='function'){startGyro();return;}
-    function ask(){
-      document.removeEventListener('touchstart',ask,true);
-      document.removeEventListener('pointerdown',ask,true);
-      startGyro();
-    }
+    /* it keeps asking on every touch until the phone actually answers. A prompt that is dismissed
+       rather than decided leaves nothing behind, and one ask that lands on that is an ask lost. */
+    function ask(){if(!gyro.live)startGyro();}
     document.addEventListener('touchstart',ask,{capture:true,passive:true});
     document.addEventListener('pointerdown',ask,true);
   })();
