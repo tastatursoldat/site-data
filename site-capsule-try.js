@@ -281,7 +281,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the note and the about page read in the screen's own face and its colour: the dot matrix
        from the panel on the back, at a size the dots can actually resolve at. */
     '#me-about-screen .txt{margin:auto;max-width:32em;font:800 18px/1.85 '+FONT_LCD+';color:var(--me-theme-laid);mix-blend-mode:multiply;'+
-      'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
+      'white-space:pre-line;}'+   /* nothing after this may set colour again: it was doing exactly that */
     '#me-about-screen .txt a{color:var(--me-theme-laid);text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
@@ -434,7 +434,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     tone:0.82,
     key:1.6,
     shadow:0.2,
-    yaw:30,
+    yaw:21,
     fov:32,       /* lens: wider = more perspective in the reflections */
     dist:19,
     wave:0.015,    /* polish waviness: bends the reflections */
@@ -969,7 +969,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var BASE_YAW=-YAW+THREE.MathUtils.degToRad(roll.ry),LIMIT=Math.PI/8;   /* forty-five degrees of travel per axis */
   var AX_X=new THREE.Vector3(1,0,0),AX_Y=new THREE.Vector3(0,1,0),AX_Z=new THREE.Vector3(0,0,1);
   var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
-  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),spin:0,vy:0,vx:0,vs:0};
+  /* the pose a fresh page lands in: turned a little less than three quarters, so the far cap is
+     read edge-on rather than face-on, and rolled a touch so the engraving sits above the middle
+     of the barrel instead of across it. */
+  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),spin:-0.16,vy:0,vx:0,vs:0};
   function applyRot(){
     qY.setFromAxisAngle(AX_Y,rot.yaw);qX.setFromAxisAngle(AX_X,rot.pitch);  /* the drag, as on the live site */
     qS.setFromAxisAngle(AX_X,rot.spin);                                     /* the wheel, about its own length */
