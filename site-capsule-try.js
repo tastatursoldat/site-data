@@ -280,9 +280,9 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the about page speaks in the note's voice: the same serif, the same weight */
     /* the note and the about page read in the screen's own face and its colour: the dot matrix
        from the panel on the back, at a size the dots can actually resolve at. */
-    '#me-about-screen .txt{margin:auto;max-width:32em;font:800 17px/1.85 '+FONT_LCD+';color:var(--me-theme);mix-blend-mode:multiply;'+
+    '#me-about-screen .txt{margin:auto;max-width:32em;font:800 18px/1.85 '+FONT_LCD+';color:var(--me-theme-laid);mix-blend-mode:multiply;'+
       'white-space:pre-line;color:#0a0a0a;-webkit-text-stroke:0.3px currentColor;}'+
-    '#me-about-screen .txt a{color:var(--me-theme);text-decoration:none;}'+
+    '#me-about-screen .txt a{color:var(--me-theme-laid);text-decoration:none;}'+
     '#me-about-screen .ab-brand{position:fixed;top:18px;left:19px;font:700 15px/1.55 '+FONT+';color:#0a0a0a;cursor:pointer;}'+
     /* the note: the mark opens it, a click anywhere puts it away. its own face — a serif,
        set large and narrow, the way a poem is set on paper */
@@ -297,7 +297,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     /* the exact colour, laid over the page rather than painted on it: multiplied into the paper, so
        what darkens it is the page underneath and not a second colour. The lines multiply once for
        themselves and once inside the block, which is the same colour twice over. */
-    '#me-note .n{margin:auto;max-width:32em;font:800 17px/1.85 '+FONT_LCD+';color:var(--me-theme);mix-blend-mode:multiply;}'+
+    '#me-note .n{margin:auto;max-width:32em;font:800 18px/1.85 '+FONT_LCD+';color:var(--me-theme-laid);mix-blend-mode:multiply;}'+
     '#me-note .n p{mix-blend-mode:multiply;}'+
     '#me-note .n p{margin:0 0 1.05em;white-space:pre-line;}'+
     '#me-note .n p:last-child{margin-bottom:0;}'+
@@ -402,6 +402,23 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var bwDeal=Math.random()<0.4;
   /* the index hover borrows the deal's colour — even on a b/w deal it stays colourful */
   document.documentElement.style.setProperty('--me-theme',theme.key);
+  /* the same colour laid over itself. Multiplying it into the page does nothing — the paper is
+     within a few per cent of white, and anything times white is itself, which is why the pale
+     keys stayed pale. Multiplied by ITSELF it deepens without turning into another colour: pink
+     stays pink, it just stops being a wash. Repeated until it is dark enough to read, never more
+     than three times, so the keys that are already deep are left where they are. */
+  (function(){
+    var h=theme.key.replace('#','');
+    if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    var c=[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+    for(var i=0;i<3;i++){
+      var L=(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255;
+      if(L<0.34)break;
+      c=[c[0]*c[0]/255,c[1]*c[1]/255,c[2]*c[2]/255];
+    }
+    document.documentElement.style.setProperty('--me-theme-laid',
+      'rgb('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+')');
+  })();
 
 
   // ── the object: stainless time capsule, room light, etched plate ──
