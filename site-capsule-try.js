@@ -537,7 +537,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      cap. the right cap is the lid: its screws back out of the ring, then
      the cap is pulled off. */
   var R=1,D=2,LTOT=3.6*D;
-  var RF=1.28,TR=0.55,CAPL=0.5,CAPR=0.98,GAP=0.006,NB=8,FIL=0.035,SR=0.07,SL=0.16,SOUT=0.42;
+  var RF=1.28,TR=0.55,CAPL=0.5,CAPR=0.98,GAP=0.006,NB=8,FIL=0.035,SR=0.07,SL=0.16,SOUT=0.34;
   var XL=0, XR=LTOT;
   var TUBE0=XL+CAPL+GAP+TR, TUBE1=XR-CAPL-GAP-TR;    /* the tube between the rings */
   var LID_HOME=XR-CAPL;                              /* the right cap's inner face */
@@ -739,7 +739,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.62,roll.tone*0.62,roll.tone*0.63),metalness:0.45,roughness:0.82,envMapIntensity:0.7,side:THREE.BackSide,vertexColors:true});
   var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
-  var HH=0.085,SHL=0.235,PITCH=0.084;                 /* head, threaded shank, and its pitch */
+  var HH=0.062,SHL=0.235,PITCH=0.068;   /* a pan head, a long shank, a thread you can count */                 /* head, threaded shank, and its pitch */
   var HR=SR*0.70,HD=HH+SHL+0.02;                      /* the bore holds the whole shank */
   var screwGeo=new THREE.CylinderGeometry(SR,SR,HH,48);
   /* the shank stays a clean cylinder — a swept thread is a mess of polygons and reads as one.
@@ -760,7 +760,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;
     return t;
   })();
-  var shankMat=boltSteel.clone();shankMat.normalMap=threadMap;shankMat.normalScale=new THREE.Vector2(0.85,0.85);
+  var shankMat=boltSteel.clone();shankMat.normalMap=threadMap;shankMat.normalScale=new THREE.Vector2(0.6,0.6);
   mirrorSteel(shankMat);
   var shankGeo=new THREE.CylinderGeometry(SR*0.62,SR*0.62,SHL,48);
   var TURNS=SOUT/PITCH;                               /* it comes out exactly as far as it is turned */
@@ -789,7 +789,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      from every angle, and the screw head sits in it when the screw is home. */
   var boreMouth=new THREE.CylinderGeometry(HR*1.28,HR,0.03,40,1,true);   /* a chamfer, not a dish: the black of the bore is the point */
   /* a tapped hole has nothing in it to light: no polish, no room reaching down it. black. */
-  var tapMat=new THREE.MeshStandardMaterial({color:0x090a0b,metalness:0,roughness:1,envMapIntensity:0.05,side:THREE.BackSide});
+  var tapMat=new THREE.MeshStandardMaterial({color:0x090a0b,metalness:0,roughness:1,envMapIntensity:0.05,side:THREE.DoubleSide});
+  /* both faces, on purpose: a bore drawn from the inside only shows its far wall, and at any
+     angle but straight down it that is nothing at all — which is how eight holes managed to
+     disappear. drawn from both, the mouth is black from wherever you stand. */
   var tapFloorMat=new THREE.MeshStandardMaterial({color:0x050506,metalness:0,roughness:1,envMapIntensity:0.03});
   var seatMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.22,roll.tone*0.22,roll.tone*0.23),metalness:0.6,roughness:0.75,envMapIntensity:0.4,side:THREE.DoubleSide});
   function screwRing(parent,x){
