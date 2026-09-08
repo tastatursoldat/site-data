@@ -683,8 +683,20 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   drawTube();
   var brushOnly=document.createElement('canvas');brushOnly.width=1024;brushOnly.height=1024;brush(brushOnly.getContext('2d'),1024,1024,PPX/4,PPY/4,29);
-  function brushFor(len){var t=new THREE.CanvasTexture(brushOnly);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;t.repeat.set(1,Math.max(0.02,len/(TUBE1-TUBE0)));t.anisotropy=8;return t;}
-  plateSteel.roughnessMap=brushFor(TR);capSteel.roughnessMap=brushFor(CAPL);boltSteel.roughnessMap=brushFor(SL);
+  /* the brushing canvas was stretched to each part's own length, which on a part as short as a
+     flange ring magnified it about nine times: what should be a grain came out as stripes.
+     The grain now keeps one physical size wherever it lands — a tile every GRAIN units, around
+     and along — so a ring reads the same as the tube it is bolted to. ?grain=0 drops it. */
+  var GRAIN=0.62;
+  function brushFor(circ,len){
+    var t=new THREE.CanvasTexture(brushOnly);t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;
+    t.repeat.set(Math.max(1,Math.round(circ/GRAIN)),Math.max(1,Math.round(len/GRAIN)));t.anisotropy=8;return t;
+  }
+  if(Q.get('grain')!=='0'){
+    plateSteel.roughnessMap=brushFor(2*Math.PI*RF,TR);
+    capSteel.roughnessMap=brushFor(2*Math.PI*CAPR,CAPL);
+    boltSteel.roughnessMap=brushFor(2*Math.PI*SR,SL);
+  }
   var tubeRoughTex=new THREE.CanvasTexture(tubeRough),tubeNormalTex=new THREE.CanvasTexture(tubeNormal);
   [tubeRoughTex,tubeNormalTex].forEach(function(t){t.wrapS=THREE.RepeatWrapping;t.offset.x=0.5;t.anisotropy=8;});
   steel.roughnessMap=tubeRoughTex;steel.normalMap=tubeNormalTex;steel.normalScale=new THREE.Vector2(roll.depth,roll.depth);steel.needsUpdate=true;
