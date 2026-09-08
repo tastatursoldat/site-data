@@ -538,21 +538,29 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var LID_HOME=XR-CAPL;                              /* the right cap's inner face */
   var TP=CAPL;                                       /* (kept for the placement code) */
 
-  function discGeo(rad,len){ /* a chamfered disc, axis y, from 0 to len */
+  var SEG=320,ARC=6;   /* around the axis, and the segments in each rolled edge */
+  function fillet(p,cx,cy,r,a0,a1){ /* a rolled edge: nothing on a turned part comes off sharp */
+    for(var i=0;i<=ARC;i++){var a=a0+(a1-a0)*i/ARC;p.push(new THREE.Vector2(cx+Math.cos(a)*r,cy+Math.sin(a)*r));}
+  }
+  function discGeo(rad,len){ /* a disc with both edges rolled, axis y, from 0 to len */
     var p=[];
-    p.push(new THREE.Vector2(0,0));p.push(new THREE.Vector2(rad-FIL,0));p.push(new THREE.Vector2(rad,FIL));
-    p.push(new THREE.Vector2(rad,len-FIL));p.push(new THREE.Vector2(rad-FIL,len));p.push(new THREE.Vector2(0,len));
-    return new THREE.LatheGeometry(p,160);
+    p.push(new THREE.Vector2(0,0));p.push(new THREE.Vector2(rad-FIL,0));
+    fillet(p,rad-FIL,FIL,FIL,-Math.PI/2,0);
+    fillet(p,rad-FIL,len-FIL,FIL,0,Math.PI/2);
+    p.push(new THREE.Vector2(0,len));
+    return new THREE.LatheGeometry(p,SEG);
   }
   function ringGeo(len){ /* a flange ring with its bore: the cap's plug sits in it */
     var p=[];
-    p.push(new THREE.Vector2(0.9,0));p.push(new THREE.Vector2(RF-FIL,0));p.push(new THREE.Vector2(RF,FIL));
-    p.push(new THREE.Vector2(RF,len-FIL));p.push(new THREE.Vector2(RF-FIL,len));p.push(new THREE.Vector2(0.9,len));p.push(new THREE.Vector2(0.9,0));
-    return new THREE.LatheGeometry(p,160);
+    p.push(new THREE.Vector2(0.9,0));p.push(new THREE.Vector2(RF-FIL,0));
+    fillet(p,RF-FIL,FIL,FIL,-Math.PI/2,0);
+    fillet(p,RF-FIL,len-FIL,FIL,0,Math.PI/2);
+    p.push(new THREE.Vector2(0.9,len));p.push(new THREE.Vector2(0.9,0));
+    return new THREE.LatheGeometry(p,SEG);
   }
   function tubeGeo(){
     var p=[new THREE.Vector2(R,0),new THREE.Vector2(R,TUBE1-TUBE0)]; /* an open tube: no end discs, the bore is a hole */
-    var g=new THREE.LatheGeometry(p,192);
+    var g=new THREE.LatheGeometry(p,SEG);
     var pos=g.attributes.position,uv=g.attributes.uv;
     for(var i=0;i<pos.count;i++)uv.setY(i,clamp(pos.getY(i)/(TUBE1-TUBE0),0,1));
     return g;
@@ -693,20 +701,32 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      so twisting the object moves the light inside it */
   var holeEnd=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.5,roll.tone*0.5,roll.tone*0.51),metalness:0.45,roughness:0.78,envMapIntensity:0.8});
   var endWallL=new THREE.Mesh(endWallGeo,holeEnd);endWallL.rotation.z=-Math.PI/2;endWallL.position.x=TUBE0-0.02;endWallL.receiveShadow=true;group.add(endWallL);
-  var boreGeo=new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,TUBE1-TUBE0)],96);
+  var boreGeo=new THREE.LatheGeometry([new THREE.Vector2(0.9,0),new THREE.Vector2(0.9,TUBE1-TUBE0)],SEG);
   (function(){var n=boreGeo.attributes.position.count,col=new Float32Array(n*3),half=n/2;
     for(var i=0;i<n;i++){var v=i<half?0.28:1.0;col[i*3]=v;col[i*3+1]=v;col[i*3+2]=v;}
     boreGeo.setAttribute('color',new THREE.BufferAttribute(col,3));})();
   var boreMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(roll.tone*0.62,roll.tone*0.62,roll.tone*0.63),metalness:0.45,roughness:0.82,envMapIntensity:0.7,side:THREE.BackSide,vertexColors:true});
   var bore=new THREE.Mesh(boreGeo,boreMat);bore.rotation.z=-Math.PI/2;bore.position.x=TUBE0;bore.receiveShadow=true;group.add(bore); /* the key light reaches in through the opening: the lit patch inside moves as the object turns */
   /* radial socket screws around each ring, at its mid-length; heads sit in the rim */
-  var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,24);
+  var screwGeo=new THREE.CylinderGeometry(SR,SR,SL,48);
   var sockGeo=new THREE.CylinderGeometry(SR*0.55,SR*0.55,0.02,6);
   var rndA=(function(){var q=91;return function(){q=(q*1664525+1013904223)>>>0;return q/4294967296;};})();
+  /* the tapped hole each screw came out of: an open bore in the rim with a floor at the
+     bottom of it. it is a little narrower than the screw, so while the screw is home the
+     hole is inside it and nothing shows; back the screw out and the hole is what is left. */
+  var HR=SR*0.9,HD=SL+0.03;
+  var boreWall=new THREE.CylinderGeometry(HR,HR,HD,40,1,true);
+  var boreFloor=new THREE.CircleGeometry(HR,40);
+  var tapMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.14,roll.tone*0.14,roll.tone*0.15),metalness:0.5,roughness:0.85,side:THREE.BackSide});
+  var tapFloorMat=new THREE.MeshStandardMaterial({color:new THREE.Color(roll.tone*0.20,roll.tone*0.20,roll.tone*0.21),metalness:0.5,roughness:0.9});
   function screwRing(parent,x){
     var out=[];
     for(var i=0;i<NB;i++){
       var a=i/NB*Math.PI*2+Math.PI/NB;
+      var hole=new THREE.Group();hole.position.x=x;hole.rotation.x=a;   /* the hole belongs to the ring: it never moves */
+      var wall=new THREE.Mesh(boreWall,tapMat);wall.position.y=RF+0.012-HD/2;hole.add(wall);
+      var floor=new THREE.Mesh(boreFloor,tapFloorMat);floor.position.y=RF+0.012-HD;floor.rotation.x=-Math.PI/2;hole.add(floor);
+      parent.add(hole);
       var g=new THREE.Group();g.position.x=x;g.rotation.x=a;            /* local +y points outward along the radius */
       var head=new THREE.Mesh(screwGeo,boltSteel);head.position.y=RF-SL/2+0.012;g.add(head);
       var sock=new THREE.Mesh(sockGeo,socketMat);sock.position.y=RF+0.012;sock.rotation.y=rndA()*Math.PI/3;g.add(sock);
@@ -723,7 +743,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var capR=new THREE.Mesh(discGeo(CAPR,CAPL),capSteel);capR.rotation.z=-Math.PI/2;capR.castShadow=true;lid.add(capR);
   var plug=new THREE.Mesh(discGeo(0.895,TR+GAP),capSteel);plug.rotation.z=-Math.PI/2;plug.position.x=-(TR+GAP);lid.add(plug); /* the part inside the ring */
   /* the threaded holes the screws sat in, around the plug */
-  var holeGeo=new THREE.CylinderGeometry(SR*0.8,SR*0.8,0.16,20);
+  var holeGeo=new THREE.CylinderGeometry(SR*0.8,SR*0.8,0.16,40);
   for(var hi=0;hi<NB;hi++){
     var ha=hi/NB*Math.PI*2+Math.PI/NB,hg=new THREE.Group();hg.position.x=-(TR+GAP)/2-GAP/2;hg.rotation.x=ha;
     var hole=new THREE.Mesh(holeGeo,socketMat);hole.position.y=0.895-0.06;hg.add(hole);lid.add(hg);
@@ -758,7 +778,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   function roundRect(sh,x,y,w,h,r){sh.moveTo(x+r,y);sh.lineTo(x+w-r,y);sh.quadraticCurveTo(x+w,y,x+w,y+r);sh.lineTo(x+w,y+h-r);sh.quadraticCurveTo(x+w,y+h,x+w-r,y+h);sh.lineTo(x+r,y+h);sh.quadraticCurveTo(x,y+h,x,y+h-r);sh.lineTo(x,y+r);sh.quadraticCurveTo(x,y,x+r,y);}
   var frameShape=new THREE.Shape();roundRect(frameShape,-PW/2,-PH/2,PW,PH,PR);
   var holePath=new THREE.Path();roundRect(holePath,-PW/2+PI,-PH/2+PI,PW-2*PI,PH-2*PI,PR*0.5);frameShape.holes.push(holePath);
-  var frameGeo=new THREE.ExtrudeGeometry(frameShape,{depth:0.06,bevelEnabled:true,bevelThickness:0.012,bevelSize:0.012,bevelSegments:3,curveSegments:12});
+  var frameGeo=new THREE.ExtrudeGeometry(frameShape,{depth:0.06,bevelEnabled:true,bevelThickness:0.012,bevelSize:0.012,bevelSegments:4,curveSegments:24});
   var bezelMat=sameMetal();mirrorSteel(bezelMat);
   var panel=new THREE.Group();
   var bezel=new THREE.Mesh(frameGeo,bezelMat);bezel.castShadow=true;panel.add(bezel);
@@ -781,11 +801,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var fillLight=new THREE.DirectionalLight(0xffffff,0.35);fillLight.position.set(-6,2,8);stage.add(fillLight);
   /* the view: a three-quarter turn at rest, and the visitor may turn it any way by dragging */
   var YAW=THREE.MathUtils.degToRad(roll.yaw);
-  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),vy:0,vx:0};
-  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),vC=new THREE.Vector3();
+  var rot={yaw:-YAW+THREE.MathUtils.degToRad(roll.ry),pitch:THREE.MathUtils.degToRad(roll.rx),spin:0,vy:0,vx:0,vs:0};
+  var qTmp=new THREE.Quaternion(),qY=new THREE.Quaternion(),qX=new THREE.Quaternion(),qS=new THREE.Quaternion(),vC=new THREE.Vector3();
   function applyRot(){
     qY.setFromAxisAngle(new THREE.Vector3(0,1,0),rot.yaw);qX.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.pitch);
-    qTmp.copy(qX).multiply(qY);group.quaternion.copy(qTmp);
+    qS.setFromAxisAngle(new THREE.Vector3(1,0,0),rot.spin);   /* about its own length, whichever way it is turned */
+    qTmp.copy(qX).multiply(qY).multiply(qS);group.quaternion.copy(qTmp);
   }
   applyRot();
 
@@ -1129,11 +1150,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   /* drag turns the capsule (with a little momentum); a click that did not move opens or seals it */
   var drag=null;
+  var spinning=false;
   function spinLoop(){
-    if(drag||(Math.abs(rot.vy)<0.0004&&Math.abs(rot.vx)<0.0004)){rot.vy=rot.vx=0;return;}
-    rot.yaw+=rot.vy;rot.pitch=clamp(rot.pitch+rot.vx,-1.1,1.1);rot.vy*=0.93;rot.vx*=0.93;
+    if(drag||(Math.abs(rot.vy)<0.0004&&Math.abs(rot.vx)<0.0004&&Math.abs(rot.vs)<0.0004)){rot.vy=rot.vx=rot.vs=0;spinning=false;return;}
+    rot.yaw+=rot.vy;rot.pitch=clamp(rot.pitch+rot.vx,-1.1,1.1);rot.spin+=rot.vs;
+    rot.vy*=0.93;rot.vx*=0.93;rot.vs*=0.94;
     paint();requestAnimationFrame(spinLoop);
   }
+  function kickSpin(){if(!spinning){spinning=true;requestAnimationFrame(spinLoop);}}
   function dragStart(e,el){
     if(e.button!==undefined&&e.button!==0)return;
     if(!hitCapsule(e.clientX,e.clientY))return;
@@ -1154,7 +1178,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(!drag||e.pointerId!==drag.id)return;
     var d=drag;drag=null;cvs.classList.remove('turning');
     try{d.el.releasePointerCapture(e.pointerId);}catch(err){}
-    if(d.moved){requestAnimationFrame(spinLoop);return;}
+    if(d.moved){kickSpin();return;}
     if(e.detail>1)return;
     toggleCapsule();
   }
@@ -1164,6 +1188,17 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   cvs.addEventListener('pointerup',dragEnd);
   cvs.addEventListener('pointercancel',function(){drag=null;cvs.classList.remove('turning');});
   cvs.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCapsule();}});
+  /* the wheel rolls it: the object turns about its own length, the way you would turn a tube
+     in your hands to read the far side of it. only while the object is what is on screen. */
+  cvs.addEventListener('wheel',function(e){
+    if(fieldMode==='radio'||pl.classList.contains('show')||document.getElementById('me-about-screen'))return;
+    if(document.getElementById('me-note'))return;
+    if(isMobile()&&app.classList.contains('open'))return;
+    e.preventDefault();
+    var d=e.deltaMode===1?e.deltaY*16:(e.deltaMode===2?e.deltaY*400:e.deltaY);
+    rot.spin+=d*0.0022;rot.vs=clamp(d*0.0016,-0.09,0.09);
+    applyRot();paint();kickSpin();
+  },{passive:false});
 
   /* ── size ─────────────────────────────────────────────────────── */
   var mobileNow=isMobile();
