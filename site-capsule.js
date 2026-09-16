@@ -2,7 +2,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
 // site-capsule.js — michelelsasser.com  (hosted in tastatursoldat/site-data, loaded by Cargo as a module)
 // Loads the Vimeo Player SDK, then runs the full overlay app.
 // Landing = TIME CAPSULE: a bolted stainless capsule (three.js) that opens
-// into the cinema index. Index + preview + player + radio unchanged.
+// into the cinema index. Radio: each station is a named playlist at its own
+// fm position, broadcasting on loop since epoch (radio.json v2).
 (function(){
   if(!window.Vimeo){
     var s=document.createElement('script');
@@ -31,8 +32,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
      jsdelivr @main mirror — never stuck behind a throttled purge. heavy media
      (previews, site.js itself) stays on the jsdelivr CDN. */
   var DATA_URL     = "https://raw.githubusercontent.com/tastatursoldat/site-data/main/website-projects.json";
-  var MUSIC_PLAYLIST = "PLAMrTQJLnU5E"; // YouTube playlist id for the radio
-  var RADIO_URL    = "https://raw.githubusercontent.com/tastatursoldat/site-data/main/radio.json"; // hz + note + title per track
+  var RADIO_URL    = "https://raw.githubusercontent.com/tastatursoldat/site-data/main/radio.json"; // the stations: named playlists, one per fm position
   var ABOUT_EMAIL  = "m@michelelsasser.com";
   var ABOUT_INSTAGRAM = "@michelelsasser";
   var ABOUT_TEXT =
@@ -1614,7 +1614,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   // ── view toggle + radio ─────────────────────────────────────────
   /* view navigation lives in the radio section (needs the player helpers) */
 
-  /* radio — plays a YouTube playlist; current track title bottom-left */
+  /* radio — every station is a named playlist broadcasting on loop since
+     epoch; the current song's title lives in the bottom-right corner */
   var radioBtn=app.querySelector('#me-radio');
   var musicEl=app.querySelector('#me-music');
   var brandEl=app.querySelector('#me-brand');
@@ -1652,11 +1653,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   }
   function updateTitle(){
     if(!radioPlaying||!ytPlayer||!ytPlayer.getVideoData){setTitle('');return;}
-    try{var d=ytPlayer.getVideoData();setTitle(titleFor(currentVid())||cleanTitle((d&&d.title)?d.title:''));}catch(e){}
-    /* the dial never moves by itself — stations loop their own broadcast and
-       tuning is entirely in the user's hand (plus the initial random park).
-       the periodic pass keeps the near-station title fresh once its video
-       has actually loaded */
+    try{
+      var t=curTrack(),yt='';
+      try{var d=ytPlayer.getVideoData();yt=(d&&d.title)?d.title:'';}catch(e){}
+      setTitle((t&&t.title)||cleanTitle(yt));
+    }catch(e){}
+    /* the dial never moves by itself — each station runs its own broadcast
+       and tuning is entirely in the user's hand (plus the initial random
+       park). the periodic pass keeps titles and proximity fresh */
     if(app.classList.contains('radio-mode'))tuneAudio();
   }
   function startPlayback(){
@@ -1664,18 +1668,16 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
        mid-broadcast, never the same one twice in a row */
     try{
       if(!ytJumped){
-        var list=SONG_IDS.length?SONG_IDS:(ytPlayer.getPlaylist()||[]);
-        if(list.length){
-          ytJumped=true;
-          if(!SONG_IDS.length)SONG_IDS=list.slice();
-          var last=-1;try{last=parseInt(localStorage.getItem('me-radio-last'),10);}catch(e){}
-          var i=Math.floor(Math.random()*list.length);
-          if(i===last)i=(i+1)%list.length;
-          try{localStorage.setItem('me-radio-last',String(i));}catch(e){}
-          tuneLoad(list[i]);
-          bandId=list[i];
-          if(bandTicks[list[i]])parkDial(list[i]);else pendingDial=list[i];
-        }
+        if(!STATIONS.length)return;
+        ytJumped=true;
+        var last='';try{last=localStorage.getItem('me-radio-last')||'';}catch(e){}
+        var i=Math.floor(Math.random()*STATIONS.length);
+        if(STATIONS.length>1&&STATIONS[i].sid===last)i=(i+1)%STATIONS.length;
+        var sid=STATIONS[i].sid;
+        try{localStorage.setItem('me-radio-last',sid);}catch(e){}
+        tuneStation(sid);
+        bandId=sid;
+        if(bandTicks[sid])parkDial(sid);else pendingDial=sid;
       }else{
         ytPlayer.playVideo();
       }
@@ -1689,51 +1691,29 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     window.onYouTubeIframeAPIReady=function(){
       ytPlayer=new YT.Player('me-yt',{
         width:200,height:200,
-        playerVars:{listType:'playlist',list:MUSIC_PLAYLIST},
         events:{
-          onReady:function(){ytReady=true;buildSongs();if(radioPlaying)startPlayback();},
+          onReady:function(){ytReady=true;if(radioPlaying)startPlayback();},
           onStateChange:function(ev){
-            buildSongs();
             /* every station is a broadcast that has been running since epoch:
-               on the first PLAYING after a load, jump to where the song would
-               be right now (wall clock mod duration, never the last seconds).
-               the mute-hold releases only once the seek has landed, so neither
-               the cut nor the 0:00 start is ever audible — the new signal
-               ramps in from under the static */
+               on the first PLAYING after a tune-in, jump to where the
+               schedule says the song is right now. the mute-hold releases
+               only once the seek has landed, so neither the cut nor the 0:00
+               start is ever audible — the new signal ramps in from under the
+               static */
             if(ev&&ev.data===1){
-              if(pendingSeek&&pendingSeek===currentVid()){
-                pendingSeek=null;
+              if(pendingSeek&&pendingSeek.vid===currentVid()){
+                var off=pendingSeek.off;pendingSeek=null;
                 try{
                   var dur=ytPlayer.getDuration();
-                  if(dur&&dur>60)ytPlayer.seekTo((Date.now()/1000)%(dur-20)+8,true);
+                  if(dur&&off>3)ytPlayer.seekTo(Math.min(off,Math.max(0,dur-2)),true);
                 }catch(e){}
               }
               if(muteHold&&!pendingSeek){muteHold=false;quietHandover=false;tuneAudio();rampMusic(lawVol,350);}
-            /* cued, paused or unstarted while the set is on: a new station never starts itself
-               in Safari, so it is told to play here, carrying the visitor's own activation */
-            if(radioPlaying&&(ev.data===5||ev.data===2||ev.data===-1)){try{ytPlayer.unMute();ytPlayer.playVideo();}catch(e){}}
             }
-            /* a station never plays another station's song: at the end of the
-               video the broadcast simply loops */
-            /* the song has run out: the set moves along the scale to the next station,
-               taking the needle with it, rather than playing the same broadcast again */
-            if(ev&&ev.data===0){
-              try{
-                var cur=currentVid();
-                var order=Object.keys(bandTicks).sort(function(a,b){return bandTicks[a].x-bandTicks[b].x;});
-                if(order.length>1){
-                  var at=order.indexOf(cur), nxt=order[(at+1+order.length)%order.length];
-                  if(nxt&&nxt!==cur){
-                    /* the needle is about to sit on the new station, and the takeover that
-                       normally follows would reload it mid-broadcast: it is told this one is
-                       already handled, so the song keeps its own beginning */
-                    clearTimeout(tuneLoadTimer); tuneQueuedId=nxt;
-                    bandId=nxt; tuneLoad(nxt,true); parkDial(nxt); handover();
-                  }
-                  else { ytPlayer.seekTo(0,true); ytPlayer.playVideo(); }
-                } else { ytPlayer.seekTo(0,true); ytPlayer.playVideo(); }
-              }catch(e){}
-            }
+            /* the song has run out: the station plays the next one on its
+               list from its own beginning, the last wraps to the first — the
+               needle never moves */
+            if(ev&&ev.data===0)nextTrack();
             if(!ytJumped&&radioPlaying)startPlayback();
             updateTitle();
           }
@@ -1743,21 +1723,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var s=document.createElement('script');s.id='me-yt-api';s.src='https://www.youtube.com/iframe_api';
     document.head.appendChild(s);
   }
-  ensureYT(); /* preload cued player so the radio click starts playback inside the gesture */
-  function buildSongs(){
-    /* build the tuning band once the playlist is known */
-    try{
-      var l=ytPlayer&&ytPlayer.getPlaylist?ytPlayer.getPlaylist():null;
-      if(l&&l.length&&!SONG_IDS.length)buildBand();
-    }catch(e){}
-  }
+  ensureYT(); /* preload the player so the radio click starts playback inside the gesture */
 
-  /* ── radio tuning band — every song a tick on the scale ────────── */
+  /* ── radio tuning band — every station a tick on the scale ─────── */
   var bandEl=document.createElement('div');bandEl.id='me-band';
   bandEl.innerHTML='<div id="me-band-in"></div>';
   app.appendChild(bandEl);
   var bandIn=bandEl.querySelector('#me-band-in');
-  var RADIO_META={},bandTicks={},bandId=null,SONG_IDS=[],needleEl=null,bNote=null,bTitle=null,bFreq=null;
+  var STATIONS=[],STN={},curStn='',curIdx=0,bandTicks={},bandId=null,needleEl=null,bNote=null,bTitle=null,bFreq=null;
 
   /* ── tuner audio: radio static in the void between stations. the noise is
      generated (looped white noise through a lowpass — no assets), and the
@@ -1834,40 +1807,61 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     })(t0);
   }
   fetch(RADIO_URL,{cache:'no-cache'}).then(function(r){return r.json();})
-    .then(function(j){RADIO_META=(j&&j.tracks)||{};
-      /* radio.json IS the station list — the playlist only stands in when it
-         is empty or unreachable. tuning is a single-video load either way */
-      var rids=Object.keys(RADIO_META);if(rids.length)SONG_IDS=rids;
-      buildBand();})
+    .then(function(j){
+      /* radio.json IS the dial: one station per playlist, at its own fm.
+         a playlist with no songs is not on the dial */
+      STATIONS=[];STN={};
+      ((j&&j.stations)||[]).forEach(function(s,ix){
+        if(!s||!s.tracks)return;
+        var tracks=[].concat(s.tracks).map(function(t){
+          return {id:String((t&&t.id)||''),title:String((t&&t.title)||''),dur:Number(t&&t.dur)||0};
+        }).filter(function(t){return /^[\w-]{11}$/.test(t.id);});
+        if(!tracks.length)return;
+        var stn={sid:String(s.id||('s'+ix)),name:String(s.name||''),
+                 fm:Math.min(107.9,Math.max(88.1,Number(s.fm)||98)),tracks:tracks};
+        STATIONS.push(stn);STN[stn.sid]=stn;
+      });
+      buildBand();
+      if(radioPlaying&&!ytJumped&&ytReady)startPlayback();
+    })
     .catch(function(){buildBand();});
-  function hzFor(id){
-    /* each track's number is its measured average audio frequency (spectral centroid, Hz) */
-    var m=RADIO_META[id];
-    if(m){
-      if(typeof m.hz==='number')return m.hz;
-      if(typeof m.khz==='number')return Math.round(m.khz*1000); /* legacy data */
-    }
-    var h=0;for(var i=0;i<id.length;i++){h=(h*31+id.charCodeAt(i))>>>0;}
-    return 800+(h%2400);
+  function curTrack(){
+    var st=STN[curStn];
+    if(!st)return null;
+    return st.tracks[Math.max(0,Math.min(curIdx,st.tracks.length-1))]||null;
   }
-  function noteFor(id){var m=RADIO_META[id];return (m&&m.note)?String(m.note).toLowerCase():'';}
-  function titleFor(id){var m=RADIO_META[id];return (m&&typeof m.title==='string'&&m.title)?m.title:'';} /* a set title wins over youtube's, verbatim */
-  /* the dial reads as FM — each song's measured spectral frequency decides its
-     ORDER and spread on the scale, remapped into the 88-108 mhz band */
+  function schedFor(st){
+    /* where this station's broadcast is right now: it has been playing its
+       list on loop since epoch, so the wall clock is the whole schedule.
+       an unknown length counts as four minutes */
+    var durs=st.tracks.map(function(t){return Math.max(30,t.dur||240);});
+    var tot=0;durs.forEach(function(d){tot+=d;});
+    var pos=(Date.now()/1000)%tot;
+    for(var i=0;i<durs.length;i++){if(pos<durs[i])return{idx:i,off:pos};pos-=durs[i];}
+    return{idx:0,off:0};
+  }
+  function tuneStation(sid){
+    /* tuning in lands mid-broadcast, the way a real set does */
+    var st=STN[sid];if(!st)return;
+    var at=schedFor(st);
+    curStn=sid;curIdx=at.idx;
+    tuneLoad(st.tracks[at.idx].id,{vid:st.tracks[at.idx].id,off:at.off});
+  }
+  function nextTrack(){
+    /* the next song on the same station's list, from its own beginning —
+       nothing was missed; the last wraps to the first */
+    var st=STN[curStn];
+    if(!st){try{ytPlayer.seekTo(0,true);ytPlayer.playVideo();}catch(e){}return;}
+    curIdx=(curIdx+1)%st.tracks.length;
+    clearTimeout(tuneLoadTimer);tuneQueuedId=null;
+    tuneLoad(st.tracks[curIdx].id,null);
+    handover();
+  }
+  /* the dial reads as FM — every station sits at its own stored fm number */
   var FM_LO=88,FM_HI=108;
-  function mhzFor(ids,id){
-    var hzs=ids.map(hzFor);
-    var mn=Math.min.apply(null,hzs),mx=Math.max.apply(null,hzs);
-    var u=mx>mn?(hzFor(id)-mn)/(mx-mn):0.5;
-    return 88.9+u*(107.1-88.9);
-  }
   function fmtMhz(m){return m.toFixed(1);} /* the dial speaks in plain numbers */
   function bandAccent(){return theme.key;}
   function buildBand(){
-    var ids=SONG_IDS.length?SONG_IDS.slice():null;
-    if(!ids){try{ids=ytPlayer&&ytPlayer.getPlaylist?ytPlayer.getPlaylist():null;}catch(e){return;}}
-    if(!ids||!ids.length)return;
-    SONG_IDS=ids.slice();
     /* the dial is a wheel: one cycle covers 88..108 plus a half-tick seam
        back to 88, and the strip carries three joined copies so the viewport
        is never empty — crossing the seam just re-normalises the position */
@@ -1915,14 +1909,14 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
         bandIn.appendChild(al);
       });
       /* stations repeat in every copy so the wheel finds them from any side */
-      ids.forEach(function(id){
-        var sm=mhzFor(ids,id),sx=off+(sm-FM_LO)*px;
+      STATIONS.forEach(function(stn){
+        var sx=off+(stn.fm-FM_LO)*px;
         var s=document.createElement('div');s.className='station';
         s.style.left=sx+'px';
         s.innerHTML='<i></i>';
         bandIn.appendChild(s);
-        if(!bandTicks[id])bandTicks[id]={x:x0+(sm-FM_LO)*px,mhz:sm,note:noteFor(id),els:[]};
-        bandTicks[id].els.push(s.querySelector('i'));
+        if(!bandTicks[stn.sid])bandTicks[stn.sid]={x:x0+(stn.fm-FM_LO)*px,mhz:stn.fm,name:stn.name,els:[]};
+        bandTicks[stn.sid].els.push(s.querySelector('i'));
       });
     }
     /* the glass chrome — needle, readouts, band designations — built once */
@@ -1978,11 +1972,10 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     var v='';try{var d=ytPlayer.getVideoData();v=(d&&d.video_id)||'';}catch(e){}
     return v;
   }
-  function tuneLoad(id,fromStart){
-    /* single-video load: a station can only ever play its own song. tuning into one lands
-       mid-broadcast, the way a real set does; a song handed to you when the last one ended
-       starts at its beginning, because nothing was missed */
-    pendingSeek=fromStart?null:id;
+  function tuneLoad(id,seek){
+    /* single-video load: the station's own current song. `seek` carries the
+       broadcast offset; null means the song starts at its own beginning */
+    pendingSeek=seek||null;
     muteHold=true;
     cancelAnimationFrame(volRAF);
     try{ytPlayer.setVolume(0);}catch(e){}
@@ -2014,18 +2007,17 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(radioPlaying){
       /* what you hear is the PLAYING station at its own signal strength —
          leaving it fades it naturally even while another station is nearer */
-      var cur=currentVid();
-      var pp=bandTicks[cur]?proxAt(bandTicks[cur].x):0;
+      var pp=bandTicks[curStn]?proxAt(bandTicks[curStn].x):0;
       var v=pp*pp;
       setMusicVol(v);
       setStatic(quietHandover?0:(1-(muteHold?0:v)));
       /* the nearer station takes over — loaded under the hold, so the
          handover happens in silence beneath the hiss */
-      if(pn>0.35&&st.id!==cur&&st.id!==tuneQueuedId){
+      if(pn>0.35&&st.id!==curStn&&st.id!==tuneQueuedId){
         tuneQueuedId=st.id;
         clearTimeout(tuneLoadTimer);
         var qid=st.id;
-        tuneLoadTimer=setTimeout(function(){bandId=qid;tuneLoad(qid);},180);
+        tuneLoadTimer=setTimeout(function(){bandId=qid;tuneStation(qid);},180);
       }
       if(pn<0.3)tuneQueuedId=null;
     }
@@ -2037,10 +2029,19 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       bandTicks[id].els.forEach(function(el){el.style.background=bg;});
     });
     if(near){
-      bNote.textContent=bandTicks[st.id].note||'';
+      /* the station's NAME is the hero over the wheel; the song under it —
+         for the playing station the live one, for any other the one its
+         schedule says is on right now */
+      var stn=STN[st.id];
+      bNote.textContent=(stn&&stn.name)?stn.name.toLowerCase():'';
       var tt='';
-      if(st.id===currentVid()){try{var d=ytPlayer.getVideoData();tt=(d&&d.title)||'';}catch(e){}}
-      bTitle.textContent=titleFor(st.id)||cleanTitle(tt);
+      if(st.id===curStn){
+        var t=curTrack();tt=(t&&t.title)||'';
+        if(!tt){try{var d=ytPlayer.getVideoData();tt=cleanTitle((d&&d.title)||'');}catch(e){}}
+      }else if(stn){
+        tt=stn.tracks[schedFor(stn).idx].title||'';
+      }
+      bTitle.textContent=tt;
     }
     bFreq.textContent=fmtMhz(mhzAt(dialNx));
   }
@@ -2107,7 +2108,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     if(prox>0.45)rampMusic(1,400);
     else stopRadio();
   }
-  addEventListener('resize',function(){ if(SONG_IDS.length)buildBand(); });
+  addEventListener('resize',function(){ buildBand(); });
   function updateModeClass(){
     app.classList.toggle('radio-mode', fieldMode==='radio' && !app.classList.contains('browse'));
   }
@@ -2178,7 +2179,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
         /* the needle never landed, or the hold never lifted: put it on the station that is
            already playing, so a song is heard instead of the hiss between stations */
         muteHold=false;
-        if(bandTicks[cur])parkDial(cur);
+        if(bandTicks[curStn])parkDial(curStn);
         try{ ytPlayer.unMute(); ytPlayer.playVideo(); }catch(e){}
         rampMusic(1,350); setStatic(0);
       }
