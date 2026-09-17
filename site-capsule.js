@@ -177,7 +177,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
       'color:var(--me-theme-laid);text-transform:lowercase;width:84%;max-width:640px;text-align:center;'+
       'opacity:0;transition:opacity .35s ease;}'+
     '#me-band .b-title{position:absolute;top:170px;left:50%;transform:translateX(-50%);font:800 16px/1.7 '+FONT_LCD+';'+
-      'color:var(--me-theme-laid);white-space:nowrap;opacity:0;transition:opacity .35s ease;}'+
+      'color:var(--me-theme-laid);text-transform:lowercase;white-space:nowrap;opacity:0;transition:opacity .35s ease;}'+
     '#me-band.near .b-note,#me-band.near .b-title{opacity:1;}'+
     '#me-band .b-freq{position:absolute;top:198px;left:50%;transform:translateX(-50%);font-size:11px;color:#9a9a9a;'+
       'font-variant-numeric:tabular-nums;white-space:nowrap;}'+
@@ -1938,10 +1938,12 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     else setDial(dialU>=0?x0+dialU*P:x0+P/2,false);
   }
   function paintDial(){
-    /* the theme colour lives on the needle and the note */
+    /* the theme colour lives on the needle and on BOTH lines of the radio's
+       voice — the station's name and its current song read identically */
     if(!needleEl)return;
     needleEl.style.background=bandAccent();
     bNote.style.color=bandAccent();
+    bTitle.style.color=bandAccent();
   }
 
   /* ── the wheel: the needle is fixed dead centre and the scale slides under
