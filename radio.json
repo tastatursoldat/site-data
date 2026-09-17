@@ -1,44 +1,380 @@
 {
-  "tracks": {
-    "x2FMZt_VYBU": {
-      "hz": 1020,
-      "note": "",
-      "title": "quit your job, runaway"
+  "stations": [
+    {
+      "id": "s_lryr7m",
+      "name": "spiders and the dark FM",
+      "fm": 89.2,
+      "tracks": [
+        {
+          "id": "8OG8XGOe054",
+          "title": "i'm scared",
+          "dur": 167
+        },
+        {
+          "id": "bekLvR7aaaE",
+          "title": "Think Of Me Once In A While, Take Care",
+          "dur": 104
+        },
+        {
+          "id": "NUnXxh5U25Y",
+          "title": "Everything In Its Right Place",
+          "dur": 251
+        },
+        {
+          "id": "LsjaLJMAbnk",
+          "title": "Robert Glasper",
+          "dur": 206
+        },
+        {
+          "id": "NCocfI1RuvQ",
+          "title": "loser monologue",
+          "dur": 176
+        },
+        {
+          "id": "3U_LjQKV4FM",
+          "title": "Answering Machine",
+          "dur": 309
+        },
+        {
+          "id": "0ZVE4PQi_pA",
+          "title": "see you in everything",
+          "dur": 174
+        },
+        {
+          "id": "FM7ALFsOH4g",
+          "title": "All I Need",
+          "dur": 229
+        },
+        {
+          "id": "hdsD2Hp4wTI",
+          "title": "Everything Reminds Me Of You",
+          "dur": 207
+        },
+        {
+          "id": "oPdkH1HJdWE",
+          "title": "This is not home",
+          "dur": 187
+        },
+        {
+          "id": "S5pgohUI808",
+          "title": "i threw a rock off an overpass",
+          "dur": 146
+        },
+        {
+          "id": "KjgkVqhzG10",
+          "title": "Manifesto",
+          "dur": 173
+        },
+        {
+          "id": "s1GOI3vC4tE",
+          "title": "Vale",
+          "dur": 248
+        },
+        {
+          "id": "-tAT4qRuB04",
+          "title": "uwu^^",
+          "dur": 172
+        },
+        {
+          "id": "8PAJTtWFYAU",
+          "title": "Starfire",
+          "dur": 247
+        },
+        {
+          "id": "aeQLbC0cwA8",
+          "title": "Cleanup",
+          "dur": 142
+        },
+        {
+          "id": "69Le-stesSA",
+          "title": "Push & Pull",
+          "dur": 206
+        },
+        {
+          "id": "E90t0VkvAS8",
+          "title": "Heights, Spiders, and the Dark",
+          "dur": 127
+        },
+        {
+          "id": "yVFw0mTvic4",
+          "title": "Epilogue",
+          "dur": 221
+        },
+        {
+          "id": "pcsSxjO-Pk4",
+          "title": "talk 2 me",
+          "dur": 169
+        }
+      ]
     },
-    "5hYt_TvC2vo": {
-      "hz": 2456,
-      "note": "",
-      "title": "misses"
+    {
+      "id": "s_0kl4gq",
+      "name": "My ears bleed",
+      "fm": 102.7,
+      "tracks": [
+        {
+          "id": "bN0f_xIJky0",
+          "title": "That's Me",
+          "dur": 131
+        },
+        {
+          "id": "BCTRD9Vm8rc",
+          "title": "Falter",
+          "dur": 162
+        },
+        {
+          "id": "-tNMq1YDOlE",
+          "title": "Horses",
+          "dur": 216
+        },
+        {
+          "id": "I4oCJOds4Ts",
+          "title": "she will be missed",
+          "dur": 154
+        }
+      ]
     },
-    "FFTTHQKdRuE": {
-      "hz": 1828,
-      "note": "6 year old song and yet only 55 youtube clicks",
-      "title": "nunca"
+    {
+      "id": "s_bxfzog",
+      "name": "Walkout",
+      "fm": 98.1,
+      "tracks": [
+        {
+          "id": "IUPuO4VzfpQ",
+          "title": "Nosebleed",
+          "dur": 168
+        }
+      ]
     },
-    "0_3HVeHinDg": {
-      "hz": 2430,
-      "note": "",
-      "title": "sandman"
+    {
+      "id": "s_jgk891",
+      "name": "4L",
+      "fm": 107.1,
+      "tracks": [
+        {
+          "id": "2oo7enGEC9U",
+          "title": "Fidelio",
+          "dur": 153
+        },
+        {
+          "id": "URPu64N_33g",
+          "title": "FRL",
+          "dur": 106
+        },
+        {
+          "id": "dGyIu01wZMw",
+          "title": "onsra",
+          "dur": 131
+        },
+        {
+          "id": "gFmen8-nwgs",
+          "title": "EYEZ!",
+          "dur": 127
+        },
+        {
+          "id": "A68unD18Fj0",
+          "title": "Kill Everything",
+          "dur": 188
+        },
+        {
+          "id": "2YV6ryGlWFc",
+          "title": "Queen St",
+          "dur": 129
+        },
+        {
+          "id": "n4rEdj42q1w",
+          "title": "fast way",
+          "dur": 109
+        },
+        {
+          "id": "DcAl2fygyRI",
+          "title": "RIB",
+          "dur": 106
+        },
+        {
+          "id": "mqEZcXdtAUA",
+          "title": "FEVER",
+          "dur": 144
+        }
+      ]
     },
-    "Lj_ws_BzKUs": {
-      "hz": 1448,
-      "note": "",
-      "title": "out getting ribs"
+    {
+      "id": "s_9cvxsq",
+      "name": "moon transmission",
+      "fm": 100.9,
+      "tracks": [
+        {
+          "id": "6qpBK9koUYA",
+          "title": "Security",
+          "dur": 217
+        },
+        {
+          "id": "Y4VjluimhaI",
+          "title": "Nerves",
+          "dur": 185
+        },
+        {
+          "id": "hq1GZUuIv6w",
+          "title": "Reset",
+          "dur": 99
+        },
+        {
+          "id": "LxtWQWR9xKA",
+          "title": "Water and Power",
+          "dur": 181
+        },
+        {
+          "id": "Ckze5WHLJYI",
+          "title": "Stars",
+          "dur": 103
+        }
+      ]
     },
-    "JTeZuIbj1y0": {
-      "hz": 2034,
-      "note": "got the name for 22, chicha from this song / album",
-      "title": "22 (OVER S∞∞N)"
+    {
+      "id": "s_6za23j",
+      "name": "singordance2it",
+      "fm": 91.1,
+      "tracks": [
+        {
+          "id": "9uQH2snq0EE",
+          "title": "white keys",
+          "dur": 141
+        },
+        {
+          "id": "cs-LF5j3oGc",
+          "title": "King Of Everything",
+          "dur": 196
+        },
+        {
+          "id": "mGKcUqvLUyg",
+          "title": "Are You Looking Up",
+          "dur": 166
+        },
+        {
+          "id": "ub3efRhUYh0",
+          "title": "Small Town Girl",
+          "dur": 185
+        },
+        {
+          "id": "bdp4D7d9sRM",
+          "title": "Aftermath",
+          "dur": 104
+        },
+        {
+          "id": "-J5KEPHKZss",
+          "title": "Sandman",
+          "dur": 141
+        },
+        {
+          "id": "nb6ou_k4OzM",
+          "title": "3 Nights",
+          "dur": 179
+        },
+        {
+          "id": "_hbTRYrshQQ",
+          "title": "Dancing In The Courthouse",
+          "dur": 174
+        },
+        {
+          "id": "VlfAKvRpzto",
+          "title": "Think Fast",
+          "dur": 224
+        },
+        {
+          "id": "0wQ-Wx-4pYw",
+          "title": "ROCKMAN",
+          "dur": 178
+        },
+        {
+          "id": "kFGf2sXrARs",
+          "title": "The Mission",
+          "dur": 191
+        },
+        {
+          "id": "ANtunOrVckg",
+          "title": "AUS MEIN KOPF",
+          "dur": 101
+        },
+        {
+          "id": "qYnAJmmp7kM",
+          "title": "Everybody Feels That Way",
+          "dur": 288
+        }
+      ]
     },
-    "95X6pIoEycE": {
-      "hz": 755,
-      "note": "thunder nights",
-      "title": "lax"
+    {
+      "id": "s_ga55f9",
+      "name": "kisses",
+      "fm": 94.7,
+      "tracks": [
+        {
+          "id": "7Ik9xi584jg",
+          "title": "SPLINTER",
+          "dur": 174
+        }
+      ]
     },
-    "-tAT4qRuB04": {
-      "hz": 1038,
-      "note": "my singing on the voi song",
-      "title": "uwu^^"
+    {
+      "id": "s_oyglkt",
+      "name": "play this at my funeral",
+      "fm": 96.2,
+      "tracks": [
+        {
+          "id": "VnDDghFYEGU",
+          "title": "jelmore",
+          "dur": 150
+        },
+        {
+          "id": "3M_Gg1xAHE4",
+          "title": "Pyramid Song",
+          "dur": 297
+        },
+        {
+          "id": "JTeZuIbj1y0",
+          "title": "22",
+          "dur": 168
+        },
+        {
+          "id": "6C5sB6AqJkM",
+          "title": "33 \"GOD\"",
+          "dur": 213
+        },
+        {
+          "id": "8nTFjVm9sTQ",
+          "title": "House of Cards",
+          "dur": 273
+        },
+        {
+          "id": "yI2oS2hoL0k",
+          "title": "Burn The Witch",
+          "dur": 239
+        },
+        {
+          "id": "BTZl9KMjbrU",
+          "title": "Suspirium",
+          "dur": 202
+        },
+        {
+          "id": "27c3JaZq4_c",
+          "title": "Unmade",
+          "dur": 267
+        },
+        {
+          "id": "Uhjq1gzm4-o",
+          "title": "Minotaur's Song",
+          "dur": 108
+        },
+        {
+          "id": "3w68krri0bw",
+          "title": "Re: Stacks",
+          "dur": 401
+        },
+        {
+          "id": "MjxA25Tj1Ks",
+          "title": "Holocene",
+          "dur": 332
+        }
+      ]
     }
-  }
+  ]
 }
