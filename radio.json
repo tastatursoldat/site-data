@@ -138,13 +138,7 @@
       "id": "s_bxfzog",
       "name": "Walkout",
       "fm": 98.1,
-      "tracks": [
-        {
-          "id": "IUPuO4VzfpQ",
-          "title": "Nosebleed",
-          "dur": 168
-        }
-      ]
+      "tracks": []
     },
     {
       "id": "s_jgk891",
@@ -195,6 +189,11 @@
           "id": "mqEZcXdtAUA",
           "title": "FEVER",
           "dur": 144
+        },
+        {
+          "id": "7gYc8Bj7Cio",
+          "title": "Carson Clay",
+          "dur": 100
         }
       ]
     },
@@ -303,20 +302,8 @@
       ]
     },
     {
-      "id": "s_ga55f9",
-      "name": "kisses",
-      "fm": 94.7,
-      "tracks": [
-        {
-          "id": "7Ik9xi584jg",
-          "title": "SPLINTER",
-          "dur": 174
-        }
-      ]
-    },
-    {
       "id": "s_oyglkt",
-      "name": "play this at my funeral",
+      "name": "sad fm",
       "fm": 96.2,
       "tracks": [
         {
