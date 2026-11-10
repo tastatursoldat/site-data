@@ -363,7 +363,7 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
     '<div id="me-col"></div>'+
     '<div id="me-browse"><div id="me-list"></div></div>'+
     '<div id="me-stamp"></div>'+
-    '<div id="me-brand">time capsule</div>'+
+    '<div id="me-brand">elsasser standard time</div>'+
     '<div id="me-ctrl">'+
       /* top right: the views and the about page, in the voice of the mark */
       '<button id="me-btnview" class="txt" aria-label="Cinema — the contents">cinema</button>'+
@@ -1620,8 +1620,8 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/
   var musicEl=app.querySelector('#me-music');
   var brandEl=app.querySelector('#me-brand');
   function updateBrand(){
-    /* the mark always reads time capsule — cinema and radio sit top right on every view */
-    brandEl.textContent='time capsule';
+    /* the mark always reads elsasser standard time — cinema and radio sit top right on every view */
+    brandEl.textContent='elsasser standard time';
   }
   var ytPlayer=null,ytReady=false,radioPlaying=false,titleTimer=null,ytJumped=false;
   var musicIn=document.createElement('span');musicIn.className='in';musicEl.appendChild(musicIn);
